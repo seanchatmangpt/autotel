@@ -20,6 +20,8 @@ classes:
         range: string
       end_time:
         range: string
+      operation_type:
+        range: LinkMLOperationType
   Metric:
     description: "A telemetry metric."
     attributes:
@@ -34,9 +36,43 @@ classes:
     attributes:
       op_id:
         range: string
+      operation_type:
+        range: LinkMLOperationType
   ValidationResult:
     description: "A validation result (stub for validation)."
     attributes:
       result_id:
         range: string
-enums: {} 
+      validation_type:
+        range: ValidationType
+enums:
+  LinkMLOperationType:
+    permissible_values:
+      schema_loading:
+        description: Loading a LinkML schema
+      schema_introspection:
+        description: Introspecting schema structure
+      class_analysis:
+        description: Analyzing class definitions
+      slot_analysis:
+        description: Analyzing slot definitions
+      relationship_analysis:
+        description: Analyzing relationships
+      constraint_validation:
+        description: Validating constraints
+      inheritance_analysis:
+        description: Analyzing inheritance
+      enum_analysis:
+        description: Analyzing enums
+  ValidationType:
+    permissible_values:
+      slot_validation:
+        description: Validating slot definitions
+      enum_validation:
+        description: Validating enum values
+      relationship_validation:
+        description: Validating relationships
+      type_validation:
+        description: Validating types
+      constraint_validation:
+        description: Validating constraints 
