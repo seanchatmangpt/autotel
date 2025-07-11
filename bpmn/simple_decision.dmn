@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:dmndi="http://www.omg.org/spec/DMN/20191111/DMNDI/"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC/"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI/"
+             id="Definitions_1"
+             name="Simple Decision"
+             targetNamespace="http://camunda.org/schema/1.0/dmn">
+  
+  <decision id="simple_decision" name="Simple Decision">
+    <decisionTable id="DecisionTable_1" hitPolicy="UNIQUE">
+      <input id="Input_1" label="Analysis Score">
+        <inputExpression id="InputExpression_1" typeRef="integer">
+          <text>analysis_score</text>
+        </inputExpression>
+      </input>
+      <output id="Output_1" label="Decision" typeRef="string" />
+      <rule id="Rule_1">
+        <inputEntry id="InputEntry_1">
+          <text>&gt;= 80</text>
+        </inputEntry>
+        <outputEntry id="OutputEntry_1">
+          <text>"APPROVE"</text>
+        </outputEntry>
+      </rule>
+      <rule id="Rule_2">
+        <inputEntry id="InputEntry_2">
+          <text>&gt;= 50</text>
+        </inputEntry>
+        <outputEntry id="OutputEntry_2">
+          <text>"REVIEW"</text>
+        </outputEntry>
+      </rule>
+      <rule id="Rule_3">
+        <inputEntry id="InputEntry_3">
+          <text>&lt; 50</text>
+        </inputEntry>
+        <outputEntry id="OutputEntry_3">
+          <text>"REJECT"</text>
+        </outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+  
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram id="DMNDiagram_1">
+      <dmndi:DMNShape id="DMNShape_1" dmnElementRef="simple_decision">
+        <dc:Bounds height="80" width="180" x="160" y="100" />
+      </dmndi:DMNShape>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+  
+</definitions> 

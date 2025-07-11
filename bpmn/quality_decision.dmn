@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/" xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/" id="Definitions_quality" name="DRD" namespace="http://camunda.org/schema/1.0/dmn" exporter="Camunda Modeler" exporterVersion="4.11.1">
+  <decision id="quality_decision" name="Quality Assessment">
+    <decisionTable id="DecisionTable_quality">
+      <input id="Input_1">
+        <inputExpression id="InputExpression_1" typeRef="double" expressionLanguage="python">
+          <text>quality_score</text>
+        </inputExpression>
+      </input>
+      <output id="Output_1" name="action" typeRef="string" />
+      <rule id="DecisionRule_high">
+        <description>High quality - proceed</description>
+        <inputEntry id="UnaryTests_high">
+          <text>&gt;= 0.8</text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_proceed">
+          <text>"proceed"</text>
+        </outputEntry>
+      </rule>
+      <rule id="DecisionRule_low">
+        <description>Low quality - stop</description>
+        <inputEntry id="UnaryTests_low">
+          <text>&lt; 0.8</text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_stop">
+          <text>"stop"</text>
+        </outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram>
+      <dmndi:DMNShape dmnElementRef="quality_decision">
+        <dc:Bounds height="80" width="180" x="160" y="100" />
+      </dmndi:DMNShape>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+</definitions> 

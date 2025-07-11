@@ -400,6 +400,10 @@ class Orchestrator:
                 end_time = datetime.now()
                 duration = (end_time - start_time).total_seconds()
                 
+                # Attach all task outputs to the span
+                for k, v in (task.data or {}).items():
+                    span.set_attribute(f"task.output.{k}", str(v))
+                
                 # Update telemetry
                 if self.enable_telemetry:
                     task_duration_histogram.record(duration, {
@@ -431,9 +435,14 @@ class Orchestrator:
         
         # Call the DSPy service
         result = dspy_service(dspy_info['service'], **resolved_params)
-        
-        # Store the result if specified
-        if dspy_info['result']:
+        print(f"[DEBUG] DSPy service result type: {type(result)}, value: {result}")
+        # Store each output field as a separate variable
+        if isinstance(result, dict):
+            for k, v in result.items():
+                process_instance.workflow.set_data(**{k: v})
+                process_instance.variables[k] = v
+                print(f"[DEBUG] Set workflow variable: {k}, type: {type(v)}, value: {v}")
+        elif dspy_info['result']:
             process_instance.workflow.set_data(**{dspy_info['result']: result})
             process_instance.variables[dspy_info['result']] = result
         

@@ -154,12 +154,26 @@ class SpiffCapabilityChecker:
             "processes": validation["processes"]
         } 
 
-def run_dspy_bpmn_process(bpmn_path: str, process_id: str, context: dict) -> dict:
+def run_dspy_bpmn_process(bpmn_path: str, process_id: str, context: dict, dmn_files: List[str] = None) -> dict:
     """
     Load a BPMN file using DspyBpmnParser, execute the process, and return the workflow context.
     Supports dynamic DSPy signatures defined in XML and DMN business rule tasks.
+    
+    Args:
+        bpmn_path: Path to the BPMN file
+        process_id: ID of the process to execute
+        context: Initial workflow context
+        dmn_files: Optional list of DMN file paths to load before BPMN
     """
     parser = DspyBpmnParser()
+    
+    # Load DMN files first if provided
+    if dmn_files:
+        for dmn_file in dmn_files:
+            parser.add_dmn_file(dmn_file)
+            print(f"📄 Loaded DMN file: {dmn_file}")
+    
+    # Load BPMN file
     parser.add_bpmn_file(bpmn_path)
     
     # Register dynamic signatures from the parser

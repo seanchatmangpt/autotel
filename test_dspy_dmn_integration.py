@@ -1,186 +1,184 @@
 #!/usr/bin/env python3
 """
-Test demonstrating DSPy signature results being used in DMN decision tables.
+Test for DSPy + DMN Integration using Camunda-style structure
+Demonstrates BPMN + DSPy + External DMN working together
 """
 
 import json
-from typing import Dict, Any, List
+import sys
+from pathlib import Path
+
+# Add the project root to the path
+sys.path.insert(0, str(Path(__file__).parent))
+
 from autotel.workflows.spiff import run_dspy_bpmn_process
 from autotel.workflows.dspy_bpmn_parser import DspyBpmnParser
-from autotel.utils.dspy_services import DSPyServiceRegistry
-
-
-class MockSentimentAnalyzer:
-    """Mock DSPy signature for sentiment analysis."""
-    
-    def __init__(self):
-        self.name = "SentimentAnalyzer"
-    
-    def __call__(self, text: str) -> Dict[str, Any]:
-        """Analyze sentiment of input text."""
-        # Simple mock logic for demonstration
-        text_lower = text.lower()
-        
-        positive_words = ["good", "great", "excellent", "amazing", "wonderful", "love", "happy"]
-        negative_words = ["bad", "terrible", "awful", "hate", "disappointing", "sad", "angry"]
-        
-        positive_count = sum(1 for word in positive_words if word in text_lower)
-        negative_count = sum(1 for word in negative_words if word in text_lower)
-        
-        if positive_count > negative_count:
-            sentiment = "positive"
-            confidence = min(0.9, 0.5 + (positive_count * 0.1))
-        elif negative_count > positive_count:
-            sentiment = "negative"
-            confidence = min(0.9, 0.5 + (negative_count * 0.1))
-        else:
-            sentiment = "neutral"
-            confidence = 0.6
-        
-        # Extract keywords (simple implementation)
-        keywords = [word for word in text_lower.split() if len(word) > 3]
-        
-        return {
-            "sentiment": sentiment,
-            "confidence": confidence,
-            "keywords": keywords
-        }
-
+from autotel.utils.dspy_services import dspy_registry
 
 def test_dspy_dmn_integration():
-    """Test DSPy results flowing into DMN decision table."""
+    """Test the DSPy + DMN integration using Camunda-style structure"""
+    print("🚀 Testing DSPy + DMN Integration (Camunda-style)")
+    print("=" * 55)
     
-    # Initialize components
+    # Set up initial context
+    initial_context = {
+        "input_data": "Sample data for analysis"
+    }
+    
+    print(f"📋 Initial context: {json.dumps(initial_context, indent=2)}")
+    
+    # Run the workflow
+    bpmn_path = "bpmn/dspy_dmn_workflow.bpmn"
+    process_id = "DspyDmnWorkflow"
+    
+    print(f"🎯 Running process: {process_id}")
+    print(f"📄 BPMN file: {bpmn_path}")
+    print(f"📄 DMN file: bpmn/quality_decision.dmn")
+    
+    try:
+        # Execute the workflow with DMN file
+        result = run_dspy_bpmn_process(bpmn_path, process_id, initial_context, dmn_files=["bpmn/quality_decision.dmn"])
+        
+        print(f"\n✅ Workflow completed successfully!")
+        print("=" * 50)
+        print(f"📊 Final Results:")
+        
+        # Pretty print the results
+        for key, value in result.items():
+            if isinstance(value, str) and value.startswith('{'):
+                try:
+                    parsed_value = json.loads(value)
+                    print(f"\n🔍 {key}:")
+                    print(json.dumps(parsed_value, indent=2))
+                except:
+                    print(f"\n🔍 {key}: {value}")
+            else:
+                print(f"\n🔍 {key}: {value}")
+        
+    except Exception as e:
+        print(f"❌ Error running workflow: {e}")
+        import traceback
+        traceback.print_exc()
+
+def test_dmn_parsing():
+    """Test DMN parsing separately"""
+    print("\n🧪 Testing DMN Parsing")
+    print("=" * 25)
+    
+    # Create parser and load BPMN file
     parser = DspyBpmnParser()
+    bpmn_path = "bpmn/dspy_dmn_workflow.bpmn"
+    dmn_path = "bpmn/quality_decision.dmn"
     
-    # Register mock sentiment analyzer
-    sentiment_analyzer = MockSentimentAnalyzer()
+    # Load DMN file first
+    parser.add_dmn_file(dmn_path)
+    print(f"✅ Loaded DMN file: {dmn_path}")
     
-    # Load and parse BPMN workflow
-    with open("bpmn/dspy_dmn_workflow.bpmn", "r") as f:
-        bpmn_content = f.read()
+    # Load BPMN file
+    parser.add_bpmn_file(bpmn_path)
+    print(f"✅ Loaded BPMN file: {bpmn_path}")
     
-    # Parse DSPy signatures from BPMN using the parser
-    parser.add_bpmn_str(bpmn_content, "dspy_dmn_workflow.bpmn")
+    # Check process specs for DMN decisions
+    specs = parser.find_all_specs()
+    print(f"📋 Found {len(specs)} process specs")
     
-    # Get dynamic signatures from parser
-    dynamic_signatures = parser.dynamic_signatures
-    print(f"Parsed {len(dynamic_signatures)} DSPy signatures from BPMN")
+    for process_id, spec in specs.items():
+        print(f"\n🔍 Process: {process_id}")
+        for task_id, task_spec in spec.task_specs.items():
+            if hasattr(task_spec, 'decision_table'):
+                print(f"   DMN Task: {task_spec.name}")
+                print(f"   Decision Table: {task_spec.decision_table}")
+
+def test_dmn_execution():
+    """Test DMN execution separately"""
+    print("\n⚡ Testing DMN Execution")
+    print("=" * 30)
     
-    # Register parsed signatures
-    for signature_name, signature_class in dynamic_signatures.items():
-        print(f"Found signature: {signature_name}")
-    
-    # Test cases with different sentiment inputs
+    # Test different scenarios using the workflow
     test_cases = [
         {
-            "text": "This is absolutely amazing and wonderful! I love it so much.",
-            "expected_sentiment": "positive",
-            "expected_route": "approval"
+            "name": "High Quality - Should Proceed",
+            "context": {"input_data": "High quality data", "quality_score": 0.9}
         },
         {
-            "text": "This is quite good, but could be better.",
-            "expected_sentiment": "positive", 
-            "expected_route": "review"
-        },
-        {
-            "text": "This is terrible and awful. I hate it completely.",
-            "expected_sentiment": "negative",
-            "expected_route": "rejection"
-        },
-        {
-            "text": "This is okay, nothing special.",
-            "expected_sentiment": "neutral",
-            "expected_route": "manual_review"
+            "name": "Low Quality - Should Stop", 
+            "context": {"input_data": "Low quality data", "quality_score": 0.5}
         }
     ]
     
-    print("\n" + "="*60)
-    print("DSPy + DMN Integration Test Results")
-    print("="*60)
-    
-    for i, test_case in enumerate(test_cases, 1):
-        print(f"\n--- Test Case {i} ---")
-        print(f"Input text: {test_case['text']}")
+    for test_case in test_cases:
+        print(f"\n🧪 {test_case['name']}")
+        print(f"   Context: {test_case['context']}")
         
-        # Execute DSPy signature directly
-        result = sentiment_analyzer(test_case['text'])
-        print(f"DSPy Result:")
-        print(f"  Sentiment: {result['sentiment']}")
-        print(f"  Confidence: {result['confidence']:.2f}")
-        print(f"  Keywords: {result['keywords']}")
-        
-        # Simulate DMN decision table evaluation
-        keyword_count = len(result['keywords'])
-        route = evaluate_dmn_decision(
-            sentiment=result['sentiment'],
-            confidence=result['confidence'],
-            keyword_count=keyword_count
-        )
-        
-        print(f"DMN Decision:")
-        print(f"  Route: {route}")
-        print(f"  Expected: {test_case['expected_route']}")
-        print(f"  Match: {'✓' if route == test_case['expected_route'] else '✗'}")
+        try:
+            # Run a mini workflow to test DMN execution
+            from SpiffWorkflow import Workflow
+            from SpiffWorkflow.util.task import TaskState
+            
+            parser = DspyBpmnParser()
+            bpmn_path = "bpmn/dspy_dmn_workflow.bpmn"
+            dmn_path = "bpmn/quality_decision.dmn"
+            
+            # Load DMN file first
+            parser.add_dmn_file(dmn_path)
+            
+            # Load BPMN file
+            parser.add_bpmn_file(bpmn_path)
+            
+            specs = parser.find_all_specs()
+            spec = specs["DspyDmnWorkflow"]
+            
+            wf = Workflow(spec)
+            wf.set_data(**test_case['context'])
+            
+            # Execute just the DMN task
+            ready_tasks = wf.get_tasks(state=TaskState.READY)
+            for task in ready_tasks:
+                if hasattr(task.task_spec, 'decision_table'):
+                    print(f"   Executing DMN task: {task.task_spec.name}")
+                    decision_result = task.task_spec.decision_table.evaluate(wf.data)
+                    print(f"   ✅ DMN Result: {decision_result}")
+                    break
+                    
+        except Exception as e:
+            print(f"   ❌ Error: {e}")
 
-
-def evaluate_dmn_decision(sentiment: str, confidence: float, keyword_count: int) -> str:
-    """Evaluate DMN decision table based on DSPy results."""
+def test_dspy_signatures():
+    """Test DSPy signatures separately"""
+    print("\n🧠 Testing DSPy Signatures")
+    print("=" * 30)
     
-    # Rule 1: Positive sentiment, high confidence, many keywords -> approval
-    if (sentiment == "positive" and 
-        0.8 <= confidence <= 1.0 and 
-        keyword_count >= 3):
-        return "approval"
+    # Get parser with signatures
+    parser = DspyBpmnParser()
+    bpmn_path = "bpmn/dspy_dmn_workflow.bpmn"
+    parser.add_bpmn_file(bpmn_path)
     
-    # Rule 2: Positive sentiment, medium confidence, few keywords -> review
-    elif (sentiment == "positive" and 
-          0.6 <= confidence <= 0.79 and 
-          1 <= keyword_count <= 2):
-        return "review"
+    # Register dynamic signatures
+    dspy_registry.register_parser_signatures(parser.dynamic_signatures)
     
-    # Rule 3: Negative sentiment, high confidence, any keywords -> rejection
-    elif (sentiment == "negative" and 
-          0.7 <= confidence <= 1.0 and 
-          keyword_count >= 1):
-        return "rejection"
-    
-    # Rule 4: Neutral sentiment, any confidence, any keywords -> manual review
-    elif (sentiment == "neutral" and 
-          0.5 <= confidence <= 1.0):
-        return "manual_review"
-    
-    # Rule 5: Default case -> escalation
-    else:
-        return "escalation"
-
-
-def test_workflow_execution():
-    """Test actual workflow execution with SpiffWorkflow."""
-    
-    print("\n" + "="*60)
-    print("Full Workflow Execution Test")
-    print("="*60)
-    
-    # Start workflow with test data
-    data = {
-        "text": "This product is absolutely amazing and wonderful! I love everything about it."
-    }
-    
-    print(f"Starting workflow with data: {data}")
-    
-    # Execute workflow
+    # Test the analyze_data signature
+    print("\n🧪 Testing analyze_data signature:")
     try:
-        result = run_dspy_bpmn_process("bpmn/dspy_dmn_workflow.bpmn", "dspy_dmn_workflow", data)
-        print(f"Workflow execution result: {result}")
+        result = dspy_registry.call_signature("analyze_data", data="Test data for analysis")
+        print(f"   ✅ Result: {result}")
     except Exception as e:
-        print(f"Workflow execution error: {e}")
-        print("This is expected since we need to implement the full SpiffWorkflow integration")
-
+        print(f"   ❌ Error: {e}")
 
 if __name__ == "__main__":
-    # Test DSPy + DMN integration
-    test_dspy_dmn_integration()
-    
-    # Test full workflow execution
-    test_workflow_execution() 
+    try:
+        # Test DMN parsing
+        test_dmn_parsing()
+        
+        # Test DMN execution
+        test_dmn_execution()
+        
+        # Test DSPy signatures
+        test_dspy_signatures()
+        
+        # Test complete integration
+        test_dspy_dmn_integration()
+        
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        import traceback
+        traceback.print_exc() 

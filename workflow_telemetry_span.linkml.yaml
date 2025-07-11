@@ -1,0 +1,189 @@
+id: workflow_telemetry_span
+name: WorkflowTelemetrySpan
+
+# Top-level schema documentation
+
+# This LinkML schema defines the structure of a workflow-level OpenTelemetry span for AutoTel BPMN+DMN workflows.
+# It is designed to capture all relevant telemetry for workflow execution, including span hierarchy, events, attributes, and workflow-specific metadata.
+# Example use cases: exporting workflow traces, validating telemetry, or generating documentation for observability tools.
+
+description: >
+  LinkML schema for a workflow-level OpenTelemetry span, representing the execution of a BPMN+DMN workflow in AutoTel.
+  Includes support for span hierarchy, events, attributes, and workflow/process metadata.
+
+# Type definitions
+
+types:
+  string:
+    base: str
+  integer:
+    base: int
+  float:
+    base: float
+  datetime:
+    base: datetime
+  boolean:
+    base: bool
+
+# Slot definitions with documentation and examples
+
+slots:
+  span_id:
+    description: Unique identifier for the span (should be globally unique, e.g., a UUID)
+    range: string
+    required: true
+    examples:
+      - value: "workflow-1234-5678"
+        description: "A UUID or unique string for the workflow span"
+  name:
+    description: Name of the span (e.g., 'bpmn.workflow')
+    range: string
+    required: true
+    examples:
+      - value: "bpmn.workflow"
+        description: "A span representing the whole workflow execution"
+  start_time:
+    description: ISO8601 start time of the workflow execution
+    range: datetime
+    required: true
+    examples:
+      - value: "2024-07-11T12:00:00Z"
+  end_time:
+    description: ISO8601 end time of the workflow execution
+    range: datetime
+    required: false
+    examples:
+      - value: "2024-07-11T12:00:05Z"
+  duration_ms:
+    description: Duration in milliseconds (end_time - start_time)
+    range: float
+    required: false
+    examples:
+      - value: 5000.0
+  status:
+    description: Status of the span (e.g., 'SUCCESS', 'FAILED')
+    range: string
+    required: false
+    examples:
+      - value: "SUCCESS"
+      - value: "FAILED"
+  attributes:
+    description: Arbitrary key-value attributes for the span (e.g., workflow metadata, custom tags)
+    range: AttributeSet
+    required: false
+    examples:
+      - value:
+          key: "workflow.version"
+          value: "1.2.3"
+  events:
+    description: List of events that occurred during the span (e.g., task started, task completed)
+    range: Event
+    multivalued: true
+    required: false
+    examples:
+      - value:
+          name: "workflow.started"
+          timestamp: "2024-07-11T12:00:00Z"
+          attributes:
+            key: "initiator"
+            value: "cli"
+  parent_span_id:
+    description: Parent span id, if any (for nested/hierarchical spans)
+    range: string
+    required: false
+    examples:
+      - value: "parent-uuid-0001"
+  child_spans:
+    description: Child spans (e.g., for tasks within the workflow)
+    range: WorkflowTelemetrySpan
+    multivalued: true
+    required: false
+  workflow_id:
+    description: Workflow/process id (matches BPMN process id)
+    range: string
+    required: false
+    examples:
+      - value: "simple_process"
+  workflow_name:
+    description: Workflow/process name (human-readable)
+    range: string
+    required: false
+    examples:
+      - value: "Simple Service and Decision Workflow"
+  workflow_status:
+    description: Final status of the workflow (e.g., 'COMPLETED', 'FAILED')
+    range: string
+    required: false
+    examples:
+      - value: "COMPLETED"
+  workflow_data:
+    description: Final workflow data (as JSON string or object)
+    range: string
+    required: false
+    examples:
+      - value: '{"result": "APPROVE", "confidence": 85}'
+
+# Class definitions with documentation and a full example
+
+classes:
+  WorkflowTelemetrySpan:
+    description: >
+      A workflow-level OpenTelemetry span, including all relevant telemetry for a BPMN+DMN workflow execution.
+      This class can be nested to represent span hierarchies (e.g., workflow span with child task spans).
+    slots:
+      - span_id
+      - name
+      - start_time
+      - end_time
+      - duration_ms
+      - status
+      - attributes
+      - events
+      - parent_span_id
+      - child_spans
+      - workflow_id
+      - workflow_name
+      - workflow_status
+      - workflow_data
+    examples:
+      - value:
+          span_id: "workflow-1234-5678"
+          name: "bpmn.workflow"
+          start_time: "2024-07-11T12:00:00Z"
+          end_time: "2024-07-11T12:00:05Z"
+          duration_ms: 5000.0
+          status: "SUCCESS"
+          attributes:
+            key: "workflow.version"
+            value: "1.2.3"
+          events:
+            - name: "workflow.started"
+              timestamp: "2024-07-11T12:00:00Z"
+              attributes:
+                key: "initiator"
+                value: "cli"
+            - name: "workflow.completed"
+              timestamp: "2024-07-11T12:00:05Z"
+              attributes:
+                key: "result"
+                value: "APPROVE"
+          workflow_id: "simple_process"
+          workflow_name: "Simple Service and Decision Workflow"
+          workflow_status: "COMPLETED"
+          workflow_data: '{"result": "APPROVE", "confidence": 85}'
+  AttributeSet:
+    description: Key-value attribute set for span metadata
+    slots:
+      - key
+      - value
+  Event:
+    description: An event that occurred during the span (e.g., task started, completed, error)
+    slots:
+      - name
+      - timestamp
+      - attributes
+  # Simple key-value for attributes
+  key:
+    range: string
+  value:
+    range: string 

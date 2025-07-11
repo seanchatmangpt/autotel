@@ -66,7 +66,12 @@ class DspyServiceTask(ServiceTask):
             dspy_info = ext['dspy_service']
             resolved_params = {k: my_task.get_data(v) for k, v in dspy_info['params'].items()}
             result = dspy_service(dspy_info['service'], **resolved_params)
-            if dspy_info['result']:
+            # Set each output field on the task if result is a dict
+            if isinstance(result, dict):
+                my_task.set_data(**result)
+                for k, v in result.items():
+                    print(f"[DEBUG] Set task data: {k}, type: {type(v)}, value: {v}")
+            elif dspy_info['result']:
                 my_task.set_data(**{dspy_info['result']: result})
         
         # Call the parent method to continue normal execution
@@ -110,7 +115,7 @@ class DspyBpmnParser(CamundaParser):
         return FixedDMNEngine(decision.decisionTables[0])
     
     def get_decision_ref(self, node):
-        """Override to handle inline DMN definitions"""
+        """Override to handle both Camunda-style and inline DMN definitions"""
         # First try the standard Camunda approach
         try:
             return super().get_decision_ref(node)
@@ -121,6 +126,25 @@ class DspyBpmnParser(CamundaParser):
             if dmn_decision is not None:
                 return dmn_decision.attrib.get('id', 'inline_decision')
             raise KeyError(f"No DMN decision reference found for node {node.attrib.get('id', 'unknown')}")
+    
+    def add_dmn_file(self, filename):
+        """Add a DMN file to the parser"""
+        from lxml import etree
+        dmn = etree.parse(filename)
+        self.add_dmn_xml(dmn.getroot(), filename)
+    
+    def add_dmn_xml(self, dmn, filename=None):
+        """Add DMN XML to the parser"""
+        # Check for CDATA sections in the XML
+        cdata_sections = dmn.xpath('//text()[contains(., "<![CDATA[")]')
+        if cdata_sections:
+            raise ValidationException(
+                f"CDATA sections are not allowed in DMN XML. Found CDATA in file: {filename}",
+                file_name=filename
+            )
+        
+        # Call the parent method to add DMN definitions
+        super().add_dmn_xml(dmn, filename)
     
     def __init__(self):
         super().__init__()
