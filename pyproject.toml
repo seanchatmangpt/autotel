@@ -55,6 +55,9 @@ dependencies = [
   "click>=8.2.1",
   "jinja2>=3.1.6",
   "pyyaml>=6.0.2",
+  "typer[all]>=0.12.0",
+  "pydantic>=2.8.0",
+  "rich>=13.0.0",
 ]
 
 [project.optional-dependencies]
@@ -78,7 +81,7 @@ Repository = "https://github.com/autotel/autotel-prototype.git"
 "Changelog" = "https://github.com/autotel/autotel-prototype/blob/main/CHANGELOG.md"
 
 [project.scripts]
-autotel = "bpmn_orchestrator:main"
+autotel = "autotel.cli:app"
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -247,6 +247,23 @@ logs/
 *.sqlite
 *.sqlite3
 
+# AutoTel specific
+autotel_process_instances.sqlite3
+autotel_env/
+.lh/
+
+# Legacy files (to be cleaned up)
+bpmn_orchestrator.py
+autotel.py
+otel_telemetry_manager.py
+autotel_cli.py
+spiff_capabilities_check.py
+configurable_spiff_check.py
+real_spiff_check.py
+spiff_check_config.yaml
+spiff_capability_analysis.json
+spiff_orchestration_examples.py
+
 # Configuration files with secrets
 config/local.py
 config/production.py

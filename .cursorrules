@@ -1,0 +1,73 @@
+# AutoTel Project Cursor Rules
+
+## Package Management
+- Use `uv` for all package management operations
+- Use `uv add` to add dependencies
+- Use `uv run` to run commands
+- Use `uv sync` to install dependencies
+- Never use pip directly
+
+## Project Structure
+- Create a proper `autotel/` module directory
+- All core functionality should be inside the `autotel/` module
+- CLI should be at the root level as `autotel_cli.py`
+- Avoid prefixing classes, functions, or files with "autotel" - use descriptive names instead
+
+## Module Organization
+```
+autotel/
+├── __init__.py
+├── core/
+│   ├── __init__.py
+│   ├── orchestrator.py      # BPMN orchestration (was bpmn_orchestrator.py)
+│   ├── framework.py         # Main framework (was autotel.py)
+│   └── telemetry.py         # Telemetry management (was otel_telemetry_manager.py)
+├── schemas/
+│   ├── __init__.py
+│   ├── linkml.py           # LinkML processing
+│   └── validation.py       # Schema validation
+├── workflows/
+│   ├── __init__.py
+│   ├── spiff.py            # SpiffWorkflow integration
+│   └── capabilities.py     # Capability checking
+└── utils/
+    ├── __init__.py
+    └── helpers.py          # Utility functions
+```
+
+## Naming Conventions
+- Use descriptive names without "autotel" prefix
+- Classes: PascalCase (e.g., `Orchestrator`, `Framework`, `TelemetryManager`)
+- Functions: snake_case (e.g., `start_process`, `validate_schema`)
+- Files: snake_case (e.g., `orchestrator.py`, `framework.py`)
+- Constants: UPPER_SNAKE_CASE
+
+## Code Standards
+- Follow FAANG-level solution architect patterns
+- Use type hints throughout
+- Implement proper error handling and logging
+- Use dataclasses for data structures
+- Implement comprehensive docstrings
+- Follow SOLID principles
+
+## CLI Structure
+- Keep CLI at root level as `autotel_cli.py`
+- Use Typer for CLI framework
+- Use Rich for beautiful terminal output
+- Implement proper command grouping and help
+
+## Dependencies
+- Keep dependencies in `pyproject.toml` and `requirements.txt`
+- Use semantic versioning for dependencies
+- Include both core and development dependencies
+
+## Testing
+- Create comprehensive test suite
+- Use pytest for testing
+- Include integration tests for CLI commands
+
+## Documentation
+- Maintain clear README files
+- Include usage examples
+- Document all public APIs
+- Provide CLI help and examples 

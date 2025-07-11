@@ -1,0 +1,83 @@
+[
+  {
+    "operation": "ProcessOrder",
+    "inputs": {
+      "order_id": "ORD-001",
+      "customer_id": "CUST-123",
+      "items": [
+        {
+          "product_id": "PROD-001",
+          "quantity": 2,
+          "unit_price": 29.99
+        },
+        {
+          "product_id": "PROD-002", 
+          "quantity": 1,
+          "unit_price": 49.99
+        }
+      ],
+      "shipping_address": {
+        "street": "123 Main St",
+        "city": "Anytown",
+        "state": "CA",
+        "zip": "90210"
+      }
+    }
+  },
+  {
+    "operation": "ValidatePayment",
+    "inputs": {
+      "payment_method": "credit_card",
+      "card_number": "4111111111111111",
+      "expiry_date": "12/25",
+      "cvv": "123",
+      "amount": 109.97
+    }
+  },
+  {
+    "operation": "CheckInventory",
+    "inputs": {
+      "items": [
+        {
+          "product_id": "PROD-001",
+          "quantity": 2
+        },
+        {
+          "product_id": "PROD-002",
+          "quantity": 1
+        }
+      ]
+    }
+  },
+  {
+    "operation": "CreateShipment",
+    "inputs": {
+      "order_id": "ORD-001",
+      "shipping_address": {
+        "street": "123 Main St",
+        "city": "Anytown", 
+        "state": "CA",
+        "zip": "90210"
+      },
+      "items": [
+        {
+          "product_id": "PROD-001",
+          "quantity": 2
+        },
+        {
+          "product_id": "PROD-002",
+          "quantity": 1
+        }
+      ]
+    }
+  },
+  {
+    "operation": "SendNotification",
+    "inputs": {
+      "customer_id": "CUST-123",
+      "notification_type": "order_confirmation",
+      "order_id": "ORD-001",
+      "tracking_number": "TRK-123456789"
+    }
+  }
+] 
