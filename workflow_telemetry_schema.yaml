@@ -1,0 +1,125 @@
+
+id: https://example.org/spiff-workflow-telemetry
+name: spiff-workflow-telemetry
+title: SpiffWorkflow Telemetry Schema
+version: 1.0.0
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  spiff: https://example.org/spiff-workflow-telemetry/
+  
+default_prefix: spiff
+default_range: string
+
+imports:
+  - linkml:types
+
+classes:
+  WorkflowInstance:
+    description: A SpiffWorkflow instance with telemetry data
+    attributes:
+      instance_id:
+        range: string
+        required: true
+        description: Unique identifier for the workflow instance
+      process_id:
+        range: string
+        required: true
+        description: BPMN process definition ID
+      status:
+        range: WorkflowStatus
+        required: true
+        description: Current status of the workflow
+      start_time:
+        range: datetime
+        required: true
+        description: When the workflow started
+      end_time:
+        range: datetime
+        description: When the workflow completed
+      total_tasks:
+        range: integer
+        description: Total number of tasks in the workflow
+      completed_tasks:
+        range: integer
+        description: Number of completed tasks
+      variables:
+        range: string
+        description: JSON string of workflow variables
+      error_message:
+        range: string
+        description: Error message if workflow failed
+        
+  TaskExecution:
+    description: Execution details for a single task
+    attributes:
+      task_id:
+        range: string
+        required: true
+        description: Unique task identifier
+      task_name:
+        range: string
+        required: true
+        description: Human-readable task name
+      task_type:
+        range: string
+        required: true
+        description: Type of task (e.g., UserTask, ServiceTask)
+      status:
+        range: TaskStatus
+        required: true
+        description: Current task status
+      start_time:
+        range: datetime
+        required: true
+        description: When task execution started
+      end_time:
+        range: datetime
+        description: When task execution completed
+      duration_seconds:
+        range: float
+        description: Task execution duration
+      input_data:
+        range: string
+        description: JSON string of input data
+      output_data:
+        range: string
+        description: JSON string of output data
+      error_message:
+        range: string
+        description: Error message if task failed
+      workflow_instance_id:
+        range: string
+        required: true
+        description: Reference to parent workflow instance
+
+enums:
+  WorkflowStatus:
+    permissible_values:
+      pending:
+        description: Workflow is pending execution
+      running:
+        description: Workflow is currently running
+      completed:
+        description: Workflow completed successfully
+      failed:
+        description: Workflow failed with error
+      suspended:
+        description: Workflow is suspended
+      cancelled:
+        description: Workflow was cancelled
+        
+  TaskStatus:
+    permissible_values:
+      pending:
+        description: Task is pending execution
+      ready:
+        description: Task is ready to execute
+      running:
+        description: Task is currently running
+      completed:
+        description: Task completed successfully
+      failed:
+        description: Task failed with error
+      cancelled:
+        description: Task was cancelled

@@ -3,11 +3,15 @@
     "activeCommit": 0,
     "commits": [
         {
-            "activePatchIndex": 0,
+            "activePatchIndex": 1,
             "patches": [
                 {
                     "date": 1752193428862,
                     "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1752193482295,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,6 +1,6 @@\n [build-system]\n-requires = [\"setuptools>=61.0\", \"wheel\"]\n+requires = [\"setuptools>=69.0\", \"wheel\"]\n build-backend = \"setuptools.build_meta\"\n \n [project]\n name = \"autotel-prototype\"\n@@ -29,48 +29,48 @@\n     \"Topic :: System :: Systems Administration\",\n ]\n requires-python = \">=3.11\"\n dependencies = [\n-    \"SpiffWorkflow>=2.0.0\",\n+    \"SpiffWorkflow>=3.1.1\",\n     \"opentelemetry-api>=1.34.0\",\n     \"opentelemetry-sdk>=1.34.0\",\n     \"opentelemetry-exporter-otlp-proto-http>=1.34.0\",\n     \"opentelemetry-exporter-otlp-proto-grpc>=1.34.0\",\n     \"opentelemetry-instrumentation>=0.55b1\",\n     \"opentelemetry-semantic-conventions>=0.55b1\",\n-    \"linkml-runtime>=1.9.0\",\n+    \"linkml-runtime>=1.9.3\",\n     \"jsonschema>=4.24.0\",\n-    \"marshmallow>=3.26.0\",\n-    \"openai>=1.93.0\",\n-    \"litellm>=1.74.0\",\n-    \"dspy-ai>=2.6.0\",\n-    \"pandas>=2.3.0\",\n-    \"numpy>=2.3.0\",\n-    \"httpx>=0.28.0\",\n-    \"aiohttp>=3.12.0\",\n-    \"python-dotenv>=1.0.0\",\n+    \"marshmallow>=3.21.1\",\n+    \"openai>=1.93.3\",\n+    \"litellm>=1.74.0.post1\",\n+    \"dspy-ai>=2.6.27\",\n+    \"pandas>=2.3.1\",\n+    \"numpy>=2.3.1\",\n+    \"httpx>=0.28.1\",\n+    \"aiohttp>=3.12.13\",\n+    \"python-dotenv>=1.1.1\",\n     \"colorlog>=6.9.0\",\n-    \"click>=8.2.0\",\n-    \"jinja2>=3.1.0\",\n-    \"pyyaml>=6.0.0\",\n+    \"click>=8.2.1\",\n+    \"jinja2>=3.1.6\",\n+    \"pyyaml>=6.0.2\",\n ]\n \n [project.optional-dependencies]\n dev = [\n-    \"pytest>=8.0.0\",\n+    \"pytest>=8.4.1\",\n     \"pytest-cov>=5.0.0\",\n     \"pytest-asyncio>=0.24.0\",\n-    \"black>=24.0.0\",\n+    \"black>=24.4.2\",\n     \"flake8>=7.0.0\",\n     \"mypy>=1.8.0\",\n-    \"isort>=5.13.0\",\n+    \"isort>=5.13.2\",\n ]\n docs = [\n-    \"sphinx>=7.0.0\",\n+    \"sphinx>=7.3.7\",\n     \"sphinx-rtd-theme>=2.0.0\",\n ]\n test = [\n-    \"pytest>=8.0.0\",\n+    \"pytest>=8.4.1\",\n     \"pytest-cov>=5.0.0\",\n     \"pytest-asyncio>=0.24.0\",\n ]\n \n@@ -194,5 +194,5 @@\n ]\n \n [tool.ruff.per-file-ignores]\n \"__init__.py\" = [\"F401\"]\n-\"tests/*\" = [\"B011\"] \n\\ No newline at end of file\n+\"tests/*\" = [\"B011\"]\n"
                 }
             ],
             "date": 1752193428862,
