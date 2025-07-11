@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dmn:definitions xmlns:dmn="http://www.omg.org/spec/DMN/20191111/MODEL/" id="Definitions_1" name="SimpleDMN" namespace="http://autotel.ai/dmn">
+  <dmn:decision id="Decision_1" name="Approval Decision">
+    <dmn:decisionTable id="DecisionTable_1" hitPolicy="FIRST">
+      <dmn:input id="Input_1" label="Score">
+        <dmn:inputExpression id="InputExpression_1" typeRef="number">
+          <dmn:text>score</dmn:text>
+        </dmn:inputExpression>
+      </dmn:input>
+      <dmn:output id="Output_1" label="Result" typeRef="string"/>
+      <dmn:rule id="Rule_1">
+        <dmn:inputEntry id="InputEntry_1">
+          <dmn:text>score &gt;= 80</dmn:text>
+        </dmn:inputEntry>
+        <dmn:outputEntry id="OutputEntry_1">
+          <dmn:text>"APPROVE"</dmn:text>
+        </dmn:outputEntry>
+      </dmn:rule>
+      <dmn:rule id="Rule_2">
+        <dmn:inputEntry id="InputEntry_2">
+          <dmn:text>score &gt;= 50</dmn:text>
+        </dmn:inputEntry>
+        <dmn:outputEntry id="OutputEntry_2">
+          <dmn:text>"REVIEW"</dmn:text>
+        </dmn:outputEntry>
+      </dmn:rule>
+      <dmn:rule id="Rule_3">
+        <dmn:inputEntry id="InputEntry_3">
+          <dmn:text>score &lt; 50</dmn:text>
+        </dmn:inputEntry>
+        <dmn:outputEntry id="OutputEntry_3">
+          <dmn:text>"REJECT"</dmn:text>
+        </dmn:outputEntry>
+      </dmn:rule>
+    </dmn:decisionTable>
+  </dmn:decision>
+</dmn:definitions> 

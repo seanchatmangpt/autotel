@@ -1,369 +1,42 @@
-id: https://w3id.org/autotel/otel-traces
-name: otel-traces
-title: OpenTelemetry Traces Schema
-version: 1.0.0
-description: LinkML schema for OpenTelemetry trace data structures
-
+id: otel_traces_schema
+name: otel_traces_schema
+version: 0.1.0
 prefixes:
   linkml: https://w3id.org/linkml/
-  otel: https://w3id.org/autotel/otel-traces/
-  schema: http://schema.org/
-  
-default_prefix: otel
-default_range: string
-
+  otel: https://example.org/otel/
 imports:
   - linkml:types
-
 classes:
   Span:
-    description: OpenTelemetry span with all attributes and events
+    description: "A telemetry span."
     attributes:
-      name:
-        range: string
-        required: true
-        description: Name of the span
-      trace_id:
-        range: string
-        required: true
-        description: Unique trace identifier
       span_id:
         range: string
-        required: true
-        description: Unique span identifier
-      parent_id:
+      trace_id:
         range: string
-        description: Parent span identifier if this is a child span
+      name:
+        range: string
       start_time:
-        range: datetime
-        required: true
-        description: Span start timestamp
+        range: string
       end_time:
-        range: datetime
-        description: Span end timestamp
-      duration_seconds:
-        range: float
-        description: Span duration in seconds
-      status:
-        range: SpanStatus
-        description: Span execution status
-      kind:
-        range: SpanKind
-        description: Type of span
-      attributes:
-        range: SpanAttribute
-        multivalued: true
-        description: Key-value attributes attached to the span
-      events:
-        range: SpanEvent
-        multivalued: true
-        description: Events that occurred during span execution
-      links:
-        range: SpanLink
-        multivalued: true
-        description: Links to other spans
-      resource:
-        range: Resource
-        description: Resource information for the span
-
-  SpanStatus:
-    description: Status of a span execution
-    attributes:
-      status_code:
-        range: StatusCode
-        required: true
-        description: Status code of the span
-      message:
         range: string
-        description: Optional status message
-      exception:
-        range: Exception
-        description: Exception information if status is error
-
-  SpanEvent:
-    description: Event that occurred during span execution
-    attributes:
-      name:
-        range: string
-        required: true
-        description: Name of the event
-      timestamp:
-        range: datetime
-        required: true
-        description: When the event occurred
-      attributes:
-        range: SpanAttribute
-        multivalued: true
-        description: Event-specific attributes
-
-  SpanAttribute:
-    description: Key-value attribute for spans or events
-    attributes:
-      key:
-        range: string
-        required: true
-        description: Attribute key
-      value:
-        range: string
-        required: true
-        description: Attribute value
-      value_type:
-        range: AttributeValueType
-        description: Type of the attribute value
-
-  SpanLink:
-    description: Link to another span
-    attributes:
-      trace_id:
-        range: string
-        required: true
-        description: Trace ID of the linked span
-      span_id:
-        range: string
-        required: true
-        description: Span ID of the linked span
-      attributes:
-        range: SpanAttribute
-        multivalued: true
-        description: Link-specific attributes
-
-  Resource:
-    description: Resource information for spans
-    attributes:
-      attributes:
-        range: SpanAttribute
-        multivalued: true
-        description: Resource attributes
-      schema_url:
-        range: string
-        description: Schema URL for the resource
-
-  Exception:
-    description: Exception information
-    attributes:
-      type:
-        range: string
-        required: true
-        description: Exception type name
-      message:
-        range: string
-        required: true
-        description: Exception message
-      stack_trace:
-        range: string
-        description: Stack trace information
-
   Metric:
-    description: OpenTelemetry metric data
+    description: "A telemetry metric."
     attributes:
-      name:
+      metric_id:
         range: string
-        required: true
-        description: Metric name
-      description:
-        range: string
-        description: Metric description
-      unit:
-        range: string
-        description: Unit of measurement
-      type:
-        range: MetricType
-        required: true
-        description: Type of metric
-      data_points:
-        range: MetricDataPoint
-        multivalued: true
-        description: Data points for the metric
-
-  MetricDataPoint:
-    description: Individual data point for a metric
-    attributes:
       value:
         range: float
-        required: true
-        description: Metric value
       timestamp:
-        range: datetime
-        required: true
-        description: When the measurement was taken
-      attributes:
-        range: SpanAttribute
-        multivalued: true
-        description: Attributes for this data point
-
+        range: string
   LinkMLOperation:
-    description: LinkML-specific operation tracking
+    description: "A LinkML operation (stub for validation)."
     attributes:
-      operation_type:
-        range: LinkMLOperationType
-        required: true
-        description: Type of LinkML operation
-      schema_id:
+      op_id:
         range: string
-        description: ID of the schema being operated on
-      class_name:
-        range: string
-        description: Name of the class being analyzed
-      slots_count:
-        range: integer
-        description: Number of slots/attributes found
-      validation_results:
-        range: ValidationResult
-        multivalued: true
-        description: Results of validation operations
-
   ValidationResult:
-    description: Result of a validation operation
+    description: "A validation result (stub for validation)."
     attributes:
-      validation_type:
-        range: ValidationType
-        required: true
-        description: Type of validation performed
-      passed:
-        range: boolean
-        required: true
-        description: Whether validation passed
-      details:
+      result_id:
         range: string
-        description: Detailed validation information
-      constraints_checked:
-        range: integer
-        description: Number of constraints checked
-
-enums:
-  StatusCode:
-    permissible_values:
-      UNSET:
-        description: Status not set
-      OK:
-        description: Operation completed successfully
-      ERROR:
-        description: Operation failed with error
-
-  SpanKind:
-    permissible_values:
-      INTERNAL:
-        description: Internal span
-      SERVER:
-        description: Server span
-      CLIENT:
-        description: Client span
-      PRODUCER:
-        description: Producer span
-      CONSUMER:
-        description: Consumer span
-
-  AttributeValueType:
-    permissible_values:
-      string:
-        description: String value
-      integer:
-        description: Integer value
-      float:
-        description: Float value
-      boolean:
-        description: Boolean value
-      array:
-        description: Array value
-      object:
-        description: Object value
-
-  MetricType:
-    permissible_values:
-      counter:
-        description: Counter metric
-      gauge:
-        description: Gauge metric
-      histogram:
-        description: Histogram metric
-      summary:
-        description: Summary metric
-
-  LinkMLOperationType:
-    permissible_values:
-      schema_loading:
-        description: Loading a LinkML schema
-      schema_introspection:
-        description: Introspecting schema structure
-      class_analysis:
-        description: Analyzing class definitions
-      slot_analysis:
-        description: Analyzing slot/attribute definitions
-      relationship_analysis:
-        description: Analyzing class relationships
-      constraint_validation:
-        description: Validating schema constraints
-      inheritance_analysis:
-        description: Analyzing class inheritance
-      enum_analysis:
-        description: Analyzing enum definitions
-
-  ValidationType:
-    permissible_values:
-      slot_validation:
-        description: Validating slot constraints
-      enum_validation:
-        description: Validating enum values
-      relationship_validation:
-        description: Validating relationships
-      type_validation:
-        description: Validating data types
-      constraint_validation:
-        description: Validating general constraints
-
-slots:
-  # Common attributes for LinkML operations
-  operation:
-    range: string
-    description: Operation being performed
-  schema_type:
-    range: string
-    description: Type of schema being processed
-  target_path:
-    range: string
-    description: Path to the target file
-  schema_path:
-    range: string
-    description: Path to the schema file
-  schema_name:
-    range: string
-    description: Name of the schema
-  schema_version:
-    range: string
-    description: Version of the schema
-  classes_count:
-    range: integer
-    description: Number of classes in schema
-  enums_count:
-    range: integer
-    description: Number of enums in schema
-  loading_duration_seconds:
-    range: float
-    description: Duration of loading operation
-  slots_validated:
-    range: integer
-    description: Number of slots validated
-  required_slots:
-    range: integer
-    description: Number of required slots
-  enums_validated:
-    range: integer
-    description: Number of enums validated
-  total_enum_values:
-    range: integer
-    description: Total number of enum values
-  ancestors_count:
-    range: integer
-    description: Number of ancestor classes
-  descendants_count:
-    range: integer
-    description: Number of descendant classes
-  circular_references:
-    range: integer
-    description: Number of circular references found
-  composition_relationships:
-    range: integer
-    description: Number of composition relationships
-  person_references_count:
-    range: integer
-    description: Number of references to Person class 
+enums: {} 

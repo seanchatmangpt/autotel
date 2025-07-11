@@ -159,8 +159,9 @@ class Orchestrator:
         self.enable_telemetry = enable_telemetry
         self.enable_persistence = enable_persistence
         
-        # Initialize SpiffWorkflow parser
-        self.parser = BpmnParser()
+        # Initialize SpiffWorkflow parser with DSPy support
+        from autotel.workflows.dspy_bpmn_parser import DspyBpmnParser
+        self.parser = DspyBpmnParser()
         self.parser.add_bpmn_files_by_glob(str(self.bpmn_files_path / "*.bpmn"))
         
         # Process definitions cache
@@ -378,7 +379,7 @@ class Orchestrator:
                 raise
     
     def _execute_task(self, task: BpmnTaskSpec, process_instance: ProcessInstance) -> None:
-        """Execute a single BPMN task with telemetry"""
+        """Execute a single BPMN task with telemetry and DSPy support"""
         with self.tracer.start_as_current_span("execute_task") as span:
             try:
                 span.set_attribute("task.id", task.id)
@@ -387,8 +388,14 @@ class Orchestrator:
                 
                 start_time = datetime.now()
                 
-                # Execute the task
-                task.run()
+                # Check for DSPy service extensions
+                ext = getattr(task.task_spec, 'extensions', None)
+                if ext and ext.get('dspy_service'):
+                    # Execute DSPy service
+                    self._execute_dspy_service(task, process_instance, ext['dspy_service'])
+                else:
+                    # Execute the task normally
+                    task.run()
                 
                 end_time = datetime.now()
                 duration = (end_time - start_time).total_seconds()
@@ -411,6 +418,29 @@ class Orchestrator:
                 span.set_attribute("task.error", str(e))
                 logger.error(f"Task execution failed: {task.name} ({task.id}) - Error: {e}")
                 raise
+    
+    def _execute_dspy_service(self, task: BpmnTaskSpec, process_instance: ProcessInstance, dspy_info: dict) -> None:
+        """Execute a DSPy service and store the result"""
+        from autotel.utils.dspy_services import dspy_service
+        
+        # Resolve parameters from workflow data
+        resolved_params = {}
+        for param_name, param_value in dspy_info['params'].items():
+            # Get the value from workflow data
+            resolved_params[param_name] = process_instance.workflow.get_data(param_value)
+        
+        # Call the DSPy service
+        result = dspy_service(dspy_info['service'], **resolved_params)
+        
+        # Store the result if specified
+        if dspy_info['result']:
+            process_instance.workflow.set_data(**{dspy_info['result']: result})
+            process_instance.variables[dspy_info['result']] = result
+        
+        # Complete the task
+        task.complete()
+        
+        logger.info(f"DSPy service executed: {dspy_info['service']} -> {dspy_info['result']}")
     
     def _get_execution_path(self, workflow: BpmnWorkflow) -> List[str]:
         """Get the execution path of completed tasks"""

@@ -1,0 +1,8 @@
+{
+  "feedback_text": "The new dashboard is completely broken! I can't access any of my data and it's been down for 3 days. This is unacceptable for a premium service. I need this fixed immediately or I'm cancelling my subscription.",
+  "customer_id": "CUST-2024-001",
+  "product_id": "PROD-DASH-001",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "source": "email",
+  "customer_tier": "premium"
+} 

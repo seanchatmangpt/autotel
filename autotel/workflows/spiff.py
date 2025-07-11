@@ -6,6 +6,8 @@ import json
 import yaml
 from typing import Dict, Any, List, Optional
 from pathlib import Path
+from autotel.workflows.dspy_bpmn_parser import DspyBpmnParser
+from autotel.utils.dspy_services import dspy_service, dspy_registry
 
 class SpiffCapabilityChecker:
     """Check SpiffWorkflow capabilities and configuration"""
@@ -151,3 +153,33 @@ class SpiffCapabilityChecker:
             "warnings": warnings + validation["warnings"],
             "processes": validation["processes"]
         } 
+
+def run_dspy_bpmn_process(bpmn_path: str, process_id: str, context: dict) -> dict:
+    """
+    Load a BPMN file using DspyBpmnParser, execute the process, and return the workflow context.
+    Supports dynamic DSPy signatures defined in XML and DMN business rule tasks.
+    """
+    parser = DspyBpmnParser()
+    parser.add_bpmn_file(bpmn_path)
+    
+    # Register dynamic signatures from the parser
+    dynamic_signatures = parser.dynamic_signatures
+    if dynamic_signatures:
+        dspy_registry.register_parser_signatures(dynamic_signatures)
+        print(f"📋 Registered {len(dynamic_signatures)} dynamic signatures from XML")
+    
+    specs = parser.find_all_specs()
+    spec = specs[process_id]
+    from SpiffWorkflow.bpmn.workflow import BpmnWorkflow
+    wf = BpmnWorkflow(spec)
+    wf.set_data(**context)
+    
+    print(f"📊 Workflow data after set_data: {wf.data}")
+    
+    # Use SpiffWorkflow's natural execution flow
+    # This ensures that _run_hook methods are called properly
+    wf.run_all()
+    
+    print(f"📊 Workflow data after run_all: {wf.data}")
+    
+    return wf.data 

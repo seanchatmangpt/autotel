@@ -31,6 +31,7 @@ class TelemetryConfig:
     enable_tracing: bool = True
     enable_metrics: bool = True
     schema_path: Optional[str] = None
+    require_linkml_validation: bool = True  # New: enforce LinkML validation
 
 class TelemetryManager:
     """
@@ -44,6 +45,7 @@ class TelemetryManager:
         self.schema_view: Optional[SchemaView] = None
         self.tracer: Optional[trace.Tracer] = None
         self.meter: Optional[metrics.Meter] = None
+        self.linkml_connected: bool = False
         
         # Load LinkML schema for telemetry
         self._load_telemetry_schema()
@@ -53,6 +55,9 @@ class TelemetryManager:
         
         # Create metrics from schema
         self._create_metrics_from_schema()
+        
+        # Validate LinkML connection
+        self._validate_linkml_connection()
     
     def _load_telemetry_schema(self) -> None:
         """Load the OTEL traces LinkML schema"""
@@ -63,7 +68,8 @@ class TelemetryManager:
             schema_path = Path(__file__).parent.parent.parent / "otel_traces_schema.yaml"
         
         if not schema_path.exists():
-            # If schema doesn't exist, continue without it
+            if self.config.require_linkml_validation:
+                raise RuntimeError(f"LinkML telemetry schema not found: {schema_path}. OpenTelemetry must be connected to LinkML schema validation.")
             print(f"Warning: Telemetry schema not found: {schema_path}")
             return
         
@@ -72,11 +78,46 @@ class TelemetryManager:
             
             # Validate schema has required classes
             required_classes = ["Span", "LinkMLOperation", "ValidationResult"]
+            missing_classes = []
             for class_name in required_classes:
                 if not self.schema_view.get_class(class_name):
-                    print(f"Warning: Required class '{class_name}' not found in telemetry schema")
+                    missing_classes.append(class_name)
+            
+            if missing_classes and self.config.require_linkml_validation:
+                raise RuntimeError(f"LinkML schema missing required classes: {missing_classes}. OpenTelemetry must be connected to complete LinkML schema validation.")
+            elif missing_classes:
+                print(f"Warning: Required classes not found in telemetry schema: {missing_classes}")
+            
+            self.linkml_connected = True
+            
         except Exception as e:
+            if self.config.require_linkml_validation:
+                raise RuntimeError(f"Failed to load LinkML telemetry schema: {e}. OpenTelemetry must be connected to LinkML schema validation.")
             print(f"Warning: Could not load telemetry schema: {e}")
+    
+    def _validate_linkml_connection(self) -> None:
+        """Validate that OpenTelemetry is properly connected to LinkML schema validation"""
+        if not self.config.require_linkml_validation:
+            return
+            
+        if not self.linkml_connected:
+            raise RuntimeError("OpenTelemetry is not connected to LinkML schema validation. All telemetry operations require schema validation.")
+        
+        if not self.schema_view:
+            raise RuntimeError("LinkML schema view not available. OpenTelemetry must be connected to LinkML schema validation.")
+        
+        # Test schema validation
+        try:
+            test_span_class = self.schema_view.get_class("Span")
+            if not test_span_class:
+                raise RuntimeError("LinkML schema validation failed: 'Span' class not found in schema.")
+            
+            test_operation_enum = self.schema_view.get_enum("LinkMLOperationType")
+            if not test_operation_enum:
+                raise RuntimeError("LinkML schema validation failed: 'LinkMLOperationType' enum not found in schema.")
+                
+        except Exception as e:
+            raise RuntimeError(f"LinkML schema validation test failed: {e}. OpenTelemetry must be connected to LinkML schema validation.")
     
     def _initialize_otel(self) -> None:
         """Initialize OpenTelemetry with resource information"""
@@ -126,6 +167,8 @@ class TelemetryManager:
     def get_operation_type_enum(self) -> List[str]:
         """Get valid operation types from the LinkML schema"""
         if not self.schema_view:
+            if self.config.require_linkml_validation:
+                raise RuntimeError("LinkML schema not available. OpenTelemetry must be connected to LinkML schema validation.")
             return []
         
         operation_enum = self.schema_view.get_enum("LinkMLOperationType")
@@ -136,6 +179,8 @@ class TelemetryManager:
     def get_validation_type_enum(self) -> List[str]:
         """Get valid validation types from the LinkML schema"""
         if not self.schema_view:
+            if self.config.require_linkml_validation:
+                raise RuntimeError("LinkML schema not available. OpenTelemetry must be connected to LinkML schema validation.")
             return []
         
         validation_enum = self.schema_view.get_enum("ValidationType")
@@ -146,6 +191,8 @@ class TelemetryManager:
     def create_span_attributes(self, operation_type: str, **kwargs) -> Dict[str, Any]:
         """Create span attributes using LinkML schema validation"""
         if not self.schema_view:
+            if self.config.require_linkml_validation:
+                raise RuntimeError("LinkML schema not available. OpenTelemetry must be connected to LinkML schema validation.")
             return kwargs
         
         # Validate operation type against schema
@@ -156,6 +203,8 @@ class TelemetryManager:
         # Get span attributes from schema
         span_class = self.schema_view.get_class("Span")
         if not span_class:
+            if self.config.require_linkml_validation:
+                raise RuntimeError("LinkML schema validation failed: 'Span' class not found.")
             return kwargs
         
         # Create validated attributes
@@ -174,6 +223,10 @@ class TelemetryManager:
         if not self.tracer:
             raise RuntimeError("Tracing not enabled")
         
+        # Enforce LinkML validation for span creation
+        if self.config.require_linkml_validation and not self.linkml_connected:
+            raise RuntimeError("OpenTelemetry is not connected to LinkML schema validation. Cannot create spans without schema validation.")
+        
         attributes = self.create_span_attributes(operation_type, **kwargs)
         return self.tracer.start_as_current_span(name, attributes=attributes)
     
@@ -181,6 +234,10 @@ class TelemetryManager:
         """Record a metric with schema validation"""
         if not self.meter:
             raise RuntimeError("Metrics not enabled")
+        
+        # Enforce LinkML validation for metric recording
+        if self.config.require_linkml_validation and not self.linkml_connected:
+            raise RuntimeError("OpenTelemetry is not connected to LinkML schema validation. Cannot record metrics without schema validation.")
         
         # Validate metric attributes against schema
         validated_attributes = {}
@@ -201,10 +258,14 @@ class TelemetryManager:
     def validate_span_data(self, span_data: Dict[str, Any]) -> Dict[str, Any]:
         """Validate span data against LinkML schema"""
         if not self.schema_view:
+            if self.config.require_linkml_validation:
+                raise RuntimeError("LinkML schema not available. OpenTelemetry must be connected to LinkML schema validation.")
             return span_data
         
         span_class = self.schema_view.get_class("Span")
         if not span_class:
+            if self.config.require_linkml_validation:
+                raise RuntimeError("LinkML schema validation failed: 'Span' class not found.")
             return span_data
         
         validated_data = {}
@@ -217,10 +278,14 @@ class TelemetryManager:
     def create_linkml_operation(self, operation_type: str, **kwargs) -> Dict[str, Any]:
         """Create a LinkML operation record with schema validation"""
         if not self.schema_view:
+            if self.config.require_linkml_validation:
+                raise RuntimeError("LinkML schema not available. OpenTelemetry must be connected to LinkML schema validation.")
             return {"operation_type": operation_type, **kwargs}
         
         operation_class = self.schema_view.get_class("LinkMLOperation")
         if not operation_class:
+            if self.config.require_linkml_validation:
+                raise RuntimeError("LinkML schema validation failed: 'LinkMLOperation' class not found.")
             return {"operation_type": operation_type, **kwargs}
         
         # Validate operation type
@@ -245,12 +310,16 @@ class TelemetryManager:
         return validated_data
     
     def create_validation_result(self, validation_type: str, passed: bool, **kwargs) -> Dict[str, Any]:
-        """Create a validation result record with schema validation"""
+        """Create a validation result with schema validation"""
         if not self.schema_view:
+            if self.config.require_linkml_validation:
+                raise RuntimeError("LinkML schema not available. OpenTelemetry must be connected to LinkML schema validation.")
             return {"validation_type": validation_type, "passed": passed, **kwargs}
         
         validation_class = self.schema_view.get_class("ValidationResult")
         if not validation_class:
+            if self.config.require_linkml_validation:
+                raise RuntimeError("LinkML schema validation failed: 'ValidationResult' class not found.")
             return {"validation_type": validation_type, "passed": passed, **kwargs}
         
         # Validate validation type
@@ -276,23 +345,23 @@ class TelemetryManager:
         return validated_data
     
     def export_schema_metadata(self) -> Dict[str, Any]:
-        """Export schema metadata for telemetry configuration"""
+        """Export schema metadata for validation"""
         if not self.schema_view:
-            return {"error": "No schema loaded"}
+            if self.config.require_linkml_validation:
+                raise RuntimeError("LinkML schema not available. OpenTelemetry must be connected to LinkML schema validation.")
+            return {}
         
         return {
             "schema_classes": list(self.schema_view.all_classes().keys()),
             "schema_enums": list(self.schema_view.all_enums().keys()),
-            "operation_types": self.get_operation_type_enum(),
-            "validation_types": self.get_validation_type_enum(),
-            "schema_version": getattr(self.schema_view.schema, 'version', 'unknown')
+            "schema_slots": list(self.schema_view.all_slots().keys()),
+            "linkml_connected": self.linkml_connected
         }
     
     def force_flush(self) -> None:
         """Force flush all telemetry data"""
         if self.tracer:
             trace.get_tracer_provider().force_flush()
-        
         if self.meter:
             metrics.get_meter_provider().force_flush()
 
@@ -301,14 +370,16 @@ def create_telemetry_manager(
     service_version: str = "1.0.0",
     schema_path: Optional[str] = None,
     enable_tracing: bool = True,
-    enable_metrics: bool = True
+    enable_metrics: bool = True,
+    require_linkml_validation: bool = True
 ) -> TelemetryManager:
-    """Factory function to create a telemetry manager"""
+    """Create a telemetry manager with LinkML schema validation"""
     config = TelemetryConfig(
         service_name=service_name,
         service_version=service_version,
         schema_path=schema_path,
         enable_tracing=enable_tracing,
-        enable_metrics=enable_metrics
+        enable_metrics=enable_metrics,
+        require_linkml_validation=require_linkml_validation
     )
     return TelemetryManager(config) 

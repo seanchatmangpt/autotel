@@ -252,6 +252,20 @@ autotel_process_instances.sqlite3
 autotel_env/
 .lh/
 
+# Virtual environments
+.venv/
+.uvenv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Python egg info
+*.egg-info/
+autotel_prototype.egg-info/
+
 # Legacy files (to be cleaned up)
 bpmn_orchestrator.py
 autotel.py

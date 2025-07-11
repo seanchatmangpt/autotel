@@ -102,3 +102,10 @@ def validate_telemetry_schema(schema_path: str) -> Dict[str, Any]:
             "warnings": [],
             "schema_info": {}
         } 
+
+class SchemaValidator:
+    """Simple schema validator for DSPy/DMN integration (stub for now)"""
+    def validate_dspy_input(self, service_name: str, input_data: dict) -> dict:
+        return input_data
+    def validate_dspy_output(self, service_name: str, output_data: dict) -> dict:
+        return output_data 

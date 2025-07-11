@@ -4,6 +4,7 @@ AutoTel CLI - Enterprise BPMN 2.0 Orchestration with Zero-Touch Telemetry
 A comprehensive command-line interface for AutoTel operations
 """
 
+import sys
 import json
 import yaml
 import asyncio
@@ -25,6 +26,9 @@ from pydantic import BaseModel, Field
 from autotel import Orchestrator, Framework, TelemetryManager, ProcessStatus, TaskStatus
 from autotel.schemas.validation import validate_telemetry_schema
 from autotel.workflows.spiff import SpiffCapabilityChecker
+from autotel.core.telemetry import TelemetryConfig
+
+import dspy
 
 # Initialize Typer app
 app = typer.Typer(
@@ -87,7 +91,15 @@ class AutoTelContext:
             # Initialize Telemetry Manager
             task = progress.add_task("Initializing Telemetry Manager...", total=None)
             try:
-                self.telemetry_manager = TelemetryManager()
+                self.telemetry_manager = TelemetryManager(
+                    config=TelemetryConfig(
+                        service_name="autotel-service",
+                        service_version="1.0.0",
+                        enable_tracing=self.config.enable_telemetry,
+                        enable_metrics=self.config.enable_telemetry,
+                        require_linkml_validation=True
+                    )
+                )
                 progress.update(task, description="✅ Telemetry Manager initialized")
             except Exception as e:
                 progress.update(task, description=f"❌ Failed to initialize Telemetry Manager: {e}")
@@ -151,7 +163,8 @@ def init(
                 "[bold green]AutoTel initialized successfully![/bold green]\n"
                 f"• BPMN Path: {bpmn_path}\n"
                 f"• Telemetry: {'Enabled' if enable_telemetry else 'Disabled'}\n"
-                f"• Persistence: {'Enabled' if enable_persistence else 'Disabled'}",
+                f"• Persistence: {'Enabled' if enable_persistence else 'Disabled'}\n"
+                f"• LinkML Validation: Required",
                 title="🚀 Initialization Complete"
             ))
     
@@ -162,7 +175,9 @@ def list_processes(
     bpmn_path: Path = typer.Option("bpmn/", "--bpmn-path", help="Path to BPMN files"),
 ):
     """List available BPMN process definitions"""
-    config = AutoTelConfig(bpmn_path=bpmn_path)
+    config = AutoTelConfig(
+        bpmn_path=bpmn_path
+    )
     
     async def _list_processes():
         async with get_autotel_context(config) as context:
@@ -199,7 +214,9 @@ def start_process(
     bpmn_path: Path = typer.Option("bpmn/", "--bpmn-path", help="Path to BPMN files"),
 ):
     """Start a new BPMN process instance"""
-    config = AutoTelConfig(bpmn_path=bpmn_path)
+    config = AutoTelConfig(
+        bpmn_path=bpmn_path
+    )
     
     # Parse variables if provided
     process_variables = {}
@@ -710,6 +727,44 @@ def version():
         "• Error handling and recovery",
         title="🚀 AutoTel"
     ))
+
+@app.command()
+def interpret_otel(
+    trace_file: Optional[Path] = typer.Argument(None, help="Path to OTEL trace JSON file (or use '-' for stdin)"),
+    model: str = typer.Option("mistral:7b-instruct-v0.2-q6_K", help="Ollama model to use (must be available locally)"),
+    api_base: str = typer.Option("http://localhost:11434/v1/", help="Ollama API base URL"),
+):
+    """Interpret OpenTelemetry trace JSON using DSPy + Ollama LLM."""
+    # Read trace data
+    if trace_file is None or str(trace_file) == "-":
+        trace_json = sys.stdin.read()
+    else:
+        with open(trace_file, "r") as f:
+            trace_json = f.read()
+    try:
+        trace_data = json.loads(trace_json)
+    except Exception as e:
+        console.print(f"[red]❌ Failed to parse trace JSON: {e}[/red]")
+        raise typer.Exit(1)
+
+    # Set up DSPy with Ollama
+    ollama_lm = dspy.OpenAI(
+        api_base=api_base,
+        api_key="ollama",
+        model=model,
+        stop="\n\n",
+        model_type="chat"
+    )
+    dspy.settings.configure(lm=ollama_lm)
+
+    class OtelInterpretation(dspy.Signature):
+        """Interpret OpenTelemetry trace data for a human reader."""
+        trace = dspy.InputField(desc="The OpenTelemetry trace JSON (single span or list of spans)")
+        summary = dspy.OutputField(desc="A concise, human-friendly summary and interpretation of what happened, including any errors or anomalies.")
+
+    interpret = dspy.Predict(OtelInterpretation)
+    pred = interpret(trace=json.dumps(trace_data))
+    console.print(Panel(pred.summary, title="OTEL Trace Interpretation (DSPy + Ollama)", style="bold green"))
 
 if __name__ == "__main__":
     app() 

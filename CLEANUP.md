@@ -35,7 +35,11 @@ autotel/
 ├── pyproject.toml                # ✅ Package configuration
 ├── requirements.txt              # ✅ Dependencies
 ├── .cursorrules                  # ✅ Cursor IDE rules
-└── README.md                     # ✅ Project documentation
+├── README.md                     # ✅ Project documentation
+├── setup.sh                      # ✅ Setup script
+├── uv.lock                       # ✅ UV dependency lock file
+├── .gitattributes                # ✅ Git attributes configuration
+└── .gitignore                    # ✅ Git ignore rules
 ```
 
 ### 📊 **BPMN PROCESS DEFINITIONS (KEEP)**
@@ -85,7 +89,6 @@ bpmn/
 
 ### 📋 **DOCUMENTATION (KEEP)**
 ```
-├── CLI_README.md                 # ✅ CLI documentation
 ├── LICENSE                       # ✅ License file
 └── Makefile                      # ✅ Build automation
 ```
@@ -94,7 +97,11 @@ bpmn/
 ```
 ├── autotel_process_instances.sqlite3  # ❌ Generated SQLite DB (auto-created)
 ├── .lh/                          # ❌ Cursor IDE cache
-└── autotel_env/                  # ❌ Virtual environment (should be .venv)
+├── autotel_env/                  # ❌ Virtual environment (should be .venv)
+├── .venv/                        # ❌ Virtual environment
+├── .uvenv/                       # ❌ UV virtual environment
+├── __pycache__/                  # ❌ Python cache files
+└── autotel_prototype.egg-info/   # ❌ Python egg info (generated)
 ```
 
 ## 🧹 **CLEANUP ACTIONS**
@@ -116,6 +123,10 @@ rm spiff_orchestration_examples.py
 # Remove generated/cache files
 rm -rf .lh/
 rm -rf autotel_env/
+rm -rf .venv/
+rm -rf .uvenv/
+rm -rf __pycache__/
+rm -rf autotel_prototype.egg-info/
 rm autotel_process_instances.sqlite3  # Will be recreated automatically
 ```
 
@@ -123,7 +134,6 @@ rm autotel_process_instances.sqlite3  # Will be recreated automatically
 ```bash
 # Create docs directory
 mkdir -p docs
-mv CLI_README.md docs/
 mv LINKML_VALIDATION_PROOF.md docs/
 mv SCHEMA_DRIVEN_TELEMETRY_PROOF.md docs/
 ```
@@ -137,6 +147,7 @@ mv real_linkml_demo_schema_driven.py examples/
 mv real_linkml_schema.yaml examples/
 mv test_person_data.yaml examples/
 mv real_linkml_demo_ontology.yaml examples/
+mv example_workflow.json examples/
 ```
 
 ### Phase 4: Create Tests Directory

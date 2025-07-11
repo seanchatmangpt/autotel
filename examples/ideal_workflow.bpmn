@@ -1,0 +1,225 @@
+<?xml version="1.0"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" 
+                   xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" 
+                   xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" 
+                   xmlns:di="http://www.omg.org/spec/DD/20100524/DI" 
+                   xmlns:spiff="http://spiffworkflow.org/bpmn/schema/1.0/core" 
+                   xmlns:spiffext="http://spiffworkflow.org/bpmn/schema/1.0/extension"
+                   xmlns:dspy="http://autotel.ai/dspy"
+                   xmlns:dmn="http://www.omg.org/spec/DMN/20191111/MODEL/"
+                   id="Definitions_1" 
+                   targetNamespace="http://bpmn.io/schema/bpmn">
+  
+  <bpmn:process id="customer_feedback_workflow" name="Customer Feedback Processing" isExecutable="true">
+    
+    <!-- Start Event -->
+    <bpmn:startEvent id="StartEvent_1" name="Customer Feedback Received">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    
+    <!-- DSPy Service Task - Analyze customer feedback -->
+    <bpmn:serviceTask id="ServiceTask_1" name="Analyze Customer Feedback" 
+                      spiff:serviceTaskImplementation="dspy">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+      
+      <!-- DSPy Signature Definition -->
+      <bpmn:extensionElements>
+        <dspy:signature name="CustomerFeedbackAnalyzer">
+          <dspy:model>ollama/qwen2.5:latest</dspy:model>
+          <dspy:temperature>0.7</dspy:temperature>
+          <dspy:max_tokens>1000</dspy:max_tokens>
+          <dspy:input name="feedback_text" type="str" description="Customer feedback text to analyze"/>
+          <dspy:input name="customer_id" type="str" description="Customer identifier"/>
+          <dspy:input name="product_id" type="str" description="Product identifier"/>
+          <dspy:output name="sentiment" type="str" description="Sentiment analysis result (positive/negative/neutral)"/>
+          <dspy:output name="confidence" type="float" description="Confidence score (0.0-1.0)"/>
+          <dspy:output name="key_topics" type="list" description="Key topics identified in feedback"/>
+          <dspy:output name="urgency_score" type="int" description="Urgency score (1-10)"/>
+          <dspy:output name="category" type="str" description="Feedback category (bug/feature/complaint/praise)"/>
+        </dspy:signature>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    
+    <!-- Script Task - Transform data for DMN -->
+    <bpmn:scriptTask id="ScriptTask_1" name="Prepare Decision Data" 
+                     scriptFormat="expression">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+      <bpmn:script>
+        // Transform DSPy outputs for DMN decision table
+        keyword_count = len(key_topics)
+        priority_score = urgency_score * confidence
+      </bpmn:script>
+    </bpmn:scriptTask>
+    
+    <!-- DMN Business Rule Task - Route based on analysis -->
+    <bpmn:businessRuleTask id="BusinessRuleTask_1" name="Route Feedback" 
+                           spiff:decisionImplementation="dmn">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+      
+      <!-- DMN Decision Definition -->
+      <bpmn:extensionElements>
+        <spiffext:spiffExtension>
+          <spiffext:decision name="feedback_routing" id="feedback_routing">
+            <spiffext:decisionTable>
+              <spiffext:input id="sentiment" label="Sentiment" typeRef="string"/>
+              <spiffext:input id="urgency_score" label="Urgency Score" typeRef="integer"/>
+              <spiffext:input id="confidence" label="Confidence" typeRef="double"/>
+              <spiffext:input id="category" label="Category" typeRef="string"/>
+              <spiffext:input id="keyword_count" label="Topic Count" typeRef="integer"/>
+              
+              <spiffext:output id="route" label="Route" typeRef="string"/>
+              <spiffext:output id="priority" label="Priority" typeRef="string"/>
+              <spiffext:output id="escalation_level" label="Escalation Level" typeRef="string"/>
+              
+              <!-- High urgency negative feedback -->
+              <spiffext:rule id="rule1">
+                <spiffext:inputEntry id="input1">"negative"</spiffext:inputEntry>
+                <spiffext:inputEntry id="input2">[8..10]</spiffext:inputEntry>
+                <spiffext:inputEntry id="input3">[0.7..1.0]</spiffext:inputEntry>
+                <spiffext:inputEntry id="input4">-</spiffext:inputEntry>
+                <spiffext:inputEntry id="input5">-</spiffext:inputEntry>
+                <spiffext:outputEntry id="output1">"immediate_escalation"</spiffext:outputEntry>
+                <spiffext:outputEntry id="output2">"critical"</spiffext:outputEntry>
+                <spiffext:outputEntry id="output3">"executive"</spiffext:outputEntry>
+              </spiffext:rule>
+              
+              <!-- Bug reports -->
+              <spiffext:rule id="rule2">
+                <spiffext:inputEntry id="input6">-</spiffext:inputEntry>
+                <spiffext:inputEntry id="input7">[5..10]</spiffext:inputEntry>
+                <spiffext:inputEntry id="input8">[0.6..1.0]</spiffext:inputEntry>
+                <spiffext:inputEntry id="input9">"bug"</spiffext:inputEntry>
+                <spiffext:inputEntry id="input10">-</spiffext:inputEntry>
+                <spiffext:outputEntry id="output4">"bug_triage"</spiffext:outputEntry>
+                <spiffext:outputEntry id="output5">"high"</spiffext:outputEntry>
+                <spiffext:outputEntry id="output6">"technical"</spiffext:outputEntry>
+              </spiffext:rule>
+              
+              <!-- Feature requests -->
+              <spiffext:rule id="rule3">
+                <spiffext:inputEntry id="input11">-</spiffext:inputEntry>
+                <spiffext:inputEntry id="input12">[1..7]</spiffext:inputEntry>
+                <spiffext:inputEntry id="input13">[0.5..1.0]</spiffext:inputEntry>
+                <spiffext:inputEntry id="input14">"feature"</spiffext:inputEntry>
+                <spiffext:inputEntry id="input15">[3..]</spiffext:inputEntry>
+                <spiffext:outputEntry id="output7">"product_planning"</spiffext:outputEntry>
+                <spiffext:outputEntry id="output8">"medium"</spiffext:outputEntry>
+                <spiffext:outputEntry id="output9">"product"</spiffext:outputEntry>
+              </spiffext:rule>
+              
+              <!-- Positive feedback -->
+              <spiffext:rule id="rule4">
+                <spiffext:inputEntry id="input16">"positive"</spiffext:inputEntry>
+                <spiffext:inputEntry id="input17">[1..5]</spiffext:inputEntry>
+                <spiffext:inputEntry id="input18">[0.6..1.0]</spiffext:inputEntry>
+                <spiffext:inputEntry id="input19">-</spiffext:inputEntry>
+                <spiffext:inputEntry id="input20">-</spiffext:inputEntry>
+                <spiffext:outputEntry id="output10">"customer_success"</spiffext:outputEntry>
+                <spiffext:outputEntry id="output11">"low"</spiffext:outputEntry>
+                <spiffext:outputEntry id="output12">"none"</spiffext:outputEntry>
+              </spiffext:rule>
+              
+              <!-- Default case -->
+              <spiffext:rule id="rule5">
+                <spiffext:inputEntry id="input21">-</spiffext:inputEntry>
+                <spiffext:inputEntry id="input22">-</spiffext:inputEntry>
+                <spiffext:inputEntry id="input23">-</spiffext:inputEntry>
+                <spiffext:inputEntry id="input24">-</spiffext:inputEntry>
+                <spiffext:inputEntry id="input25">-</spiffext:inputEntry>
+                <spiffext:outputEntry id="output13">"manual_review"</spiffext:outputEntry>
+                <spiffext:outputEntry id="output14">"medium"</spiffext:outputEntry>
+                <spiffext:outputEntry id="output15">"supervisor"</spiffext:outputEntry>
+              </spiffext:rule>
+            </spiffext:decisionTable>
+          </spiffext:decision>
+        </spiffext:spiffExtension>
+      </bpmn:extensionElements>
+    </bpmn:businessRuleTask>
+    
+    <!-- Gateway to route based on DMN decision -->
+    <bpmn:exclusiveGateway id="Gateway_1" name="Route Decision">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+      <bpmn:outgoing>Flow_9</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    
+    <!-- Immediate Escalation Task -->
+    <bpmn:userTask id="UserTask_1" name="Executive Escalation">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_10</bpmn:outgoing>
+    </bpmn:userTask>
+    
+    <!-- Bug Triage Task -->
+    <bpmn:userTask id="UserTask_2" name="Bug Triage">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_11</bpmn:outgoing>
+    </bpmn:userTask>
+    
+    <!-- Product Planning Task -->
+    <bpmn:userTask id="UserTask_3" name="Product Planning Review">
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:outgoing>Flow_12</bpmn:outgoing>
+    </bpmn:userTask>
+    
+    <!-- Customer Success Task -->
+    <bpmn:userTask id="UserTask_4" name="Customer Success Follow-up">
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+      <bpmn:outgoing>Flow_13</bpmn:outgoing>
+    </bpmn:userTask>
+    
+    <!-- Manual Review Task -->
+    <bpmn:userTask id="UserTask_5" name="Manual Review">
+      <bpmn:incoming>Flow_9</bpmn:incoming>
+      <bpmn:outgoing>Flow_14</bpmn:outgoing>
+    </bpmn:userTask>
+    
+    <!-- End Events -->
+    <bpmn:endEvent id="EndEvent_1" name="Feedback Processed">
+      <bpmn:incoming>Flow_10</bpmn:incoming>
+      <bpmn:incoming>Flow_11</bpmn:incoming>
+      <bpmn:incoming>Flow_12</bpmn:incoming>
+      <bpmn:incoming>Flow_13</bpmn:incoming>
+      <bpmn:incoming>Flow_14</bpmn:incoming>
+    </bpmn:endEvent>
+    
+    <!-- Sequence Flows -->
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="ServiceTask_1"/>
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="ServiceTask_1" targetRef="ScriptTask_1"/>
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="ScriptTask_1" targetRef="BusinessRuleTask_1"/>
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="BusinessRuleTask_1" targetRef="Gateway_1"/>
+    
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Gateway_1" targetRef="UserTask_1">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${route == "immediate_escalation"}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Gateway_1" targetRef="UserTask_2">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${route == "bug_triage"}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Gateway_1" targetRef="UserTask_3">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${route == "product_planning"}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Gateway_1" targetRef="UserTask_4">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${route == "customer_success"}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <bpmn:sequenceFlow id="Flow_9" sourceRef="Gateway_1" targetRef="UserTask_5">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${route == "manual_review"}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <bpmn:sequenceFlow id="Flow_10" sourceRef="UserTask_1" targetRef="EndEvent_1"/>
+    <bpmn:sequenceFlow id="Flow_11" sourceRef="UserTask_2" targetRef="EndEvent_1"/>
+    <bpmn:sequenceFlow id="Flow_12" sourceRef="UserTask_3" targetRef="EndEvent_1"/>
+    <bpmn:sequenceFlow id="Flow_13" sourceRef="UserTask_4" targetRef="EndEvent_1"/>
+    <bpmn:sequenceFlow id="Flow_14" sourceRef="UserTask_5" targetRef="EndEvent_1"/>
+    
+  </bpmn:process>
+  
+</bpmn:definitions> 
