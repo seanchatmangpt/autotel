@@ -364,6 +364,25 @@ class TelemetryManager:
             trace.get_tracer_provider().force_flush()
         if self.meter:
             metrics.get_meter_provider().force_flush()
+    
+    def is_configured(self) -> bool:
+        """Check if telemetry is properly configured"""
+        return (
+            self.linkml_connected and 
+            self.schema_view is not None and 
+            (self.tracer is not None or self.meter is not None)
+        )
+
+    def get_stats(self) -> dict:
+        """Return basic telemetry stats for CLI display"""
+        return {
+            "schema_connected": self.linkml_connected,
+            "tracer_enabled": self.tracer is not None,
+            "meter_enabled": self.meter is not None,
+            "schema_classes": list(self.schema_view.all_classes().keys()) if self.schema_view else [],
+            "schema_enums": list(self.schema_view.all_enums().keys()) if self.schema_view else [],
+            "schema_slots": list(self.schema_view.all_slots().keys()) if self.schema_view else [],
+        }
 
 def create_telemetry_manager(
     service_name: str = "autotel-service",

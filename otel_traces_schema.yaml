@@ -22,6 +22,15 @@ classes:
         range: string
       operation_type:
         range: LinkMLOperationType
+      module:
+        range: string
+        description: "Module name for file system routing"
+      function:
+        range: string
+        description: "Function name for file system routing"
+      file_path:
+        range: string
+        description: "File path for file system routing"
   Metric:
     description: "A telemetry metric."
     attributes:

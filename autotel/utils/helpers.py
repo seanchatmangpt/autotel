@@ -4,9 +4,13 @@ AutoTel Helper Functions
 
 import json
 import yaml
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any, List, Optional, Union, Callable, TypeVar, cast
 from pathlib import Path
 from datetime import datetime
+from autotel.core.telemetry import TelemetryManager
+from functools import wraps
+
+T = TypeVar('T', bound=Callable[..., Any])
 
 def load_yaml_file(file_path: str) -> Dict[str, Any]:
     """Load a YAML file safely"""
@@ -121,4 +125,41 @@ def timestamp_to_datetime(timestamp: Union[str, float, int]) -> datetime:
 
 def datetime_to_timestamp(dt: datetime) -> float:
     """Convert datetime object to timestamp"""
-    return dt.timestamp() 
+    return dt.timestamp()
+
+def otel_command(func: T) -> T:
+    """
+    Decorator to wrap a Typer command in an OpenTelemetry span with LinkML schema validation.
+    - All arguments are added as span attributes.
+    - Adds module, function, and file_path for file system routing metadata.
+    - Exceptions are recorded as span events and re-raised.
+    - TelemetryManager is always instantiated with LinkML validation enabled.
+    """
+    from autotel.core.telemetry import TelemetryConfig
+    import inspect
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        telemetry_manager = TelemetryManager(TelemetryConfig(require_linkml_validation=True))
+        sig = inspect.signature(func)
+        bound = sig.bind(*args, **kwargs)
+        bound.apply_defaults()
+        span_attrs = dict(bound.arguments)
+        # Add file system routing metadata
+        module = func.__module__
+        function = func.__name__
+        file_path = inspect.getfile(func)
+        span_attrs.update({
+            'module': module,
+            'function': function,
+            'file_path': file_path
+        })
+        try:
+            with telemetry_manager.start_span(
+                name=function,
+                operation_type="class_analysis",  # Use a valid enum value or look up dynamically
+                **span_attrs
+            ):
+                return func(*args, **kwargs)
+        except Exception as e:
+            raise
+    return cast(T, wrapper) 

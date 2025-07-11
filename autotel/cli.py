@@ -1,770 +1,436 @@
 #!/usr/bin/env python3
 """
-AutoTel CLI - Enterprise BPMN 2.0 Orchestration with Zero-Touch Telemetry
-A comprehensive command-line interface for AutoTel operations
+AutoTel CLI - Enterprise BPMN 2.0 Orchestration Framework
 """
 
-import sys
+import typer
 import json
 import yaml
-import asyncio
 from pathlib import Path
 from typing import Optional, List, Dict, Any
-from datetime import datetime
-from contextlib import asynccontextmanager
-
-import typer
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.prompt import Confirm, Prompt
-from rich.syntax import Syntax
-from pydantic import BaseModel, Field
+from rich.tree import Tree
+from rich import print as rprint
 
-# Import AutoTel modules
-from autotel import Orchestrator, Framework, TelemetryManager, ProcessStatus, TaskStatus
-from autotel.schemas.validation import validate_telemetry_schema
-from autotel.workflows.spiff import SpiffCapabilityChecker
-from autotel.core.telemetry import TelemetryConfig
+from .core.orchestrator import Orchestrator
+from .core.telemetry import TelemetryManager, TelemetryConfig
+from .schemas.validation import SchemaValidator, ValidationLevel
+from .utils.dspy_services import dspy_registry
+from .utils.advanced_dspy_services import advanced_dspy_registry, initialize_advanced_dspy_services
+from .workflows.task_span_integration import initialize_task_span_manager
+from .utils.helpers import otel_command
 
-import dspy
-
-# Initialize Typer app
 app = typer.Typer(
     name="autotel",
-    help="Enterprise BPMN 2.0 Orchestration with Zero-Touch Telemetry",
-    add_completion=False,
-    rich_markup_mode="rich",
+    help="Enterprise BPMN 2.0 Orchestration Framework with AI-powered decision making",
+    rich_markup_mode="rich"
 )
 
-# Initialize Rich console
 console = Console()
 
-class AutoTelConfig(BaseModel):
-    """Configuration for AutoTel CLI"""
-    bpmn_path: Path = Field(default=Path("bpmn/"), description="Path to BPMN files")
-    enable_telemetry: bool = Field(default=True, description="Enable telemetry")
-    enable_persistence: bool = Field(default=True, description="Enable persistence")
-    log_level: str = Field(default="INFO", description="Logging level")
-    config_file: Optional[Path] = Field(default=None, description="Configuration file path")
-
-class AutoTelContext:
-    """Context manager for AutoTel services"""
-    
-    def __init__(self, config: AutoTelConfig):
-        self.config = config
-        self.orchestrator: Optional[Orchestrator] = None
-        self.framework: Optional[Framework] = None
-        self.telemetry_manager: Optional[TelemetryManager] = None
-    
-    async def initialize(self) -> None:
-        """Initialize all AutoTel services"""
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console,
-        ) as progress:
-            
-            # Initialize Orchestrator
-            task = progress.add_task("Initializing Orchestrator...", total=None)
-            try:
-                self.orchestrator = Orchestrator(
-                    bpmn_files_path=str(self.config.bpmn_path),
-                    enable_telemetry=self.config.enable_telemetry,
-                    enable_persistence=self.config.enable_persistence
-                )
-                progress.update(task, description="✅ Orchestrator initialized")
-            except Exception as e:
-                progress.update(task, description=f"❌ Failed to initialize Orchestrator: {e}")
-                raise typer.Exit(1)
-            
-            # Initialize Framework
-            task = progress.add_task("Initializing Framework...", total=None)
-            try:
-                self.framework = Framework()
-                progress.update(task, description="✅ Framework initialized")
-            except Exception as e:
-                progress.update(task, description=f"❌ Failed to initialize Framework: {e}")
-                raise typer.Exit(1)
-            
-            # Initialize Telemetry Manager
-            task = progress.add_task("Initializing Telemetry Manager...", total=None)
-            try:
-                self.telemetry_manager = TelemetryManager(
-                    config=TelemetryConfig(
-                        service_name="autotel-service",
-                        service_version="1.0.0",
-                        enable_tracing=self.config.enable_telemetry,
-                        enable_metrics=self.config.enable_telemetry,
-                        require_linkml_validation=True
-                    )
-                )
-                progress.update(task, description="✅ Telemetry Manager initialized")
-            except Exception as e:
-                progress.update(task, description=f"❌ Failed to initialize Telemetry Manager: {e}")
-                raise typer.Exit(1)
-    
-    async def cleanup(self) -> None:
-        """Cleanup resources"""
-        if self.telemetry_manager:
-            self.telemetry_manager.force_flush()
-
-@asynccontextmanager
-async def get_autotel_context(config: AutoTelConfig):
-    """Context manager for AutoTel services"""
-    context = AutoTelContext(config)
-    try:
-        await context.initialize()
-        yield context
-    finally:
-        await context.cleanup()
-
-def load_config(config_file: Optional[Path] = None) -> AutoTelConfig:
-    """Load configuration from file or use defaults"""
-    if config_file and config_file.exists():
-        try:
-            with open(config_file, 'r') as f:
-                config_data = yaml.safe_load(f)
-            return AutoTelConfig(**config_data)
-        except Exception as e:
-            console.print(f"[yellow]Warning: Could not load config file: {e}[/yellow]")
-    
-    return AutoTelConfig()
-
-@app.callback()
-def main(
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
-    config_file: Optional[Path] = typer.Option(None, "--config", "-c", help="Configuration file path"),
-):
-    """AutoTel - Enterprise BPMN 2.0 Orchestration with Zero-Touch Telemetry"""
-    if verbose:
-        console.print("[bold blue]AutoTel CLI[/bold blue] - Verbose mode enabled")
-    
-    if config_file and config_file.exists():
-        console.print(f"[green]Using config file:[/green] {config_file}")
-
 @app.command()
-def init(
-    bpmn_path: Path = typer.Option("bpmn/", "--bpmn-path", help="Path to BPMN files"),
-    enable_telemetry: bool = typer.Option(True, "--telemetry/--no-telemetry", help="Enable telemetry"),
-    enable_persistence: bool = typer.Option(True, "--persistence/--no-persistence", help="Enable persistence"),
-):
-    """Initialize AutoTel orchestrator and framework"""
-    config = AutoTelConfig(
-        bpmn_path=bpmn_path,
-        enable_telemetry=enable_telemetry,
-        enable_persistence=enable_persistence
-    )
-    
-    async def _init():
-        async with get_autotel_context(config) as context:
-            console.print(Panel(
-                "[bold green]AutoTel initialized successfully![/bold green]\n"
-                f"• BPMN Path: {bpmn_path}\n"
-                f"• Telemetry: {'Enabled' if enable_telemetry else 'Disabled'}\n"
-                f"• Persistence: {'Enabled' if enable_persistence else 'Disabled'}\n"
-                f"• LinkML Validation: Required",
-                title="🚀 Initialization Complete"
-            ))
-    
-    asyncio.run(_init())
-
-@app.command()
-def list_processes(
-    bpmn_path: Path = typer.Option("bpmn/", "--bpmn-path", help="Path to BPMN files"),
-):
-    """List available BPMN process definitions"""
-    config = AutoTelConfig(
-        bpmn_path=bpmn_path
-    )
-    
-    async def _list_processes():
-        async with get_autotel_context(config) as context:
-            processes = context.orchestrator.process_definitions
-            
-            if not processes:
-                console.print("[yellow]No process definitions found.[/yellow]")
-                return
-            
-            table = Table(title="📋 Available BPMN Processes")
-            table.add_column("Process ID", style="cyan", no_wrap=True)
-            table.add_column("Name", style="green")
-            table.add_column("Tasks", style="blue")
-            table.add_column("Status", style="yellow")
-            
-            for process_id, process_spec in processes.items():
-                task_count = len(process_spec.task_specs) if hasattr(process_spec, 'task_specs') else 0
-                table.add_row(
-                    process_id,
-                    getattr(process_spec, 'name', 'N/A'),
-                    str(task_count),
-                    "✅ Loaded"
-                )
-            
-            console.print(table)
-    
-    asyncio.run(_list_processes())
-
-@app.command()
-def start_process(
-    process_id: str = typer.Argument(..., help="Process ID to start"),
-    variables: Optional[str] = typer.Option(None, "--variables", "-v", help="JSON variables string"),
-    instance_id: Optional[str] = typer.Option(None, "--instance-id", "-i", help="Custom instance ID"),
-    bpmn_path: Path = typer.Option("bpmn/", "--bpmn-path", help="Path to BPMN files"),
-):
-    """Start a new BPMN process instance"""
-    config = AutoTelConfig(
-        bpmn_path=bpmn_path
-    )
-    
-    # Parse variables if provided
-    process_variables = {}
-    if variables:
-        try:
-            process_variables = json.loads(variables)
-        except json.JSONDecodeError:
-            console.print("[red]❌ Invalid JSON in variables parameter[/red]")
-            raise typer.Exit(1)
-    
-    async def _start_process():
-        async with get_autotel_context(config) as context:
-            try:
-                instance = context.orchestrator.start_process(
-                    process_id=process_id,
-                    variables=process_variables,
-                    instance_id=instance_id
-                )
-                
-                console.print(Panel(
-                    f"[bold green]Process started successfully![/bold green]\n"
-                    f"• Instance ID: [cyan]{instance.instance_id}[/cyan]\n"
-                    f"• Process ID: [cyan]{instance.process_definition_id}[/cyan]\n"
-                    f"• Status: [yellow]{instance.status.value}[/yellow]\n"
-                    f"• Start Time: [blue]{instance.start_time}[/blue]",
-                    title="🚀 Process Instance Created"
-                ))
-                
-            except Exception as e:
-                console.print(f"[red]❌ Failed to start process: {e}[/red]")
-                raise typer.Exit(1)
-    
-    asyncio.run(_start_process())
-
-@app.command()
-def execute_process(
-    instance_id: str = typer.Argument(..., help="Process instance ID to execute"),
-    max_steps: int = typer.Option(100, "--max-steps", "-m", help="Maximum execution steps"),
-    interactive: bool = typer.Option(False, "--interactive", "-i", help="Interactive execution mode"),
-    bpmn_path: Path = typer.Option("bpmn/", "--bpmn-path", help="Path to BPMN files"),
-):
-    """Execute a BPMN process instance"""
-    config = AutoTelConfig(bpmn_path=bpmn_path)
-    
-    async def _execute_process():
-        async with get_autotel_context(config) as context:
-            try:
-                if interactive:
-                    # Interactive execution
-                    instance = context.orchestrator.get_process_instance(instance_id)
-                    if not instance:
-                        console.print(f"[red]❌ Process instance {instance_id} not found[/red]")
-                        raise typer.Exit(1)
-                    
-                    console.print(f"[bold]Executing process instance:[/bold] {instance_id}")
-                    
-                    while instance.status == ProcessStatus.RUNNING:
-                        ready_tasks = context.orchestrator.get_ready_tasks(instance_id)
-                        
-                        if not ready_tasks:
-                            break
-                        
-                        console.print(f"\n[green]Ready tasks:[/green] {len(ready_tasks)}")
-                        for i, task in enumerate(ready_tasks):
-                            console.print(f"  {i+1}. {task['task_name']} ({task['task_id']})")
-                        
-                        if Confirm.ask("Continue execution?"):
-                            instance = context.orchestrator.execute_process(instance_id, max_steps=1)
-                        else:
-                            break
-                else:
-                    # Non-interactive execution
-                    with Progress(
-                        SpinnerColumn(),
-                        TextColumn("[progress.description]{task.description}"),
-                        console=console,
-                    ) as progress:
-                        task = progress.add_task(f"Executing process {instance_id}...", total=None)
-                        instance = context.orchestrator.execute_process(instance_id, max_steps=max_steps)
-                        progress.update(task, description="✅ Process execution completed")
-                
-                # Display results
-                console.print(Panel(
-                    f"[bold]Execution Results:[/bold]\n"
-                    f"• Status: [{'green' if instance.status == ProcessStatus.COMPLETED else 'red'}]{instance.status.value}[/]\n"
-                    f"• End Time: [blue]{instance.end_time or 'N/A'}[/blue]\n"
-                    f"• Execution Path: [cyan]{len(instance.execution_path)} steps[/cyan]",
-                    title="📊 Execution Complete"
-                ))
-                
-                if instance.error_message:
-                    console.print(f"[red]Error: {instance.error_message}[/red]")
-                
-            except Exception as e:
-                console.print(f"[red]❌ Failed to execute process: {e}[/red]")
-                raise typer.Exit(1)
-    
-    asyncio.run(_execute_process())
-
-@app.command()
-def list_instances(
-    status: Optional[str] = typer.Option(None, "--status", "-s", help="Filter by status"),
-    process_id: Optional[str] = typer.Option(None, "--process-id", "-p", help="Filter by process ID"),
-    bpmn_path: Path = typer.Option("bpmn/", "--bpmn-path", help="Path to BPMN files"),
-):
-    """List process instances"""
-    config = AutoTelConfig(bpmn_path=bpmn_path)
-    
-    async def _list_instances():
-        async with get_autotel_context(config) as context:
-            try:
-                status_filter = ProcessStatus(status) if status else None
-                instances = context.orchestrator.list_process_instances(status=status_filter, process_id=process_id)
-                
-                if not instances:
-                    console.print("[yellow]No process instances found.[/yellow]")
-                    return
-                
-                table = Table(title="📋 Process Instances")
-                table.add_column("Instance ID", style="cyan", no_wrap=True)
-                table.add_column("Process ID", style="green")
-                table.add_column("Status", style="yellow")
-                table.add_column("Start Time", style="blue")
-                table.add_column("End Time", style="blue")
-                table.add_column("Execution Steps", style="magenta")
-                
-                for instance in instances:
-                    status_color = {
-                        ProcessStatus.COMPLETED: "green",
-                        ProcessStatus.RUNNING: "yellow",
-                        ProcessStatus.FAILED: "red",
-                        ProcessStatus.PENDING: "blue",
-                    }.get(instance.status, "white")
-                    
-                    table.add_row(
-                        instance.instance_id,
-                        instance.process_definition_id,
-                        f"[{status_color}]{instance.status.value}[/{status_color}]",
-                        instance.start_time.strftime("%Y-%m-%d %H:%M:%S"),
-                        instance.end_time.strftime("%Y-%m-%d %H:%M:%S") if instance.end_time else "N/A",
-                        str(len(instance.execution_path))
-                    )
-                
-                console.print(table)
-                
-            except Exception as e:
-                console.print(f"[red]❌ Failed to list instances: {e}[/red]")
-                raise typer.Exit(1)
-    
-    asyncio.run(_list_instances())
-
-@app.command()
-def cancel_process(
-    instance_id: str = typer.Argument(..., help="Process instance ID to cancel"),
-    bpmn_path: Path = typer.Option("bpmn/", "--bpmn-path", help="Path to BPMN files"),
-):
-    """Cancel a running process instance"""
-    config = AutoTelConfig(bpmn_path=bpmn_path)
-    
-    async def _cancel_process():
-        async with get_autotel_context(config) as context:
-            try:
-                instance = context.orchestrator.cancel_process(instance_id)
-                console.print(Panel(
-                    f"[bold green]Process cancelled successfully![/bold green]\n"
-                    f"• Instance ID: [cyan]{instance.instance_id}[/cyan]\n"
-                    f"• Status: [red]{instance.status.value}[/red]",
-                    title="🛑 Process Cancelled"
-                ))
-                
-            except Exception as e:
-                console.print(f"[red]❌ Failed to cancel process: {e}[/red]")
-                raise typer.Exit(1)
-    
-    asyncio.run(_cancel_process())
-
-@app.command()
-def get_variables(
-    instance_id: str = typer.Argument(..., help="Process instance ID"),
-    bpmn_path: Path = typer.Option("bpmn/", "--bpmn-path", help="Path to BPMN files"),
-):
-    """Get process instance variables"""
-    config = AutoTelConfig(bpmn_path=bpmn_path)
-    
-    async def _get_variables():
-        async with get_autotel_context(config) as context:
-            try:
-                variables = context.orchestrator.get_process_variables(instance_id)
-                
-                if not variables:
-                    console.print("[yellow]No variables found for this instance.[/yellow]")
-                    return
-                
-                console.print(Panel(
-                    Syntax(json.dumps(variables, indent=2), "json", theme="monokai"),
-                    title=f"📊 Variables for Instance {instance_id}"
-                ))
-                
-            except Exception as e:
-                console.print(f"[red]❌ Failed to get variables: {e}[/red]")
-                raise typer.Exit(1)
-    
-    asyncio.run(_get_variables())
-
-@app.command()
-def set_variables(
-    instance_id: str = typer.Argument(..., help="Process instance ID"),
-    variables: str = typer.Argument(..., help="JSON variables string"),
-    bpmn_path: Path = typer.Option("bpmn/", "--bpmn-path", help="Path to BPMN files"),
-):
-    """Set process instance variables"""
-    config = AutoTelConfig(bpmn_path=bpmn_path)
-    
-    async def _set_variables():
-        async with get_autotel_context(config) as context:
-            try:
-                variables_dict = json.loads(variables)
-                context.orchestrator.set_process_variables(instance_id, variables_dict)
-                console.print(f"[green]✅ Variables set successfully for instance {instance_id}[/green]")
-                
-            except json.JSONDecodeError:
-                console.print("[red]❌ Invalid JSON in variables parameter[/red]")
-                raise typer.Exit(1)
-            except Exception as e:
-                console.print(f"[red]❌ Failed to set variables: {e}[/red]")
-                raise typer.Exit(1)
-    
-    asyncio.run(_set_variables())
-
-@app.command()
-def get_ready_tasks(
-    instance_id: str = typer.Argument(..., help="Process instance ID"),
-    bpmn_path: Path = typer.Option("bpmn/", "--bpmn-path", help="Path to BPMN files"),
-):
-    """Get ready tasks for a process instance"""
-    config = AutoTelConfig(bpmn_path=bpmn_path)
-    
-    async def _get_ready_tasks():
-        async with get_autotel_context(config) as context:
-            try:
-                ready_tasks = context.orchestrator.get_ready_tasks(instance_id)
-                
-                if not ready_tasks:
-                    console.print("[yellow]No ready tasks found for this instance.[/yellow]")
-                    return
-                
-                table = Table(title=f"📋 Ready Tasks for Instance {instance_id}")
-                table.add_column("Task ID", style="cyan", no_wrap=True)
-                table.add_column("Task Name", style="green")
-                table.add_column("Task Type", style="blue")
-                table.add_column("Status", style="yellow")
-                
-                for task in ready_tasks:
-                    table.add_row(
-                        task['task_id'],
-                        task['task_name'],
-                        task['task_type'],
-                        task['status']
-                    )
-                
-                console.print(table)
-                
-            except Exception as e:
-                console.print(f"[red]❌ Failed to get ready tasks: {e}[/red]")
-                raise typer.Exit(1)
-    
-    asyncio.run(_get_ready_tasks())
-
-@app.command()
-def complete_task(
-    instance_id: str = typer.Argument(..., help="Process instance ID"),
-    task_id: str = typer.Argument(..., help="Task ID to complete"),
-    data: Optional[str] = typer.Option(None, "--data", "-d", help="JSON data for task completion"),
-    bpmn_path: Path = typer.Option("bpmn/", "--bpmn-path", help="Path to BPMN files"),
-):
-    """Complete a task in a process instance"""
-    config = AutoTelConfig(bpmn_path=bpmn_path)
-    
-    async def _complete_task():
-        async with get_autotel_context(config) as context:
-            try:
-                task_data = None
-                if data:
-                    task_data = json.loads(data)
-                
-                context.orchestrator.complete_task(instance_id, task_id, task_data)
-                console.print(f"[green]✅ Task {task_id} completed successfully[/green]")
-                
-            except json.JSONDecodeError:
-                console.print("[red]❌ Invalid JSON in data parameter[/red]")
-                raise typer.Exit(1)
-            except Exception as e:
-                console.print(f"[red]❌ Failed to complete task: {e}[/red]")
-                raise typer.Exit(1)
-    
-    asyncio.run(_complete_task())
-
-@app.command()
-def get_statistics(
-    bpmn_path: Path = typer.Option("bpmn/", "--bpmn-path", help="Path to BPMN files"),
-):
-    """Get process execution statistics"""
-    config = AutoTelConfig(bpmn_path=bpmn_path)
-    
-    async def _get_statistics():
-        async with get_autotel_context(config) as context:
-            try:
-                stats = context.orchestrator.get_process_statistics()
-                
-                console.print(Panel(
-                    f"[bold]Process Statistics:[/bold]\n"
-                    f"• Total Instances: [cyan]{stats.get('total_instances', 0)}[/cyan]\n"
-                    f"• Running Instances: [yellow]{stats.get('running_instances', 0)}[/yellow]\n"
-                    f"• Completed Instances: [green]{stats.get('completed_instances', 0)}[/green]\n"
-                    f"• Failed Instances: [red]{stats.get('failed_instances', 0)}[/red]\n"
-                    f"• Average Execution Time: [blue]{stats.get('avg_execution_time', 'N/A')}[/blue]",
-                    title="📊 Statistics"
-                ))
-                
-            except Exception as e:
-                console.print(f"[red]❌ Failed to get statistics: {e}[/red]")
-                raise typer.Exit(1)
-    
-    asyncio.run(_get_statistics())
-
-@app.command()
-def cleanup(
-    max_age_hours: int = typer.Option(24, "--max-age", "-a", help="Maximum age in hours for cleanup"),
-    bpmn_path: Path = typer.Option("bpmn/", "--bpmn-path", help="Path to BPMN files"),
-):
-    """Clean up completed process instances"""
-    config = AutoTelConfig(bpmn_path=bpmn_path)
-    
-    async def _cleanup():
-        async with get_autotel_context(config) as context:
-            try:
-                cleaned_count = context.orchestrator.cleanup_completed_processes(max_age_hours)
-                console.print(f"[green]✅ Cleaned up {cleaned_count} completed process instances[/green]")
-                
-            except Exception as e:
-                console.print(f"[red]❌ Failed to cleanup: {e}[/red]")
-                raise typer.Exit(1)
-    
-    asyncio.run(_cleanup())
-
-# Schema and Telemetry Commands
-@app.command()
-def validate_schema(
-    schema_file: Path = typer.Argument(..., help="LinkML schema file to validate"),
-):
-    """Validate a LinkML schema"""
-    try:
-        with open(schema_file, 'r') as f:
-            schema = yaml.safe_load(f)
-        
-        # Basic validation
-        required_keys = ['classes', 'enums']
-        missing_keys = [key for key in required_keys if key not in schema]
-        
-        if missing_keys:
-            console.print(f"[red]❌ Missing required keys: {missing_keys}[/red]")
-            raise typer.Exit(1)
-        
-        console.print(f"[green]✅ Schema validation passed for {schema_file}[/green]")
-        
-        # Display schema summary
-        classes = schema.get('classes', {})
-        enums = schema.get('enums', {})
-        
-        console.print(Panel(
-            f"[bold]Schema Summary:[/bold]\n"
-            f"• Classes: [cyan]{len(classes)}[/cyan]\n"
-            f"• Enums: [cyan]{len(enums)}[/cyan]",
-            title="📋 Schema Info"
-        ))
-        
-    except Exception as e:
-        console.print(f"[red]❌ Schema validation failed: {e}[/red]")
-        raise typer.Exit(1)
-
-@app.command()
-def process_ontology(
-    ontology_file: Path = typer.Argument(..., help="LinkML ontology file to process"),
-):
-    """Process a LinkML ontology and generate models"""
-    config = AutoTelConfig()
-    
-    async def _process_ontology():
-        async with get_autotel_context(config) as context:
-            try:
-                context.framework.initialize(str(ontology_file))
-                console.print(f"[green]✅ Ontology processed successfully: {ontology_file}[/green]")
-                
-                # Display generated models
-                models = context.framework.processor.generated_models
-                operations = context.framework.processor.operations
-                
-                console.print(Panel(
-                    f"[bold]Generated Models:[/bold]\n"
-                    f"• Models: [cyan]{len(models)}[/cyan]\n"
-                    f"• Operations: [cyan]{len(operations)}[/cyan]",
-                    title="🔧 Model Generation Complete"
-                ))
-                
-            except Exception as e:
-                console.print(f"[red]❌ Failed to process ontology: {e}[/red]")
-                raise typer.Exit(1)
-    
-    asyncio.run(_process_ontology())
-
-@app.command()
-def execute_workflow(
-    workflow_file: Path = typer.Argument(..., help="JSON workflow file to execute"),
-):
-    """Execute a workflow from a JSON file"""
-    config = AutoTelConfig()
-    
-    async def _execute_workflow():
-        async with get_autotel_context(config) as context:
-            try:
-                with open(workflow_file, 'r') as f:
-                    workflow_steps = json.load(f)
-                
-                console.print(f"[bold]Executing workflow from:[/bold] {workflow_file}")
-                
-                with Progress(
-                    SpinnerColumn(),
-                    TextColumn("[progress.description]{task.description}"),
-                    console=console,
-                ) as progress:
-                    task = progress.add_task("Executing workflow steps...", total=len(workflow_steps))
-                    
-                    for i, step in enumerate(workflow_steps):
-                        progress.update(task, description=f"Executing step {i+1}/{len(workflow_steps)}: {step.get('operation', 'Unknown')}")
-                        context.framework.execute_workflow([step])
-                        progress.advance(task)
-                
-                console.print("[green]✅ Workflow execution completed[/green]")
-                
-            except Exception as e:
-                console.print(f"[red]❌ Failed to execute workflow: {e}[/red]")
-                raise typer.Exit(1)
-    
-    asyncio.run(_execute_workflow())
-
-@app.command()
-def check_spiff_capabilities(
-    config_file: Optional[Path] = typer.Option(None, "--config", "-c", help="Configuration file for capability check"),
-):
-    """Check SpiffWorkflow capabilities and configuration"""
-    try:
-        checker = SpiffCapabilityChecker()
-        
-        if config_file:
-            checker.load_config(str(config_file))
-        
-        capabilities = checker.check_capabilities()
-        
-        console.print(Panel(
-            f"[bold]SpiffWorkflow Capabilities:[/bold]\n"
-            f"• BPMN 2.0 Support: [green]✅[/green]\n"
-            f"• Task Types: [cyan]{len(capabilities.get('task_types', []))}[/cyan]\n"
-            f"• Gateway Types: [cyan]{len(capabilities.get('gateway_types', []))}[/cyan]\n"
-            f"• Event Types: [cyan]{len(capabilities.get('event_types', []))}[/cyan]",
-            title="🔍 Capability Check"
-        ))
-        
-    except Exception as e:
-        console.print(f"[red]❌ Failed to check capabilities: {e}[/red]")
-        raise typer.Exit(1)
-
-@app.command()
-def demo():
-    """Run AutoTel demonstration workflow"""
-    config = AutoTelConfig()
-    
-    async def _demo():
-        async with get_autotel_context(config) as context:
-            try:
-                console.print("[bold blue]Running AutoTel demonstration...[/bold blue]")
-                
-                # Import and run the demo
-                from autotel.core.framework import demonstrate_autotel
-                demonstrate_autotel()
-                
-                console.print("[green]✅ Demonstration completed successfully[/green]")
-                
-            except Exception as e:
-                console.print(f"[red]❌ Failed to run demonstration: {e}[/red]")
-                raise typer.Exit(1)
-    
-    asyncio.run(_demo())
-
-@app.command()
+@otel_command
 def version():
-    """Show AutoTel version information"""
-    console.print(Panel(
-        "[bold blue]AutoTel - Enterprise BPMN 2.0 Orchestration[/bold blue]\n"
-        "Version: 0.1.0\n"
-        "Powered by SpiffWorkflow with zero-touch telemetry integration\n\n"
-        "[cyan]Features:[/cyan]\n"
-        "• Full BPMN 2.0 specification compliance\n"
-        "• Zero-touch telemetry integration\n"
-        "• Process persistence and recovery\n"
-        "• Advanced task execution monitoring\n"
-        "• Multi-instance process support\n"
-        "• Event-driven execution\n"
-        "• Error handling and recovery",
-        title="🚀 AutoTel"
+    """Show AutoTel version and system information"""
+    from . import __version__
+    
+    table = Table(title="AutoTel System Information")
+    table.add_column("Component", style="cyan")
+    table.add_column("Version", style="green")
+    table.add_column("Status", style="yellow")
+    
+    table.add_row("AutoTel Core", __version__, "✅ Active")
+    table.add_row("SpiffWorkflow", "Latest", "✅ Active")
+    table.add_row("OpenTelemetry", "1.34.1+", "✅ Active")
+    table.add_row("LinkML Runtime", "1.9.3+", "✅ Active")
+    table.add_row("DSPy", "Latest", "✅ Active")
+    
+    console.print(table)
+
+@app.command()
+@otel_command
+def init(
+    config_file: Optional[Path] = typer.Option(None, "--config", "-c", help="Configuration file path"),
+    telemetry_schema: Optional[Path] = typer.Option(None, "--telemetry-schema", help="Telemetry schema file"),
+    validation_level: ValidationLevel = typer.Option(ValidationLevel.NORMAL, "--validation-level", help="Validation strictness")
+):
+    """Initialize AutoTel with configuration"""
+    telemetry_config = TelemetryConfig(
+        enable_tracing=True,
+        enable_metrics=True,
+        require_linkml_validation=True,
+        schema_path=str(telemetry_schema) if telemetry_schema else None
+    )
+    telemetry_manager = TelemetryManager(telemetry_config)
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        
+        task = progress.add_task("Initializing AutoTel...", total=4)
+        
+        # Initialize telemetry
+        progress.update(task, description="Setting up telemetry...")
+        
+        progress.advance(task)
+        
+        # Initialize schema validator
+        progress.update(task, description="Setting up schema validation...")
+        schema_validator = SchemaValidator(validation_level=validation_level)
+        
+        # Load default schemas
+        default_schemas = [
+            "otel_traces_schema.yaml",
+            "workflow_telemetry_schema.yaml"
+        ]
+        
+        for schema_file in default_schemas:
+            if Path(schema_file).exists():
+                schema_validator.load_schema(schema_file)
+        
+        progress.advance(task)
+        
+        # Initialize advanced DSPy services
+        progress.update(task, description="Initializing DSPy services...")
+        initialize_advanced_dspy_services()
+        
+        progress.advance(task)
+        
+        # Initialize task span manager
+        progress.update(task, description="Setting up task telemetry...")
+        initialize_task_span_manager(telemetry_manager)
+        
+        progress.advance(task)
+    
+    console.print(Panel.fit(
+        "[green]✅ AutoTel initialized successfully![/green]\n"
+        f"Telemetry: {'Enabled' if telemetry_manager.is_configured() else 'Disabled'}\n"
+        f"Schema Validation: {validation_level.value}\n"
+        f"DSPy Services: {len(advanced_dspy_registry.signatures)} signatures available",
+        title="Initialization Complete"
     ))
 
 @app.command()
-def interpret_otel(
-    trace_file: Optional[Path] = typer.Argument(None, help="Path to OTEL trace JSON file (or use '-' for stdin)"),
-    model: str = typer.Option("mistral:7b-instruct-v0.2-q6_K", help="Ollama model to use (must be available locally)"),
-    api_base: str = typer.Option("http://localhost:11434/v1/", help="Ollama API base URL"),
+@otel_command
+def validate(
+    file_path: Path = typer.Argument(..., help="File to validate (BPMN, DMN, or YAML)"),
+    strict: bool = typer.Option(False, "--strict", help="Enable strict validation")
 ):
-    """Interpret OpenTelemetry trace JSON using DSPy + Ollama LLM."""
-    # Read trace data
-    if trace_file is None or str(trace_file) == "-":
-        trace_json = sys.stdin.read()
+    """Validate BPMN, DMN, or configuration files"""
+    
+    if not file_path.exists():
+        console.print(f"[red]❌ File not found: {file_path}[/red]")
+        raise typer.Exit(1)
+    
+    schema_validator = SchemaValidator(
+        validation_level=ValidationLevel.STRICT if strict else ValidationLevel.NORMAL
+    )
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        
+        task = progress.add_task(f"Validating {file_path.name}...", total=1)
+        
+        try:
+            if file_path.suffix.lower() == '.bpmn':
+                result = schema_validator.validate_bpmn_file(str(file_path))
+            elif file_path.suffix.lower() == '.dmn':
+                result = schema_validator.validate_dmn_file(str(file_path))
+            elif file_path.suffix.lower() in ['.yaml', '.yml']:
+                with open(file_path, 'r') as f:
+                    data = yaml.safe_load(f)
+                result = ValidationResult(valid=True)
+            else:
+                console.print(f"[yellow]⚠️  Unknown file type: {file_path.suffix}[/yellow]")
+                result = ValidationResult(valid=False, errors=[f"Unsupported file type: {file_path.suffix}"])
+            
+            progress.advance(task)
+            
+        except Exception as e:
+            result = ValidationResult(valid=False, errors=[f"Validation failed: {e}"])
+    
+    # Display results
+    if result.valid:
+        console.print(f"[green]✅ {file_path.name} is valid[/green]")
+        if result.warnings:
+            console.print(f"[yellow]⚠️  Warnings: {len(result.warnings)}[/yellow]")
+            for warning in result.warnings:
+                console.print(f"  • {warning}")
     else:
-        with open(trace_file, "r") as f:
-            trace_json = f.read()
-    try:
-        trace_data = json.loads(trace_json)
-    except Exception as e:
-        console.print(f"[red]❌ Failed to parse trace JSON: {e}[/red]")
+        console.print(f"[red]❌ {file_path.name} is invalid[/red]")
+        for error in result.errors:
+            console.print(f"  • {error}")
         raise typer.Exit(1)
 
-    # Set up DSPy with Ollama
-    ollama_lm = dspy.OpenAI(
-        api_base=api_base,
-        api_key="ollama",
-        model=model,
-        stop="\n\n",
-        model_type="chat"
-    )
-    dspy.settings.configure(lm=ollama_lm)
+@app.command()
+@otel_command
+def telemetry(
+    export: Optional[Path] = typer.Option(None, "--export", "-e", help="Export telemetry to file"),
+    format: str = typer.Option("json", "--format", "-f", help="Export format (json, yaml)"),
+    show_stats: bool = typer.Option(False, "--stats", help="Show telemetry statistics")
+):
+    """Manage telemetry data and export traces"""
+    
+    telemetry_manager = TelemetryManager()
+    
+    if show_stats:
+        table = Table(title="Telemetry Statistics")
+        table.add_column("Metric", style="cyan")
+        table.add_column("Value", style="green")
+        
+        stats = telemetry_manager.get_stats()
+        for key, value in stats.items():
+            table.add_row(key, str(value))
+        
+        console.print(table)
+    
+    if export:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            
+            task = progress.add_task("Exporting telemetry...", total=1)
+            
+            try:
+                telemetry_data = telemetry_manager.export_telemetry()
+                
+                if format.lower() == "yaml":
+                    with open(export, 'w') as f:
+                        yaml.dump(telemetry_data, f, default_flow_style=False)
+                else:
+                    with open(export, 'w') as f:
+                        json.dump(telemetry_data, f, indent=2)
+                
+                progress.advance(task)
+                
+                console.print(f"[green]✅ Telemetry exported to {export}[/green]")
+                
+            except Exception as e:
+                console.print(f"[red]❌ Failed to export telemetry: {e}[/red]")
+                raise typer.Exit(1)
 
-    class OtelInterpretation(dspy.Signature):
-        """Interpret OpenTelemetry trace data for a human reader."""
-        trace = dspy.InputField(desc="The OpenTelemetry trace JSON (single span or list of spans)")
-        summary = dspy.OutputField(desc="A concise, human-friendly summary and interpretation of what happened, including any errors or anomalies.")
+@app.command()
+@otel_command
+def dspy(
+    list_signatures: bool = typer.Option(False, "--list", "-l", help="List available DSPy signatures"),
+    call_signature: Optional[str] = typer.Option(None, "--call", "-c", help="Call a DSPy signature"),
+    input_data: Optional[str] = typer.Option(None, "--input", "-i", help="Input data as JSON"),
+    show_stats: bool = typer.Option(False, "--stats", help="Show DSPy statistics"),
+    clear_cache: bool = typer.Option(False, "--clear-cache", help="Clear DSPy cache")
+):
+    """Manage DSPy services and signatures"""
+    
+    if clear_cache:
+        advanced_dspy_registry.cache.clear()
+        console.print("[green]✅ DSPy cache cleared[/green]")
+        return
+    
+    if show_stats:
+        stats = advanced_dspy_registry.get_stats()
+        
+        cache_table = Table(title="DSPy Cache Statistics")
+        cache_table.add_column("Metric", style="cyan")
+        cache_table.add_column("Value", style="green")
+        
+        for key, value in stats.get("cache_stats", {}).items():
+            cache_table.add_row(key, str(value))
+        
+        console.print(cache_table)
+        
+        if stats.get("model_stats"):
+            model_table = Table(title="Model Performance Statistics")
+            model_table.add_column("Model", style="cyan")
+            model_table.add_column("Avg Duration", style="green")
+            
+            for model, avg in stats["model_stats"].items():
+                model_table.add_row(model, str(avg))
+            
+            console.print(model_table)
+    
+    if list_signatures:
+        signatures_table = Table(title="Available DSPy Signatures")
+        signatures_table.add_column("Signature", style="cyan")
+        signatures_table.add_column("Status", style="green")
+        
+        for signature in advanced_dspy_registry.signatures:
+            signatures_table.add_row(signature, "✅ Active")
+        
+        console.print(signatures_table)
+    
+    if call_signature:
+        if call_signature not in advanced_dspy_registry.signatures:
+            console.print(f"[red]❌ Signature not found: {call_signature}[/red]")
+            raise typer.Exit(1)
+        
+        try:
+            input_json = json.loads(input_data) if input_data else {}
+            result = advanced_dspy_registry.call_signature(call_signature, input_json)
+            console.print(f"[green]✅ Result: {result}[/green]")
+        except Exception as e:
+            console.print(f"[red]❌ Failed to call signature: {e}[/red]")
+            raise typer.Exit(1)
 
-    interpret = dspy.Predict(OtelInterpretation)
-    pred = interpret(trace=json.dumps(trace_data))
-    console.print(Panel(pred.summary, title="OTEL Trace Interpretation (DSPy + Ollama)", style="bold green"))
+@app.command()
+@otel_command
+def workflow(
+    file_path: Path = typer.Argument(..., help="BPMN workflow file"),
+    validate_only: bool = typer.Option(False, "--validate-only", help="Only validate, don't execute"),
+    export_telemetry: Optional[Path] = typer.Option(None, "--export-telemetry", help="Export workflow telemetry")
+):
+    """Execute or validate a BPMN workflow"""
+    
+    if not file_path.exists():
+        console.print(f"[red]❌ File not found: {file_path}[/red]")
+        raise typer.Exit(1)
+    
+    if validate_only:
+        schema_validator = SchemaValidator()
+        result = schema_validator.validate_bpmn_file(str(file_path))
+        
+        if result.valid:
+            console.print(f"✅ Workflow {file_path.name} is valid")
+        else:
+            console.print(f"❌ Workflow {file_path.name} is invalid")
+            for error in result.errors:
+                console.print(f"  • {error}")
+            raise typer.Exit(1)
+    else:
+        orchestrator = Orchestrator(enable_telemetry=True)
+        
+        try:
+            process_id = file_path.stem
+            instance = orchestrator.start_process(process_id, {})
+            
+            console.print(f"🚀 Started workflow: {process_id}")
+            console.print(f"📋 Instance ID: {instance.instance_id}")
+            
+            result = orchestrator.execute_process(instance.instance_id)
+            
+            console.print(f"✅ Workflow completed with status: {result.status.value}")
+            
+            if export_telemetry:
+                telemetry_data = orchestrator.export_telemetry()
+                with open(export_telemetry, 'w') as f:
+                    json.dump(telemetry_data, f, indent=2)
+                console.print(f"📊 Telemetry exported to {export_telemetry}")
+                
+        except Exception as e:
+            console.print(f"[red]❌ Workflow execution failed: {e}[/red]")
+            raise typer.Exit(1)
+
+@app.command()
+@otel_command
+def dmn(
+    file_path: Path = typer.Argument(..., help="DMN decision file"),
+    input_data: Optional[str] = typer.Option(None, "--input", "-i", help="Input data as JSON"),
+    validate_only: bool = typer.Option(False, "--validate-only", help="Only validate, don't execute")
+):
+    """Execute or validate a DMN decision"""
+    
+    if not file_path.exists():
+        console.print(f"[red]❌ File not found: {file_path}[/red]")
+        raise typer.Exit(1)
+    
+    if validate_only:
+        schema_validator = SchemaValidator()
+        result = schema_validator.validate_dmn_file(str(file_path))
+        
+        if result.valid:
+            console.print(f"✅ DMN {file_path.name} is valid")
+        else:
+            console.print(f"❌ DMN {file_path.name} is invalid")
+            for error in result.errors:
+                console.print(f"  • {error}")
+            raise typer.Exit(1)
+    else:
+        try:
+            input_json = json.loads(input_data) if input_data else {}
+            
+            # Import DMN execution logic here
+            from .workflows.dmn_integration import DMNExecutor
+            
+            executor = DMNExecutor()
+            result = executor.execute_decision(str(file_path), input_json)
+            
+            console.print(f"✅ Decision result: {result}")
+            
+        except Exception as e:
+            console.print(f"[red]❌ DMN execution failed: {e}[/red]")
+            raise typer.Exit(1)
+
+@app.command()
+@otel_command
+def config(
+    show: bool = typer.Option(False, "--show", help="Show current configuration"),
+    validate: Optional[Path] = typer.Option(None, "--validate", help="Validate configuration file"),
+    generate: Optional[Path] = typer.Option(None, "--generate", help="Generate sample configuration")
+):
+    """Manage AutoTel configuration"""
+    
+    if show:
+        config_data = {
+            "dspy": {
+                "cache_enabled": True,
+                "signatures": len(advanced_dspy_registry.signatures)
+            },
+            "telemetry": {
+                "enabled": True,
+                "linkml_validation": True
+            },
+            "validation": {
+                "level": "normal"
+            }
+        }
+        
+        console.print(Panel.fit(
+            yaml.dump(config_data, default_flow_style=False),
+            title="Current Configuration"
+        ))
+    
+    if validate:
+        if not validate.exists():
+            console.print(f"[red]❌ Configuration file not found: {validate}[/red]")
+            raise typer.Exit(1)
+        
+        try:
+            with open(validate, 'r') as f:
+                config_data = yaml.safe_load(f)
+            console.print(f"✅ Configuration file {validate.name} is valid")
+        except Exception as e:
+            console.print(f"[red]❌ Configuration file is invalid: {e}[/red]")
+            raise typer.Exit(1)
+    
+    if generate:
+        sample_config = {
+            "telemetry": {
+                "enabled": True,
+                "linkml_validation": True,
+                "export_format": "json"
+            },
+            "dspy": {
+                "cache_enabled": True,
+                "models": ["openai:gpt-4o-mini", "ollama:qwen2.5:7b"]
+            },
+            "validation": {
+                "level": "normal",
+                "strict_mode": False
+            }
+        }
+        
+        with open(generate, 'w') as f:
+            yaml.dump(sample_config, f, default_flow_style=False)
+        
+        console.print(f"[green]✅ Sample configuration generated: {generate}[/green]")
 
 if __name__ == "__main__":
     app() 

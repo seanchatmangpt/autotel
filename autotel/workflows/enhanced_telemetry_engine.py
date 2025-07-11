@@ -22,6 +22,7 @@ from SpiffWorkflow.util.task import TaskState
 from SpiffWorkflow.bpmn.specs.bpmn_task_spec import BpmnTaskSpec
 
 from ..core.telemetry import TelemetryManager, TelemetryConfig
+from .telemetry_bpmn_parser import TelemetryBpmnParser
 
 logger = logging.getLogger(__name__)
 
@@ -95,87 +96,6 @@ class WorkflowTelemetryContext:
             
             # Remove from active workflows
             del self.active_workflows[workflow_id]
-    
-    def start_task_execution(self, workflow_id: str, task: BpmnTaskSpec, task_instance) -> trace.Span:
-        """Start tracking a task execution"""
-        with self._lock:
-            if workflow_id not in self.active_workflows:
-                # Create a standalone span if workflow context not found
-                return self.telemetry_manager.start_span("task.unknown", "task_execution")
-            
-            context = self.active_workflows[workflow_id]
-            
-            # Create task span with attributes
-            task_name = getattr(task, 'bpmn_name', task.name)
-            task_type = self._determine_task_type(task)
-            task_id = f"{workflow_id}-{task_name}-{len(context.completed_tasks) + len(context.failed_tasks) + 1}"
-            
-            # Prepare task attributes
-            task_attributes = {
-                "workflow_id": workflow_id,
-                "task_id": task_id,
-                "task_name": task_name,
-                "task_type": task_type,
-                "task_bpmn_id": getattr(task, 'bpmn_id', 'unknown'),
-                "task_sequence": len(context.completed_tasks) + len(context.failed_tasks) + 1
-            }
-            
-            # Add task input data
-            if hasattr(task_instance, 'data') and task_instance.data:
-                for key, value in task_instance.data.items():
-                    task_attributes[f"task_input_{key}"] = str(value)
-            
-            span_context = self.telemetry_manager.start_span(
-                f"{task_type}.{task_name}",
-                "task_execution",
-                **task_attributes
-            )
-            
-            return span_context
-    
-    def end_task_execution(self, span_context, workflow_id: str, task_name: str, success: bool = True, 
-                          error: Optional[str] = None, result: Optional[Any] = None):
-        """End tracking a task execution"""
-        with self._lock:
-            if workflow_id in self.active_workflows:
-                context = self.active_workflows[workflow_id]
-                
-                if success:
-                    context.completed_tasks.append(task_name)
-                else:
-                    context.failed_tasks.append(task_name)
-            
-            # Record task completion metrics
-            task_attributes = {
-                "workflow_id": workflow_id,
-                "task_name": task_name,
-                "task_success": success
-            }
-            
-            if error:
-                task_attributes["task_error"] = error
-            
-            if result is not None:
-                task_attributes["task_result"] = str(result)
-            
-            self.telemetry_manager.record_metric("linkml_operations_total", 1, **task_attributes)
-    
-    def _determine_task_type(self, task: BpmnTaskSpec) -> str:
-        """Determine the type of task for telemetry categorization"""
-        task_class = task.__class__.__name__.lower()
-        
-        if 'service' in task_class:
-            return 'service_task'
-        elif 'decision' in task_class or 'businessrule' in task_class:
-            return 'decision_task'
-        elif 'user' in task_class:
-            return 'user_task'
-        elif 'manual' in task_class:
-            return 'manual_task'
-        elif 'script' in task_class:
-            return 'script_task'
-        else:
-            return 'bpmn_task'
 
 class EnhancedTelemetryBpmnEngine:
     """Enhanced BPMN engine with proper telemetry integration"""
@@ -185,7 +105,7 @@ class EnhancedTelemetryBpmnEngine:
             TelemetryConfig(require_linkml_validation=False)
         )
         self.telemetry_context = WorkflowTelemetryContext(self.telemetry_manager)
-        self.parser = BpmnParser()
+        self.parser = TelemetryBpmnParser(self.telemetry_context)
         self.active_workflows: Dict[str, WorkflowExecutionContext] = {}
     
     def add_bpmn_file(self, bpmn_path: str) -> None:
@@ -205,14 +125,19 @@ class EnhancedTelemetryBpmnEngine:
             raise ValueError(f"Process ID '{process_id}' not found")
         
         spec = specs[process_id]
+        
+        # Start telemetry tracking
+        execution_context = self.telemetry_context.start_workflow_execution(process_id, spec)
+        self.active_workflows[execution_context.workflow_id] = execution_context
+        
+        # Inject the workflow_id into each task spec
+        for task_spec in spec.get_tasks():
+            task_spec.workflow_id = execution_context.workflow_id
+
         workflow = BpmnWorkflow(spec)
         
         if initial_data:
             workflow.set_data(**initial_data)
-        
-        # Start telemetry tracking
-        execution_context = self.telemetry_context.start_workflow_execution(process_id, workflow)
-        self.active_workflows[execution_context.workflow_id] = execution_context
         
         logger.info(f"Created workflow for process: {process_id} with ID: {execution_context.workflow_id}")
         return workflow
@@ -269,36 +194,6 @@ class EnhancedTelemetryBpmnEngine:
             workflow.run_all()
         
         return dict(workflow.data)
-    
-    def execute_task_with_telemetry(self, task_instance, workflow_id: str) -> None:
-        """Execute a single task with telemetry tracking"""
-        task_spec = task_instance.task_spec
-        
-        # Start task span
-        span_context = self.telemetry_context.start_task_execution(workflow_id, task_spec, task_instance)
-        
-        try:
-            # Execute the task
-            task_instance.run()
-            
-            # Get task result
-            result = None
-            if hasattr(task_instance, 'data') and task_instance.data:
-                result = dict(task_instance.data)
-            
-            # End task span successfully
-            self.telemetry_context.end_task_execution(
-                span_context, workflow_id, task_spec.name, 
-                success=True, result=result
-            )
-            
-        except Exception as e:
-            # End task span with error
-            self.telemetry_context.end_task_execution(
-                span_context, workflow_id, task_spec.name, 
-                success=False, error=str(e)
-            )
-            raise
     
     def list_processes(self) -> Dict[str, str]:
         """List all available processes"""
