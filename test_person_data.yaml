@@ -1,0 +1,7 @@
+age: 30
+email: john.doe@example.com
+friends:
+- age: 28
+  email: jane.smith@example.com
+  name: Jane Smith
+name: John Doe

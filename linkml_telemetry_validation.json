@@ -1,0 +1,96 @@
+{
+  "analysis": {
+    "total_spans": 12,
+    "linkml_operations": [
+      {
+        "name": "load_linkml_schema",
+        "attributes": {
+          "operation": "schema_loading",
+          "schema_type": "linkml",
+          "schema.id": "https://example.org/real-linkml-demo",
+          "schema.name": "real-linkml-demo",
+          "schema.classes_count": 2,
+          "schema.enums_count": 1,
+          "loading_duration_seconds": 0.002115964889526367
+        }
+      },
+      {
+        "name": "introspect_linkml_schema",
+        "attributes": {
+          "operation": "schema_introspection",
+          "schema_name": "real-linkml-demo"
+        }
+      },
+      {
+        "name": "get_induced_slots",
+        "attributes": {
+          "class_name": "Person",
+          "slots_count": 4
+        }
+      },
+      {
+        "name": "analyze_class_relationships",
+        "attributes": {
+          "operation": "relationship_analysis",
+          "schema_name": "real-linkml-demo"
+        }
+      },
+      {
+        "name": "validate_schema_constraints",
+        "attributes": {
+          "operation": "constraint_validation",
+          "schema_name": "real-linkml-demo"
+        }
+      }
+    ],
+    "schema_metadata": {
+      "schema_id": "https://example.org/real-linkml-demo",
+      "schema_name": "real-linkml-demo",
+      "schema_version": "1.0.0",
+      "classes_count": 2,
+      "enums_count": 1,
+      "loading_duration": 0.002115964889526367
+    },
+    "validation_metrics": {
+      "validate_slot_constraints": {
+        "slots_validated": 2,
+        "required_slots": 1
+      },
+      "validate_enum_constraints": {
+        "enums_validated": 1,
+        "total_enum_values": 3
+      }
+    },
+    "span_hierarchy": {
+      "0x2c84d470a16c7b18": [
+        "get_induced_slots",
+        "analyze_inheritance",
+        "analyze_enums"
+      ],
+      "0x1349164ecfde7b3e": [
+        "analyze_circular_reference",
+        "analyze_composition_relationship",
+        "find_person_references"
+      ],
+      "0xcb508c7a32f7e602": [
+        "validate_slot_constraints",
+        "validate_enum_constraints"
+      ]
+    }
+  },
+  "validation": {
+    "is_real_linkml": true,
+    "proof_points": [
+      "\u2705 Real schema loading: https://example.org/real-linkml-demo with 2 classes",
+      "\u2705 Real LinkML introspection: get_induced_slots",
+      "\u2705 Real LinkML relationship analysis: analyze_class_relationships",
+      "\u2705 Real LinkML constraint validation: validate_schema_constraints",
+      "\u2705 Complex operation hierarchy: 3 parent-child relationships",
+      "\u2705 Real processing time: 0.002116s"
+    ],
+    "fake_indicators": [],
+    "confidence_score": 1.0
+  },
+  "timestamp": "2025-07-11T00:12:13Z",
+  "conclusion": "REAL_LINKML_CONFIRMED"
+}

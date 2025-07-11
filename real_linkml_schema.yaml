@@ -1,0 +1,59 @@
+
+id: https://example.org/real-linkml-demo
+name: real-linkml-demo
+title: Real LinkML Demonstration Schema
+version: 1.0.0
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  demo: https://example.org/real-linkml-demo/
+  
+default_prefix: demo
+default_range: string
+
+imports:
+  - linkml:types
+
+classes:
+  Person:
+    description: A real person with LinkML validation
+    attributes:
+      name:
+        range: string
+        required: true
+        description: Full name of person
+      age:
+        range: integer
+        description: Age in years
+      email:
+        range: string
+        description: Email address
+      friends:
+        range: Person
+        multivalued: true
+        description: List of friends (circular reference)
+        
+  Company:
+    description: A company with employees
+    attributes:
+      company_name:
+        range: string
+        required: true
+        description: Legal name of company
+      employees:
+        range: Person
+        multivalued: true
+        description: List of employees
+      founded_year:
+        range: integer
+        description: Year company was founded
+
+enums:
+  PersonType:
+    permissible_values:
+      employee:
+        description: Company employee
+      contractor:
+        description: Independent contractor
+      customer:
+        description: Customer or client

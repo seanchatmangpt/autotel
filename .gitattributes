@@ -1,0 +1,87 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Python files
+*.py text diff=python
+
+# Documentation
+*.md text diff=markdown
+*.txt text
+*.rst text
+
+# Configuration files
+*.yaml text
+*.yml text
+*.json text
+*.toml text
+*.ini text
+*.cfg text
+*.conf text
+
+# BPMN files
+*.bpmn text
+
+# Scripts
+*.sh text eol=lf
+*.bat text eol=crlf
+
+# Graphics
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg text
+
+# Archives
+*.7z binary
+*.bz2 binary
+*.gz binary
+*.rar binary
+*.tar binary
+*.zip binary
+
+# Fonts
+*.eot binary
+*.otf binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+
+# Audio/Video
+*.mp3 binary
+*.mp4 binary
+*.avi binary
+*.mov binary
+*.wmv binary
+*.flv binary
+*.wav binary
+*.flac binary
+*.aac binary
+
+# Database
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
+
+# Logs
+*.log text
+
+# Temporary files
+*.tmp binary
+*.temp binary
+*.bak binary
+*.swp binary
+*.swo binary
+
+# IDE files
+.vscode/* text
+.idea/* text
+*.sublime-project text
+*.sublime-workspace text
+
+# OS generated files
+.DS_Store binary
+Thumbs.db binary
+ehthumbs.db binary
+Desktop.ini binary 

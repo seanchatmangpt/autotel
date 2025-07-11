@@ -1,0 +1,275 @@
+id: https://example.org/autotel-demo
+name: autotel-demo
+title: AutoTel Demonstration Ontology
+version: 1.0.0
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  autotel: https://example.org/autotel-demo/
+  
+default_prefix: autotel
+default_range: string
+
+imports:
+  - linkml:types
+
+classes:
+  # Data Entities (Nouns)
+  Order:
+    description: Customer order entity
+    attributes:
+      order_id:
+        range: string
+        required: true
+        description: Unique order identifier
+      customer_name:
+        range: string
+        required: true
+        description: Name of customer placing order
+      total_amount:
+        range: float
+        required: true
+        description: Total order amount in USD
+      status:
+        range: OrderStatus
+        required: true
+        description: Current order status
+      items:
+        range: OrderItem
+        multivalued: true
+        description: Items in the order
+        
+  OrderItem:
+    description: Individual item in an order
+    attributes:
+      product_id:
+        range: string
+        required: true
+      product_name:
+        range: string
+        required: true
+      quantity:
+        range: integer
+        required: true
+      unit_price:
+        range: float
+        required: true
+        
+  Payment:
+    description: Payment information
+    attributes:
+      payment_id:
+        range: string
+        required: true
+      payment_method:
+        range: PaymentMethod
+        required: true
+      amount:
+        range: float
+        required: true
+      status:
+        range: PaymentStatus
+        required: true
+      transaction_id:
+        range: string
+        
+  Shipment:
+    description: Order shipment information
+    attributes:
+      shipment_id:
+        range: string
+        required: true
+      tracking_number:
+        range: string
+      shipping_address:
+        range: string
+        required: true
+      estimated_delivery:
+        range: string
+      carrier:
+        range: string
+        
+  # Operations (Verbs)
+  ProcessOrder:
+    description: Process customer order operation
+    is_a: Operation
+    attributes:
+      order:
+        range: Order
+        required: true
+        description: Order to process
+      processing_time_seconds:
+        range: float
+        description: Time taken to process order
+      processor_id:
+        range: string
+        description: ID of processing system
+        
+  ValidatePayment:
+    description: Validate payment for order
+    is_a: Operation
+    attributes:
+      payment:
+        range: Payment
+        required: true
+      validation_result:
+        range: boolean
+        description: Whether payment validation passed
+      validation_errors:
+        range: string
+        multivalued: true
+        description: List of validation errors if any
+        
+  CheckInventory:
+    description: Check inventory availability for order items
+    is_a: Operation
+    attributes:
+      order_items:
+        range: OrderItem
+        multivalued: true
+        required: true
+      inventory_results:
+        range: InventoryResult
+        multivalued: true
+        
+  CreateShipment:
+    description: Create shipment for fulfilled order
+    is_a: Operation
+    attributes:
+      order:
+        range: Order
+        required: true
+      shipment:
+        range: Shipment
+        required: true
+      shipping_cost:
+        range: float
+        
+  SendNotification:
+    description: Send notification to customer
+    is_a: Operation
+    attributes:
+      recipient:
+        range: string
+        required: true
+      message_type:
+        range: NotificationType
+        required: true
+      message_content:
+        range: string
+        required: true
+      delivery_method:
+        range: DeliveryMethod
+        required: true
+
+  # Supporting Data Types
+  InventoryResult:
+    description: Result of inventory check
+    attributes:
+      product_id:
+        range: string
+        required: true
+      available_quantity:
+        range: integer
+        required: true
+      reserved_quantity:
+        range: integer
+      availability_status:
+        range: AvailabilityStatus
+        required: true
+
+  # Base Operation Class
+  Operation:
+    description: Base class for all operations
+    abstract: true
+    attributes:
+      operation_id:
+        range: string
+        required: true
+      timestamp:
+        range: string
+        required: true
+      duration_ms:
+        range: integer
+        description: Operation duration in milliseconds
+      success:
+        range: boolean
+        required: true
+      error_message:
+        range: string
+        description: Error message if operation failed
+
+enums:
+  OrderStatus:
+    permissible_values:
+      pending:
+        description: Order received but not processed
+      processing:
+        description: Order is being processed
+      validated:
+        description: Order and payment validated
+      shipped:
+        description: Order has been shipped
+      delivered:
+        description: Order delivered to customer
+      cancelled:
+        description: Order was cancelled
+        
+  PaymentMethod:
+    permissible_values:
+      credit_card:
+        description: Credit card payment
+      debit_card:
+        description: Debit card payment
+      paypal:
+        description: PayPal payment
+      bank_transfer:
+        description: Bank transfer
+      cash_on_delivery:
+        description: Cash on delivery
+        
+  PaymentStatus:
+    permissible_values:
+      pending:
+        description: Payment pending
+      authorized:
+        description: Payment authorized
+      captured:
+        description: Payment captured
+      failed:
+        description: Payment failed
+      refunded:
+        description: Payment refunded
+        
+  AvailabilityStatus:
+    permissible_values:
+      in_stock:
+        description: Item is in stock
+      low_stock:
+        description: Item has low stock
+      out_of_stock:
+        description: Item is out of stock
+      discontinued:
+        description: Item is discontinued
+        
+  NotificationType:
+    permissible_values:
+      order_confirmation:
+        description: Order confirmation notification
+      payment_received:
+        description: Payment received notification
+      shipping_notification:
+        description: Shipping notification
+      delivery_confirmation:
+        description: Delivery confirmation
+      
+  DeliveryMethod:
+    permissible_values:
+      email:
+        description: Email notification
+      sms:
+        description: SMS notification
+      push_notification:
+        description: Mobile push notification
+      phone_call:
+        description: Phone call notification

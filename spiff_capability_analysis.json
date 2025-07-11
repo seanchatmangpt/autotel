@@ -1,0 +1,78 @@
+{
+  "analysis_timestamp": "2025-07-09T16:43:03.555842",
+  "analysis_duration_seconds": 0.0,
+  "capabilities_analyzed": 6,
+  "capabilities_available": 1,
+  "overall_integration_potential": "maximum",
+  "capabilities": {
+    "core_installation": {
+      "name": "core_installation",
+      "available": false,
+      "version": null,
+      "features": [
+        "ImportError: No module named 'SpiffWorkflow'"
+      ],
+      "performance_metrics": {},
+      "integration_potential": "blocked"
+    },
+    "bpmn_workflow": {
+      "name": "bpmn_workflow",
+      "available": false,
+      "version": null,
+      "features": [
+        "ImportError: BPMN module not available"
+      ],
+      "performance_metrics": {},
+      "integration_potential": "blocked"
+    },
+    "dmn_decisions": {
+      "name": "dmn_decisions",
+      "available": false,
+      "version": null,
+      "features": [
+        "ImportError: DMN module not available"
+      ],
+      "performance_metrics": {},
+      "integration_potential": "medium"
+    },
+    "script_tasks": {
+      "name": "script_tasks",
+      "available": false,
+      "version": null,
+      "features": [
+        "ImportError: Script task modules not available"
+      ],
+      "performance_metrics": {},
+      "integration_potential": "low"
+    },
+    "serialization": {
+      "name": "serialization",
+      "available": false,
+      "version": null,
+      "features": [
+        "ImportError: Serialization modules not available"
+      ],
+      "performance_metrics": {},
+      "integration_potential": "medium"
+    },
+    "autotel_integration": {
+      "name": "autotel_integration",
+      "available": true,
+      "version": null,
+      "features": [
+        "workflow_telemetry_instrumentation",
+        "business_process_tracing",
+        "decision_point_metrics",
+        "workflow_performance_analysis",
+        "process_bottleneck_detection",
+        "spiff_workflow_as_autotel_business_process",
+        "autotel_metaclass_spiff_task_instrumentation",
+        "workflow_span_creation_per_task",
+        "dmn_decision_telemetry_capture",
+        "script_task_performance_monitoring"
+      ],
+      "performance_metrics": {},
+      "integration_potential": "maximum"
+    }
+  }
+}
