@@ -40,14 +40,14 @@ uv pip install -e .
    autotel version
    ```
 
-3. **Validate a BPMN workflow**:
+3. **Validate an integrated workflow**:
    ```bash
-   autotel validate bpmn/sample_process.bpmn
+   autotel validate examples/ideal_workflow.bpmn
    ```
 
-4. **Execute a workflow**:
+4. **Execute an integrated workflow**:
    ```bash
-   autotel workflow bpmn/sample_process.bpmn
+   autotel workflow examples/ideal_workflow.bpmn
    ```
 
 ## 📋 CLI Commands
@@ -71,8 +71,8 @@ uv pip install -e .
 # Initialize with custom telemetry schema
 autotel init --telemetry-schema ./custom_schema.yaml --validation-level strict
 
-# Validate a BPMN file with strict validation
-autotel validate bpmn/sample_process.bpmn --strict
+# Validate an integrated workflow with strict validation
+autotel validate examples/ideal_workflow.bpmn --strict
 
 # Show telemetry statistics
 autotel telemetry --stats
@@ -83,148 +83,278 @@ autotel telemetry --export traces.json --format json
 # List available DSPy signatures
 autotel dspy --list
 
-# Execute a workflow with telemetry export
-autotel workflow bpmn/sample_process.bpmn --export-telemetry workflow_traces.json
-
-# Execute a DMN decision with input data
-autotel dmn bpmn/quality_decision.dmn --input '{"score": 85, "priority": "high"}'
+# Execute an integrated workflow with telemetry export
+autotel workflow examples/ideal_workflow.bpmn --export-telemetry workflow_traces.json
 
 # Show current configuration
 autotel config --show
 ```
 
-## 🔄 BPMN Workflow Integration
+## 🔄 Integrated BPMN + DMN + DSPy Workflows
 
-### Example BPMN Workflow
+AutoTel's power lies in combining all three technologies in a single file. Here are the integrated examples:
+
+### Example 1: Customer Feedback Processing (Complete Integration)
+
+**File**: `examples/ideal_workflow.bpmn`
+
+This workflow demonstrates the complete integration of BPMN, DMN, and DSPy in a single file:
 
 ```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
-  <bpmn:process id="order_processing" name="Order Processing">
-    <bpmn:startEvent id="start" name="Order Received"/>
-    <bpmn:task id="validate_order" name="Validate Order"/>
-    <bpmn:businessRuleTask id="check_credit" name="Check Credit Score"/>
-    <bpmn:serviceTask id="process_payment" name="Process Payment"/>
-    <bpmn:endEvent id="end" name="Order Completed"/>
+<?xml version="1.0"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" 
+                   xmlns:dspy="http://autotel.ai/dspy"
+                   xmlns:dmn="http://www.omg.org/spec/DMN/20191111/MODEL/"
+                   id="Definitions_1">
+  
+  <bpmn:process id="customer_feedback_workflow" name="Customer Feedback Processing" isExecutable="true">
     
-    <bpmn:sequenceFlow sourceRef="start" targetRef="validate_order"/>
-    <bpmn:sequenceFlow sourceRef="validate_order" targetRef="check_credit"/>
-    <bpmn:sequenceFlow sourceRef="check_credit" targetRef="process_payment"/>
-    <bpmn:sequenceFlow sourceRef="process_payment" targetRef="end"/>
+    <!-- DSPy Service Task - Analyze customer feedback -->
+    <bpmn:serviceTask id="ServiceTask_1" name="Analyze Customer Feedback">
+      <bpmn:extensionElements>
+        <dspy:signature name="CustomerFeedbackAnalyzer">
+          <dspy:model>ollama/qwen2.5:latest</dspy:model>
+          <dspy:input name="feedback_text" type="str" description="Customer feedback text to analyze"/>
+          <dspy:input name="customer_id" type="str" description="Customer identifier"/>
+          <dspy:output name="sentiment" type="str" description="Sentiment analysis result"/>
+          <dspy:output name="confidence" type="float" description="Confidence score (0.0-1.0)"/>
+          <dspy:output name="urgency_score" type="int" description="Urgency score (1-10)"/>
+          <dspy:output name="category" type="str" description="Feedback category"/>
+        </dspy:signature>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    
+    <!-- DMN Business Rule Task - Route based on analysis -->
+    <bpmn:businessRuleTask id="BusinessRuleTask_1" name="Route Feedback">
+      <bpmn:extensionElements>
+        <spiffext:spiffExtension>
+          <spiffext:decision name="feedback_routing" id="feedback_routing">
+            <spiffext:decisionTable>
+              <spiffext:input id="sentiment" label="Sentiment" typeRef="string"/>
+              <spiffext:input id="urgency_score" label="Urgency Score" typeRef="integer"/>
+              <spiffext:input id="confidence" label="Confidence" typeRef="double"/>
+              <spiffext:input id="category" label="Category" typeRef="string"/>
+              
+              <spiffext:output id="route" label="Route" typeRef="string"/>
+              <spiffext:output id="priority" label="Priority" typeRef="string"/>
+              <spiffext:output id="escalation_level" label="Escalation Level" typeRef="string"/>
+              
+              <!-- High urgency negative feedback -->
+              <spiffext:rule id="rule1">
+                <spiffext:inputEntry id="input1">"negative"</spiffext:inputEntry>
+                <spiffext:inputEntry id="input2">[8..10]</spiffext:inputEntry>
+                <spiffext:inputEntry id="input3">[0.7..1.0]</spiffext:inputEntry>
+                <spiffext:inputEntry id="input4">-</spiffext:inputEntry>
+                <spiffext:outputEntry id="output1">"immediate_escalation"</spiffext:outputEntry>
+                <spiffext:outputEntry id="output2">"critical"</spiffext:outputEntry>
+                <spiffext:outputEntry id="output3">"executive"</spiffext:outputEntry>
+              </spiffext:rule>
+              
+              <!-- Bug reports -->
+              <spiffext:rule id="rule2">
+                <spiffext:inputEntry id="input6">-</spiffext:inputEntry>
+                <spiffext:inputEntry id="input7">[5..10]</spiffext:inputEntry>
+                <spiffext:inputEntry id="input8">[0.6..1.0]</spiffext:inputEntry>
+                <spiffext:inputEntry id="input9">"bug"</spiffext:inputEntry>
+                <spiffext:outputEntry id="output4">"bug_triage"</spiffext:outputEntry>
+                <spiffext:outputEntry id="output5">"high"</spiffext:outputEntry>
+                <spiffext:outputEntry id="output6">"technical"</spiffext:outputEntry>
+              </spiffext:rule>
+              
+              <!-- Feature requests -->
+              <spiffext:rule id="rule3">
+                <spiffext:inputEntry id="input11">-</spiffext:inputEntry>
+                <spiffext:inputEntry id="input12">[1..7]</spiffext:inputEntry>
+                <spiffext:inputEntry id="input13">[0.5..1.0]</spiffext:inputEntry>
+                <spiffext:inputEntry id="input14">"feature"</spiffext:inputEntry>
+                <spiffext:outputEntry id="output7">"product_planning"</spiffext:outputEntry>
+                <spiffext:outputEntry id="output8">"medium"</spiffext:outputEntry>
+                <spiffext:outputEntry id="output9">"product"</spiffext:outputEntry>
+              </spiffext:rule>
+              
+              <!-- Positive feedback -->
+              <spiffext:rule id="rule4">
+                <spiffext:inputEntry id="input16">"positive"</spiffext:inputEntry>
+                <spiffext:inputEntry id="input17">[1..5]</spiffext:inputEntry>
+                <spiffext:inputEntry id="input18">[0.6..1.0]</spiffext:inputEntry>
+                <spiffext:inputEntry id="input19">-</spiffext:inputEntry>
+                <spiffext:outputEntry id="output10">"customer_success"</spiffext:outputEntry>
+                <spiffext:outputEntry id="output11">"low"</spiffext:outputEntry>
+                <spiffext:outputEntry id="output12">"none"</spiffext:outputEntry>
+              </spiffext:rule>
+              
+              <!-- Default case -->
+              <spiffext:rule id="rule5">
+                <spiffext:inputEntry id="input21">-</spiffext:inputEntry>
+                <spiffext:inputEntry id="input22">-</spiffext:inputEntry>
+                <spiffext:inputEntry id="input23">-</spiffext:inputEntry>
+                <spiffext:inputEntry id="input24">-</spiffext:inputEntry>
+                <spiffext:outputEntry id="output13">"manual_review"</spiffext:outputEntry>
+                <spiffext:outputEntry id="output14">"medium"</spiffext:outputEntry>
+                <spiffext:outputEntry id="output15">"supervisor"</spiffext:outputEntry>
+              </spiffext:rule>
+            </spiffext:decisionTable>
+          </spiffext:decision>
+        </spiffext:spiffExtension>
+      </bpmn:extensionElements>
+    </bpmn:businessRuleTask>
+    
+    <!-- Gateway to route based on DMN decision -->
+    <bpmn:exclusiveGateway id="Gateway_1" name="Route Decision">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+      <bpmn:outgoing>Flow_9</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    
+    <!-- User Tasks for different routes -->
+    <bpmn:userTask id="UserTask_1" name="Executive Escalation">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_10</bpmn:outgoing>
+    </bpmn:userTask>
+    
+    <bpmn:userTask id="UserTask_2" name="Bug Triage">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_11</bpmn:outgoing>
+    </bpmn:userTask>
+    
+    <bpmn:userTask id="UserTask_3" name="Product Planning Review">
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:outgoing>Flow_12</bpmn:outgoing>
+    </bpmn:userTask>
+    
+    <bpmn:userTask id="UserTask_4" name="Customer Success Follow-up">
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+      <bpmn:outgoing>Flow_13</bpmn:outgoing>
+    </bpmn:userTask>
+    
+    <bpmn:userTask id="UserTask_5" name="Manual Review">
+      <bpmn:incoming>Flow_9</bpmn:incoming>
+      <bpmn:outgoing>Flow_14</bpmn:outgoing>
+    </bpmn:userTask>
+    
+    <!-- End Event -->
+    <bpmn:endEvent id="EndEvent_1" name="Feedback Processed">
+      <bpmn:incoming>Flow_10</bpmn:incoming>
+      <bpmn:incoming>Flow_11</bpmn:incoming>
+      <bpmn:incoming>Flow_12</bpmn:incoming>
+      <bpmn:incoming>Flow_13</bpmn:incoming>
+      <bpmn:incoming>Flow_14</bpmn:incoming>
+    </bpmn:endEvent>
+    
+    <!-- Sequence Flows with conditional routing -->
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Gateway_1" targetRef="UserTask_1">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${route == "immediate_escalation"}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Gateway_1" targetRef="UserTask_2">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${route == "bug_triage"}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Gateway_1" targetRef="UserTask_3">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${route == "product_planning"}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Gateway_1" targetRef="UserTask_4">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${route == "customer_success"}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <bpmn:sequenceFlow id="Flow_9" sourceRef="Gateway_1" targetRef="UserTask_5">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${route == "manual_review"}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
   </bpmn:process>
+  
 </bpmn:definitions>
 ```
 
-### Workflow Execution
+### Example 2: Data Quality Analysis (Simplified Integration)
 
-```bash
-# Validate the workflow
-autotel validate bpmn/order_processing.bpmn
+**File**: `bpmn/dspy_dmn_workflow.bpmn`
 
-# Execute the workflow
-autotel workflow bpmn/order_processing.bpmn
-
-# Execute with telemetry export
-autotel workflow bpmn/order_processing.bpmn --export-telemetry order_traces.json
-```
-
-## 🎯 DMN Decision Tables
-
-### Example DMN Decision Table
+This workflow shows a simpler integration pattern:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/">
-  <decision id="credit_decision" name="Credit Decision">
-    <decisionTable hitPolicy="FIRST">
-      <input id="credit_score" label="Credit Score"/>
-      <input id="income" label="Annual Income"/>
-      <output id="approval" label="Approval Decision"/>
-      <output id="limit" label="Credit Limit"/>
-      
-      <rule id="rule1">
-        <inputEntry id="input1">
-          <text>>= 750</text>
-        </inputEntry>
-        <inputEntry id="input2">
-          <text>>= 50000</text>
-        </inputEntry>
-        <outputEntry id="output1">
-          <text>"APPROVED"</text>
-        </outputEntry>
-        <outputEntry id="output2">
-          <text>10000</text>
-        </outputEntry>
-      </rule>
-      
-      <rule id="rule2">
-        <inputEntry id="input3">
-          <text>< 750</text>
-        </inputEntry>
-        <inputEntry id="input4">
-          <text>< 50000</text>
-        </inputEntry>
-        <outputEntry id="output3">
-          <text>"DENIED"</text>
-        </outputEntry>
-        <outputEntry id="output4">
-          <text>0</text>
-        </outputEntry>
-      </rule>
-    </decisionTable>
-  </decision>
-</definitions>
-```
-
-### DMN Execution
-
-```bash
-# Validate the DMN decision table
-autotel dmn bpmn/credit_decision.dmn --validate-only
-
-# Execute the decision with input data
-autotel dmn bpmn/credit_decision.dmn --input '{"credit_score": 780, "income": 75000}'
-```
-
-## 🤖 DSPy AI Integration
-
-### Example DSPy Signature
-
-```python
-# DSPy signature for credit analysis
-@dspy_signature
-def analyze_credit_risk(customer_data: dict) -> dict:
-    """
-    Analyze customer credit risk using AI.
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:dspy="http://autotel.ai/dspy"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  id="Definitions_1">
+  
+  <!-- DSPy Signature Definition -->
+  <dspy:signatures>
+    <dspy:signature name="analyze_data" description="Analyze input data">
+      <dspy:input name="data" description="Input data to analyze"/>
+      <dspy:output name="result" description="Analysis result"/>
+      <dspy:output name="quality" description="Data quality score"/>
+    </dspy:signature>
+  </dspy:signatures>
+  
+  <bpmn:process id="DspyDmnWorkflow" isExecutable="true">
     
-    Args:
-        customer_data: Customer information including credit history
-        
-    Returns:
-        dict: Risk assessment with score and recommendations
-    """
-    return {
-        "risk_score": 0.85,
-        "risk_level": "MEDIUM",
-        "recommendations": ["Request additional documentation", "Consider co-signer"]
-    }
+    <!-- DSPy Analysis Task -->
+    <bpmn:serviceTask id="ServiceTask_1" name="Analyze Data">
+      <bpmn:extensionElements>
+        <dspy:service name="analyze_data" result="analysis_result">
+          <dspy:param name="data" value="input_data"/>
+        </dspy:service>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    
+    <!-- DMN Decision Task -->
+    <bpmn:businessRuleTask id="BusinessRuleTask_1" name="Quality Decision" camunda:decisionRef="quality_decision">
+    </bpmn:businessRuleTask>
+    
+    <!-- Gateway for conditional routing -->
+    <bpmn:exclusiveGateway id="Gateway_1" name="Route Decision">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    
+    <!-- Conditional flows based on DMN decision -->
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Gateway_1" targetRef="EndEvent_1">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
+        ${action == "proceed"}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Gateway_1" targetRef="EndEvent_2">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
+        ${action == "stop"}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+  </bpmn:process>
+  
+</bpmn:definitions>
 ```
 
-### DSPy Usage
+## 🎯 How the Integration Works
 
-```bash
-# List available DSPy signatures
-autotel dspy --list
+### 1. **DSPy in BPMN**
+- **Signature Definition**: DSPy signatures are defined in the BPMN XML using `<dspy:signature>` elements
+- **Service Tasks**: BPMN service tasks can call DSPy services using `<dspy:service>` extensions
+- **AI-Powered Analysis**: DSPy provides LLM-powered analysis, classification, and decision support
 
-# Call a DSPy signature with input data
-autotel dspy --call analyze_credit_risk --input '{"credit_history": "good", "income": 60000}'
+### 2. **DMN in BPMN**
+- **Business Rule Tasks**: BPMN business rule tasks execute DMN decision tables
+- **Decision Tables**: DMN decision tables are embedded in the BPMN XML
+- **Structured Decisions**: DMN provides rule-based decision making with clear input/output mappings
 
-# Show DSPy statistics
-autotel dspy --stats
+### 3. **BPMN Orchestration**
+- **Workflow Control**: BPMN orchestrates the entire process flow
+- **Conditional Routing**: BPMN gateways route based on DSPy analysis and DMN decisions
+- **Task Management**: BPMN manages user tasks, service tasks, and business rule tasks
 
-# Clear DSPy cache
-autotel dspy --clear-cache
-```
+### 4. **Data Flow**
+1. **Input** → BPMN Start Event
+2. **DSPy Analysis** → AI-powered processing and analysis
+3. **DMN Decision** → Rule-based decision making
+4. **BPMN Routing** → Conditional workflow routing
+5. **Output** → BPMN End Event
 
 ## 📊 Telemetry-First Architecture
 
@@ -241,14 +371,14 @@ Every CLI command is automatically wrapped in OpenTelemetry spans with:
 
 ```json
 {
-  "name": "validate",
+  "name": "workflow",
   "attributes": {
     "operation_type": "class_analysis",
     "module": "autotel.cli",
-    "function": "validate",
+    "function": "workflow",
     "file_path": "/Users/sac/autotel/autotel/cli.py",
-    "file_path": "bpmn/sample_process.bpmn",
-    "strict": false
+    "file_path": "examples/ideal_workflow.bpmn",
+    "export_telemetry": "workflow_traces.json"
   },
   "events": [],
   "resource": {
@@ -310,85 +440,44 @@ export AUTOTEL_TELEMETRY_ENABLED="true"
 
 ## 📚 Use Case Examples
 
-### Use Case 1: Loan Application Processing
+### Use Case 1: Customer Feedback Processing
 
-**Scenario**: Automated loan application processing with AI-powered risk assessment.
+**Scenario**: Automated customer feedback processing with AI-powered analysis and intelligent routing.
 
-**Components**:
-- **BPMN**: Loan application workflow
-- **DMN**: Credit scoring decision table
-- **DSPy**: AI-powered risk analysis
+**Components** (all in one file):
+- **BPMN**: Customer feedback workflow orchestration
+- **DSPy**: AI-powered sentiment analysis and classification
+- **DMN**: Business rules for routing and escalation
 
 **Workflow**:
-1. Customer submits loan application
-2. BPMN workflow validates application data
-3. DMN decision table calculates initial credit score
-4. DSPy AI analyzes additional risk factors
-5. Final approval decision made
+1. Customer submits feedback
+2. DSPy AI analyzes sentiment, urgency, and category
+3. DMN decision table routes based on analysis results
+4. BPMN routes to appropriate team (executive escalation, bug triage, product planning, etc.)
 
 ```bash
-# Execute the loan processing workflow
-autotel workflow bpmn/loan_application.bpmn --export-telemetry loan_traces.json
-
-# Check the DMN decision
-autotel dmn bpmn/credit_scoring.dmn --input '{"income": 75000, "credit_score": 720}'
-
-# Use DSPy for risk analysis
-autotel dspy --call analyze_loan_risk --input '{"application_data": {...}}'
+# Execute the integrated customer feedback workflow
+autotel workflow examples/ideal_workflow.bpmn --export-telemetry feedback_traces.json
 ```
 
-### Use Case 2: Quality Assurance Pipeline
+### Use Case 2: Data Quality Pipeline
 
-**Scenario**: Automated quality control with ML-powered defect detection.
+**Scenario**: Automated data quality assessment with ML-powered analysis and rule-based decisions.
 
-**Components**:
-- **BPMN**: Quality control workflow
-- **DMN**: Quality thresholds decision table
-- **DSPy**: ML model for defect classification
-
-**Workflow**:
-1. Product enters quality control
-2. Automated tests run
-3. DMN evaluates test results against thresholds
-4. DSPy AI classifies defects
-5. Decision made on product disposition
-
-```bash
-# Execute quality control workflow
-autotel workflow bpmn/quality_control.bpmn
-
-# Evaluate quality thresholds
-autotel dmn bpmn/quality_thresholds.dmn --input '{"test_score": 85, "defect_count": 2}'
-
-# Classify defects with AI
-autotel dspy --call classify_defects --input '{"defect_images": [...], "test_results": {...}}'
-```
-
-### Use Case 3: Customer Service Automation
-
-**Scenario**: Intelligent customer service with automated routing and resolution.
-
-**Components**:
-- **BPMN**: Customer service workflow
-- **DMN**: Service level agreement rules
-- **DSPy**: Customer intent classification and response generation
+**Components** (all in one file):
+- **BPMN**: Data processing workflow
+- **DSPy**: ML-powered data quality analysis
+- **DMN**: Quality thresholds and routing decisions
 
 **Workflow**:
-1. Customer submits support ticket
-2. DSPy AI classifies intent and priority
-3. DMN determines SLA requirements
-4. BPMN routes to appropriate team
-5. DSPy generates initial response
+1. Data enters the pipeline
+2. DSPy AI analyzes data quality and patterns
+3. DMN evaluates quality scores against thresholds
+4. BPMN routes data for processing or rejection
 
 ```bash
-# Process customer service ticket
-autotel workflow bpmn/customer_service.bpmn
-
-# Classify customer intent
-autotel dspy --call classify_intent --input '{"ticket_text": "My order is delayed..."}'
-
-# Determine SLA requirements
-autotel dmn bpmn/sla_rules.dmn --input '{"priority": "high", "customer_tier": "premium"}'
+# Execute the integrated data quality workflow
+autotel workflow bpmn/dspy_dmn_workflow.bpmn --export-telemetry quality_traces.json
 ```
 
 ## 🛠️ Development
@@ -450,7 +539,7 @@ def my_ai_function(input_data: dict) -> dict:
 export AUTOTEL_LOG_LEVEL="DEBUG"
 
 # Run with debug output
-autotel --verbose validate bpmn/sample_process.bpmn
+autotel --verbose validate examples/ideal_workflow.bpmn
 ```
 
 ## 📈 Monitoring and Observability
@@ -462,7 +551,7 @@ autotel --verbose validate bpmn/sample_process.bpmn
 autotel telemetry --export traces.json
 
 # Analyze with external tools
-jq '.spans[] | select(.attributes.function == "validate")' traces.json
+jq '.spans[] | select(.attributes.function == "workflow")' traces.json
 ```
 
 ### Performance Monitoring
@@ -472,7 +561,7 @@ jq '.spans[] | select(.attributes.function == "validate")' traces.json
 autotel dspy --stats
 
 # Monitor workflow execution
-autotel workflow bpmn/sample_process.bpmn --export-telemetry perf_traces.json
+autotel workflow examples/ideal_workflow.bpmn --export-telemetry perf_traces.json
 ```
 
 ## 🤝 Contributing
@@ -496,4 +585,4 @@ MIT License - see LICENSE file for details.
 
 ---
 
-**AutoTel**: Enterprise BPMN 2.0 orchestration with AI-powered decision making and zero-touch telemetry integration. 🚀
+**AutoTel**: Enterprise BPMN 2.0 orchestration with integrated AI-powered decision making and zero-touch telemetry integration. 🚀
