@@ -1,0 +1,403 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:dspy="http://autotel.ai/dspy"
+                  xmlns:dmndi="http://www.omg.org/spec/DMN/20191111/DMNDI/"
+                  xmlns:dmn="http://www.omg.org/spec/DMN/20191111/MODEL/"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Definitions_1"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  
+  <!-- DSPy Signature Definitions -->
+  <dspy:signatures>
+    <dspy:signature name="perform_work" description="Perform work based on type and context">
+      <dspy:input name="work_type" description="Type of work to perform (initial_work, continued_work)"/>
+      <dspy:input name="iteration" description="Current iteration number"/>
+      <dspy:input name="interpretation" description="Previous interpretation if available" optional="true"/>
+      <dspy:output name="work_result" description="Result of the work performed"/>
+      <dspy:output name="work_metadata" description="Metadata about the work performed"/>
+    </dspy:signature>
+    
+    <dspy:signature name="interpret_workflow_results" description="Interpret workflow results and decide on next steps">
+      <dspy:input name="work_result" description="Result of the work performed"/>
+      <dspy:input name="execution_history" description="History of previous executions"/>
+      <dspy:input name="current_iteration" description="Current iteration number"/>
+      <dspy:output name="should_continue" description="Whether the workflow should continue (true/false)"/>
+      <dspy:output name="reasoning" description="Reasoning for the decision"/>
+      <dspy:output name="recommendations" description="Recommendations for next steps"/>
+    </dspy:signature>
+    
+    <dspy:signature name="generate_workflow_summary" description="Generate a comprehensive summary of the workflow execution">
+      <dspy:input name="work_result" description="Final work result"/>
+      <dspy:input name="interpretation" description="Final interpretation"/>
+      <dspy:input name="execution_history" description="Complete execution history"/>
+      <dspy:input name="current_iteration" description="Final iteration number"/>
+      <dspy:output name="final_summary" description="Comprehensive summary of the workflow execution"/>
+      <dspy:output name="key_insights" description="Key insights from the execution"/>
+      <dspy:output name="performance_metrics" description="Performance metrics and statistics"/>
+    </dspy:signature>
+  </dspy:signatures>
+  
+  <!-- DMN Decision Definitions -->
+  <dmn:definitions id="WorkflowDecisions" name="Workflow Decision Model">
+    
+    <!-- Decision: Should Continue Workflow -->
+    <dmn:decision id="ContinueDecision" name="Should Continue Workflow">
+      <dmn:decisionTable id="ContinueDecisionTable" hitPolicy="UNIQUE">
+        <dmn:input id="WorkResultInput" label="Work Result Quality">
+          <dmn:inputExpression id="WorkResultExpression" typeRef="string">
+            <dmn:text>work_result_quality</dmn:text>
+          </dmn:inputExpression>
+        </dmn:input>
+        <dmn:input id="IterationInput" label="Current Iteration">
+          <dmn:inputExpression id="IterationExpression" typeRef="integer">
+            <dmn:text>current_iteration</dmn:text>
+          </dmn:inputExpression>
+        </dmn:input>
+        <dmn:input id="MaxIterationsInput" label="Max Iterations">
+          <dmn:inputExpression id="MaxIterationsExpression" typeRef="integer">
+            <dmn:text>max_iterations</dmn:text>
+          </dmn:inputExpression>
+        </dmn:input>
+        <dmn:output id="ContinueOutput" label="Should Continue" typeRef="boolean"/>
+        <dmn:output id="ReasonOutput" label="Reason" typeRef="string"/>
+        
+        <!-- Decision Rules -->
+        <dmn:rule id="Rule1">
+          <dmn:description>Continue if work quality is good and under max iterations</dmn:description>
+          <dmn:inputEntry id="InputEntry1">
+            <dmn:text>"good"</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry2">
+            <dmn:text>&lt; max_iterations</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry3">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="OutputEntry1">
+            <dmn:text>true</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry2">
+            <dmn:text>"Work quality is good and under iteration limit"</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+        
+        <dmn:rule id="Rule2">
+          <dmn:description>Stop if work quality is poor</dmn:description>
+          <dmn:inputEntry id="InputEntry4">
+            <dmn:text>"poor"</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry5">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry6">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="OutputEntry3">
+            <dmn:text>false</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry4">
+            <dmn:text>"Work quality is poor, stopping workflow"</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+        
+        <dmn:rule id="Rule3">
+          <dmn:description>Stop if max iterations reached</dmn:description>
+          <dmn:inputEntry id="InputEntry7">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry8">
+            <dmn:text>&gt;= max_iterations</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry9">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="OutputEntry5">
+            <dmn:text>false</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry6">
+            <dmn:text>"Maximum iterations reached"</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+      </dmn:decisionTable>
+    </dmn:decision>
+    
+    <!-- Decision: Work Quality Assessment -->
+    <dmn:decision id="QualityDecision" name="Assess Work Quality">
+      <dmn:decisionTable id="QualityDecisionTable" hitPolicy="UNIQUE">
+        <dmn:input id="WorkResultInput2" label="Work Result">
+          <dmn:inputExpression id="WorkResultExpression2" typeRef="string">
+            <dmn:text>work_result</dmn:text>
+          </dmn:inputExpression>
+        </dmn:input>
+        <dmn:input id="IterationInput2" label="Iteration Number">
+          <dmn:inputExpression id="IterationExpression2" typeRef="integer">
+            <dmn:text>current_iteration</dmn:text>
+          </dmn:inputExpression>
+        </dmn:input>
+        <dmn:output id="QualityOutput" label="Work Quality" typeRef="string"/>
+        <dmn:output id="ConfidenceOutput" label="Confidence" typeRef="double"/>
+        
+        <!-- Decision Rules -->
+        <dmn:rule id="QualityRule1">
+          <dmn:description>High quality for successful completion</dmn:description>
+          <dmn:inputEntry id="QualityInputEntry1">
+            <dmn:text>contains "completed" or contains "success"</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="QualityInputEntry2">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="QualityOutputEntry1">
+            <dmn:text>"good"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="QualityOutputEntry2">
+            <dmn:text>0.9</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+        
+        <dmn:rule id="QualityRule2">
+          <dmn:description>Medium quality for partial completion</dmn:description>
+          <dmn:inputEntry id="QualityInputEntry3">
+            <dmn:text>contains "partial" or contains "incomplete"</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="QualityInputEntry4">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="QualityOutputEntry3">
+            <dmn:text>"medium"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="QualityOutputEntry4">
+            <dmn:text>0.6</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+        
+        <dmn:rule id="QualityRule3">
+          <dmn:description>Poor quality for errors or failures</dmn:description>
+          <dmn:inputEntry id="QualityInputEntry5">
+            <dmn:text>contains "error" or contains "fail" or contains "exception"</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="QualityInputEntry6">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="QualityOutputEntry5">
+            <dmn:text>"poor"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="QualityOutputEntry6">
+            <dmn:text>0.2</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+        
+        <dmn:rule id="QualityRule4">
+          <dmn:description>Default quality assessment</dmn:description>
+          <dmn:inputEntry id="QualityInputEntry7">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="QualityInputEntry8">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="QualityOutputEntry7">
+            <dmn:text>"unknown"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="QualityOutputEntry8">
+            <dmn:text>0.5</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+      </dmn:decisionTable>
+    </dmn:decision>
+    
+  </dmn:definitions>
+  
+  <bpmn:process id="SelfInterpretingWorkflowWithDMN" isExecutable="true">
+    
+    <!-- Start Event -->
+    <bpmn:startEvent id="StartEvent_1" name="Start Self-Interpreting Workflow">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    
+    <!-- Initial Work Task -->
+    <bpmn:serviceTask id="ServiceTask_1" name="Perform Initial Work">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+      <bpmn:extensionElements>
+        <dspy:service name="perform_work" result="work_result">
+          <dspy:param name="work_type" value="initial_work"/>
+          <dspy:param name="iteration" value="current_iteration"/>
+        </dspy:service>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    
+    <!-- Sequence Flow from Start to Initial Work -->
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="ServiceTask_1"/>
+    
+    <!-- DMN Business Rule Task: Assess Work Quality -->
+    <bpmn:businessRuleTask id="BusinessRuleTask_1" name="Assess Work Quality">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+      <bpmn:extensionElements>
+        <dmn:decision id="QualityDecision" name="Assess Work Quality"/>
+      </bpmn:extensionElements>
+    </bpmn:businessRuleTask>
+    
+    <!-- Sequence Flow from Initial Work to Quality Assessment -->
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="ServiceTask_1" targetRef="BusinessRuleTask_1"/>
+    
+    <!-- DMN Business Rule Task: Continue Decision -->
+    <bpmn:businessRuleTask id="BusinessRuleTask_2" name="Continue Decision">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+      <bpmn:extensionElements>
+        <dmn:decision id="ContinueDecision" name="Should Continue Workflow"/>
+      </bpmn:extensionElements>
+    </bpmn:businessRuleTask>
+    
+    <!-- Sequence Flow from Quality Assessment to Continue Decision -->
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="BusinessRuleTask_1" targetRef="BusinessRuleTask_2"/>
+    
+    <!-- Continue Workflow Path -->
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="BusinessRuleTask_2" targetRef="ServiceTask_3">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
+        ${continue_decision == true}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <!-- Continue Work Task -->
+    <bpmn:serviceTask id="ServiceTask_3" name="Continue Work">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+      <bpmn:extensionElements>
+        <dspy:service name="perform_work" result="work_result">
+          <dspy:param name="work_type" value="continued_work"/>
+          <dspy:param name="interpretation" value="continue_reason"/>
+          <dspy:param name="iteration" value="current_iteration"/>
+        </dspy:service>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    
+    <!-- Loop Back to Quality Assessment -->
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="ServiceTask_3" targetRef="BusinessRuleTask_1"/>
+    
+    <!-- Complete Workflow Path -->
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="BusinessRuleTask_2" targetRef="ServiceTask_4">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
+        ${continue_decision == false}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <!-- Final Summary Task -->
+    <bpmn:serviceTask id="ServiceTask_4" name="Generate Final Summary">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+      <bpmn:extensionElements>
+        <dspy:service name="generate_workflow_summary" result="final_summary">
+          <dspy:param name="work_result" value="work_result"/>
+          <dspy:param name="interpretation" value="continue_reason"/>
+          <dspy:param name="execution_history" value="execution_history"/>
+          <dspy:param name="current_iteration" value="current_iteration"/>
+        </dspy:service>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    
+    <!-- Sequence Flow to End -->
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="ServiceTask_4" targetRef="EndEvent_1"/>
+    
+    <!-- End Event -->
+    <bpmn:endEvent id="EndEvent_1" name="Workflow Complete">
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+    </bpmn:endEvent>
+    
+  </bpmn:process>
+  
+  <!-- BPMN Diagram -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="SelfInterpretingWorkflowWithDMN">
+      
+      <!-- Start Event -->
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="152" y="232" width="36" height="36"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="148" y="275" width="44" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <!-- Initial Work Task -->
+      <bpmndi:BPMNShape id="ServiceTask_1_di" bpmnElement="ServiceTask_1">
+        <dc:Bounds x="240" y="210" width="100" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+      
+      <!-- Quality Assessment Task -->
+      <bpmndi:BPMNShape id="BusinessRuleTask_1_di" bpmnElement="BusinessRuleTask_1">
+        <dc:Bounds x="400" y="210" width="100" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+      
+      <!-- Continue Decision Task -->
+      <bpmndi:BPMNShape id="BusinessRuleTask_2_di" bpmnElement="BusinessRuleTask_2">
+        <dc:Bounds x="560" y="210" width="100" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+      
+      <!-- Continue Work Task -->
+      <bpmndi:BPMNShape id="ServiceTask_3_di" bpmnElement="ServiceTask_3">
+        <dc:Bounds x="400" y="350" width="100" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+      
+      <!-- Final Summary Task -->
+      <bpmndi:BPMNShape id="ServiceTask_4_di" bpmnElement="ServiceTask_4">
+        <dc:Bounds x="720" y="210" width="100" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+      
+      <!-- End Event -->
+      <bpmndi:BPMNShape id="EndEvent_1_di" bpmnElement="EndEvent_1">
+        <dc:Bounds x="882" y="232" width="36" height="36"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="878" y="275" width="44" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <!-- Sequence Flows -->
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="188" y="250"/>
+        <di:waypoint x="240" y="250"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="340" y="250"/>
+        <di:waypoint x="400" y="250"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="500" y="250"/>
+        <di:waypoint x="560" y="250"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="610" y="250"/>
+        <di:waypoint x="610" y="350"/>
+        <di:waypoint x="500" y="350"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="660" y="250"/>
+        <di:waypoint x="720" y="250"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="400" y="390"/>
+        <di:waypoint x="400" y="290"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
+        <di:waypoint x="820" y="250"/>
+        <di:waypoint x="882" y="250"/>
+      </bpmndi:BPMNEdge>
+      
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  
+</bpmn:definitions> 

@@ -1,14 +1,14 @@
 """
 Advanced DSPy Services for BPMN Integration with SHACL Validation
-Supports the Four Pillars architecture: BPMN + DMN + DSPy + SHACL
+Allows calling any DSPy signature from BPMN XML using Service Tasks
+Supports dynamic signature creation from XML definitions with SHACL validation
 """
 
 import json
-import dspy
-from typing import Dict, Any, Optional, Type, List
-from dataclasses import dataclass
-from pathlib import Path
 import logging
+import dspy
+from typing import Dict, Any, Optional, Type
+from dataclasses import dataclass
 from rdflib import Graph, URIRef, Literal, Namespace
 from rdflib.namespace import RDF, XSD
 import pyshacl
@@ -17,13 +17,8 @@ import pyshacl
 logger = logging.getLogger(__name__)
 
 # Configure DSPy globally
-try:
-    ollama_lm = dspy.LM('ollama/qwen3:latest', temperature=0.7)
-    dspy.configure(lm=ollama_lm)
-except Exception as e:
-    logger.warning(f"Could not configure DSPy with Ollama: {e}")
-    # Fallback to mock LM for testing
-    dspy.configure(lm=dspy.MockLM())
+ollama_lm = dspy.LM('ollama/qwen3:latest', temperature=0.7)
+dspy.configure(lm=ollama_lm)
 
 @dataclass
 class AdvancedDSPySignature:
@@ -33,7 +28,7 @@ class AdvancedDSPySignature:
     input_fields: Dict[str, str]  # field_name -> description
     output_fields: Dict[str, str]  # field_name -> description
     shacl_input_shapes: Dict[str, str] = None  # field_name -> shape_uri
-    shacl_output_shapes: Dict[str, str] = None  # field_name -> shape_uri
+    shacl_output_shapes: Dict[str, str] = None  # output_name -> shape_uri
     validation_enabled: bool = True
 
 class AdvancedDSPyServiceRegistry:
@@ -44,29 +39,40 @@ class AdvancedDSPyServiceRegistry:
         self._predict_modules: Dict[str, dspy.Predict] = {}
         self._parser_signatures: Dict[str, Type[dspy.Signature]] = {}
         self._shacl_graph = Graph()
-        self._validation_cache = {}
     
-    def register_signature(self, name: str, signature_class: Type[dspy.Signature], 
-                          description: str = "", shacl_shapes: Dict[str, Dict[str, str]] = None):
-        """Register a DSPy signature with optional SHACL shapes"""
-        # Extract field information
-        input_fields = {}
-        output_fields = {}
+    def create_dynamic_signature(self, name: str, input_fields: Dict[str, str], 
+                                output_fields: Dict[str, str], description: str = "") -> Type[dspy.Signature]:
+        """Create a DSPy signature dynamically from field definitions"""
         
-        # Get all attributes of the class
-        for attr_name in dir(signature_class):
-            if not attr_name.startswith('_'):
-                attr_value = getattr(signature_class, attr_name)
-                if hasattr(attr_value, '__class__'):
-                    tname = attr_value.__class__.__name__
-                    if tname == 'InputField':
-                        input_fields[attr_name] = getattr(attr_value, 'desc', attr_name)
-                    elif tname == 'OutputField':
-                        output_fields[attr_name] = getattr(attr_value, 'desc', attr_name)
+        # Create input field attributes
+        input_attrs = {}
+        for field_name, field_desc in input_fields.items():
+            input_attrs[field_name] = dspy.InputField(desc=field_desc)
         
-        # Extract SHACL shapes if provided
-        shacl_input_shapes = shacl_shapes.get('inputs', {}) if shacl_shapes else None
-        shacl_output_shapes = shacl_shapes.get('outputs', {}) if shacl_shapes else None
+        # Create output field attributes
+        output_attrs = {}
+        for field_name, field_desc in output_fields.items():
+            output_attrs[field_name] = dspy.OutputField(desc=field_desc)
+        
+        # Create the signature class dynamically
+        signature_class = type(
+            name,
+            (dspy.Signature,),
+            {
+                "__doc__": description,
+                **input_attrs,
+                **output_attrs
+            }
+        )
+        
+        return signature_class
+    
+    def register_dynamic_signature(self, name: str, input_fields: Dict[str, str], 
+                                  output_fields: Dict[str, str], description: str = "",
+                                  shacl_input_shapes: Dict[str, str] = None,
+                                  shacl_output_shapes: Dict[str, str] = None):
+        """Register a dynamically created DSPy signature with SHACL validation"""
+        signature_class = self.create_dynamic_signature(name, input_fields, output_fields, description)
         
         # Create registry entry
         signature_info = AdvancedDSPySignature(
@@ -75,32 +81,24 @@ class AdvancedDSPyServiceRegistry:
             input_fields=input_fields,
             output_fields=output_fields,
             shacl_input_shapes=shacl_input_shapes,
-            shacl_output_shapes=shacl_output_shapes
+            shacl_output_shapes=shacl_output_shapes,
+            validation_enabled=True
         )
         self._signatures[name] = signature_info
         self._predict_modules[name] = dspy.Predict(signature_class)
-        
-        logger.info(f"Registered DSPy signature: {name}")
-        logger.info(f"  Inputs: {list(input_fields.keys())}")
-        logger.info(f"  Outputs: {list(output_fields.keys())}")
-        if shacl_input_shapes:
-            logger.info(f"  Input SHACL shapes: {shacl_input_shapes}")
-        if shacl_output_shapes:
-            logger.info(f"  Output SHACL shapes: {shacl_output_shapes}")
     
     def register_parser_signatures(self, parser_signatures: Dict[str, Type[dspy.Signature]], 
                                  shacl_graph: Graph = None):
-        """Register dynamic signatures from the BPMN parser with SHACL support"""
-        if shacl_graph:
-            self._shacl_graph = shacl_graph
-        
+        """Register dynamic signatures from the BPMN parser"""
         for name, signature_class in parser_signatures.items():
             self._parser_signatures[name] = signature_class
             self._predict_modules[name] = dspy.Predict(signature_class)
-            logger.info(f"Registered parser signature: {name}")
+        
+        if shacl_graph:
+            self._shacl_graph = shacl_graph
     
     def add_shacl_shapes(self, shacl_graph: Graph):
-        """Add SHACL shapes to the registry"""
+        """Add SHACL shapes for validation"""
         self._shacl_graph = shacl_graph
     
     def call_signature(self, signature_name: str, **kwargs) -> Dict[str, Any]:
@@ -128,7 +126,7 @@ class AdvancedDSPyServiceRegistry:
                     self._validate_outputs_with_shacl(signature_name, output_dict, sig_info)
             
             return output_dict
-            
+                
         except Exception as e:
             logger.error(f"Error calling DSPy signature '{signature_name}': {str(e)}")
             raise
@@ -230,99 +228,11 @@ class AdvancedDSPyServiceRegistry:
 # Global advanced registry instance
 advanced_dspy_registry = AdvancedDSPyServiceRegistry()
 
-# Advanced DSPy signatures with SHACL integration
-class CustomerRiskAnalysis(dspy.Signature):
-    """AI-powered customer risk assessment with SHACL validation"""
-    customer_profile = dspy.InputField(desc="Customer demographic and financial data")
-    transaction_history = dspy.InputField(desc="Historical transaction patterns")
-    risk_score = dspy.OutputField(desc="Numerical risk assessment (0-100)")
-    risk_factors = dspy.OutputField(desc="Key risk factors identified")
-
-class DocumentGeneration(dspy.Signature):
-    """Generate documents from templates with validation"""
-    template_type = dspy.InputField(desc="Type of document to generate")
-    data_context = dspy.InputField(desc="Context data for document generation")
-    generated_document = dspy.OutputField(desc="Generated document content")
-
-class DataQualityAssessment(dspy.Signature):
-    """Assess data quality using AI and SHACL validation"""
-    data_sample = dspy.InputField(desc="Sample of data to assess")
-    quality_metrics = dspy.OutputField(desc="Quality assessment metrics")
-    recommendations = dspy.OutputField(desc="Recommendations for improvement")
-
-class ProcessOptimization(dspy.Signature):
-    """Optimize business processes using AI analysis"""
-    process_data = dspy.InputField(desc="Process execution data")
-    optimization_suggestions = dspy.OutputField(desc="Process optimization suggestions")
-    expected_improvement = dspy.OutputField(desc="Expected improvement percentage")
-
-# Register advanced signatures with SHACL shapes
-advanced_dspy_registry.register_signature(
-    "customer_risk_analysis",
-    CustomerRiskAnalysis,
-    "AI-powered customer risk assessment with SHACL validation",
-    {
-        'inputs': {
-            'customer_profile': 'http://autotel.ai/shapes#CustomerShape',
-            'transaction_history': 'http://autotel.ai/shapes#TransactionHistoryShape'
-        },
-        'outputs': {
-            'risk_score': 'http://autotel.ai/shapes#RiskScoreShape',
-            'risk_factors': 'http://autotel.ai/shapes#RiskFactorsShape'
-        }
-    }
-)
-
-advanced_dspy_registry.register_signature(
-    "document_generation",
-    DocumentGeneration,
-    "Generate documents from templates with validation",
-    {
-        'inputs': {
-            'template_type': 'http://autotel.ai/shapes#TemplateTypeShape',
-            'data_context': 'http://autotel.ai/shapes#DocumentContextShape'
-        },
-        'outputs': {
-            'generated_document': 'http://autotel.ai/shapes#DocumentShape'
-        }
-    }
-)
-
-advanced_dspy_registry.register_signature(
-    "data_quality_assessment",
-    DataQualityAssessment,
-    "Assess data quality using AI and SHACL validation",
-    {
-        'inputs': {
-            'data_sample': 'http://autotel.ai/shapes#DataSampleShape'
-        },
-        'outputs': {
-            'quality_metrics': 'http://autotel.ai/shapes#QualityMetricsShape',
-            'recommendations': 'http://autotel.ai/shapes#RecommendationsShape'
-        }
-    }
-)
-
-advanced_dspy_registry.register_signature(
-    "process_optimization",
-    ProcessOptimization,
-    "Optimize business processes using AI analysis",
-    {
-        'inputs': {
-            'process_data': 'http://autotel.ai/shapes#ProcessDataShape'
-        },
-        'outputs': {
-            'optimization_suggestions': 'http://autotel.ai/shapes#OptimizationSuggestionsShape',
-            'expected_improvement': 'http://autotel.ai/shapes#ImprovementShape'
-        }
-    }
-)
-
-# Advanced service functions
+# Advanced service function for BPMN integration
 def advanced_dspy_service(operation_name: str, **operation_params) -> Dict[str, Any]:
     """
     Advanced function to call any DSPy signature with SHACL validation.
-    This is the main entry point for Service Tasks with validation.
+    This is the main entry point for Service Tasks with advanced features.
     
     Args:
         operation_name: Name of the registered DSPy signature
@@ -332,41 +242,19 @@ def advanced_dspy_service(operation_name: str, **operation_params) -> Dict[str, 
         Dictionary containing the results
     """
     try:
-        # Call the DSPy signature with validation
+        # Call the DSPy signature
         result = advanced_dspy_registry.call_signature(operation_name, **operation_params)
         return result
         
     except Exception as e:
-        logger.error(f"Error in advanced DSPy service '{operation_name}': {str(e)}")
         # Return error information
-        return {
+        error_result = {
             "error": True,
             "message": str(e),
             "operation": operation_name
         }
+        return error_result
 
-def call_customer_risk_analysis(customer_profile: Dict[str, Any], 
-                              transaction_history: Dict[str, Any]) -> Dict[str, Any]:
-    """Convenience function for customer risk analysis"""
-    return advanced_dspy_service("customer_risk_analysis", 
-                               customer_profile=customer_profile,
-                               transaction_history=transaction_history)
-
-def call_document_generation(template_type: str, data_context: Dict[str, Any]) -> Dict[str, Any]:
-    """Convenience function for document generation"""
-    return advanced_dspy_service("document_generation", 
-                               template_type=template_type,
-                               data_context=data_context)
-
-def call_data_quality_assessment(data_sample: Dict[str, Any]) -> Dict[str, Any]:
-    """Convenience function for data quality assessment"""
-    return advanced_dspy_service("data_quality_assessment", 
-                               data_sample=data_sample)
-
-def call_process_optimization(process_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Convenience function for process optimization"""
-    return advanced_dspy_service("process_optimization", 
-                               process_data=process_data)
-
-# Export for workflow integration
-advanced_dspy_service = advanced_dspy_service 
+def initialize_advanced_dspy_services():
+    """Initialize advanced DSPy services (no hardcoded signatures)"""
+    logger.info("Advanced DSPy services initialized - all signatures will be loaded from XML") 

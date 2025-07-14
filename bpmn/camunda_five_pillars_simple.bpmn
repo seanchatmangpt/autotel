@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:dspy="http://autotel.ai/dspy"
+                  xmlns:shacl="http://www.w3.org/ns/shacl#"
+                  xmlns:owl="http://www.w3.org/2002/07/owl#"
+                  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                  xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:modeler="http://camunda.org/schema/modeler/1.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Definitions_CamundaFivePillarsSimple"
+                  targetNamespace="http://bpmn.io/schema/bpmn"
+                  exporter="Camunda Modeler"
+                  exporterVersion="4.11.1"
+                  modeler:executionPlatform="Camunda Platform"
+                  modeler:executionPlatformVersion="7.15.0">
+
+  <!-- Five Pillars Integration -->
+  
+  <!-- 1. DSPy Signatures -->
+  <dspy:signatures>
+    <dspy:signature name="customer_analysis" description="Analyze customer data with AI">
+      <dspy:input name="customer_data" description="Customer information" />
+      <dspy:input name="risk_factors" description="Risk assessment factors" />
+      <dspy:output name="analysis_result" description="AI analysis result" />
+      <dspy:output name="recommendation" description="AI recommendation" />
+    </dspy:signature>
+    
+    <dspy:signature name="fraud_detection" description="Detect potential fraud with AI">
+      <dspy:input name="transaction_data" description="Transaction information" />
+      <dspy:output name="fraud_score" description="Fraud risk score" />
+      <dspy:output name="fraud_indicators" description="Fraud indicators" />
+    </dspy:signature>
+  </dspy:signatures>
+
+  <!-- 2. SHACL Shapes -->
+  <shacl:shapes>
+    <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+             xmlns:shacl="http://www.w3.org/ns/shacl#"
+             xmlns:xsd="http://www.w3.org/2001/XMLSchema#">
+      
+      <shacl:NodeShape rdf:about="http://autotel.ai/shapes#CustomerShape">
+        <shacl:property>
+          <shacl:PropertyShape>
+            <shacl:path rdf:resource="http://autotel.ai/props#customerId"/>
+            <shacl:datatype rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+            <shacl:minCount>1</shacl:minCount>
+          </shacl:PropertyShape>
+        </shacl:property>
+      </shacl:NodeShape>
+
+      <shacl:NodeShape rdf:about="http://autotel.ai/shapes#TransactionShape">
+        <shacl:property>
+          <shacl:PropertyShape>
+            <shacl:path rdf:resource="http://autotel.ai/props#amount"/>
+            <shacl:datatype rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+            <shacl:minInclusive rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">0.01</shacl:minInclusive>
+          </shacl:PropertyShape>
+        </shacl:property>
+      </shacl:NodeShape>
+    </rdf:RDF>
+  </shacl:shapes>
+
+  <!-- 3. OWL Ontology -->
+  <owl:Ontology rdf:about="http://autotel.ai/ontology#WorkflowOntology">
+    <owl:imports rdf:resource="http://www.w3.org/2002/07/owl"/>
+    
+    <owl:Class rdf:about="http://autotel.ai/ontology#Customer">
+      <rdfs:subClassOf rdf:resource="http://autotel.ai/ontology#Entity"/>
+    </owl:Class>
+    
+    <owl:Class rdf:about="http://autotel.ai/ontology#Transaction">
+      <rdfs:subClassOf rdf:resource="http://autotel.ai/ontology#Entity"/>
+    </owl:Class>
+    
+    <owl:ObjectProperty rdf:about="http://autotel.ai/ontology#hasCustomer">
+      <rdfs:domain rdf:resource="http://autotel.ai/ontology#Transaction"/>
+      <rdfs:range rdf:resource="http://autotel.ai/ontology#Customer"/>
+    </owl:ObjectProperty>
+  </owl:Ontology>
+
+  <!-- 4. DMN Decision Table -->
+  <dmn:definitions xmlns:dmn="http://www.omg.org/spec/DMN/20191111/MODEL/"
+                   xmlns:camunda="http://camunda.org/schema/1.0/dmn"
+                   id="Definitions_ApprovalDecision"
+                   name="Approval Decision"
+                   namespace="http://camunda.org/schema/1.0/dmn"
+                   exporter="Camunda Modeler"
+                   exporterVersion="4.11.1">
+    
+    <dmn:decision id="ApprovalDecision" name="Approval Decision">
+      <dmn:decisionTable id="DecisionTable_Approval" hitPolicy="UNIQUE">
+        <dmn:input id="Input_1" label="Customer Score">
+          <dmn:inputExpression id="InputExpression_1" typeRef="double">
+            <dmn:text>customerScore</dmn:text>
+          </dmn:inputExpression>
+        </dmn:input>
+        <dmn:input id="Input_2" label="Transaction Amount">
+          <dmn:inputExpression id="InputExpression_2" typeRef="double">
+            <dmn:text>transactionAmount</dmn:text>
+          </dmn:inputExpression>
+        </dmn:input>
+        <dmn:output id="Output_1" label="Approval Decision" typeRef="string"/>
+        <dmn:output id="Output_2" label="Risk Level" typeRef="string"/>
+        
+        <dmn:rule id="Rule_1">
+          <dmn:inputEntry id="InputEntry_1">
+            <dmn:text>&gt;= 750</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_2">
+            <dmn:text>&lt;= 10000</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="OutputEntry_1">
+            <dmn:text>"APPROVED"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_2">
+            <dmn:text>"LOW"</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+        
+        <dmn:rule id="Rule_2">
+          <dmn:inputEntry id="InputEntry_3">
+            <dmn:text>&lt; 750</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_4">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="OutputEntry_3">
+            <dmn:text>"REJECTED"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_4">
+            <dmn:text>"HIGH"</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+      </dmn:decisionTable>
+    </dmn:decision>
+  </dmn:definitions>
+
+  <!-- 5. Main BPMN Process with All Camunda Tags -->
+  <bpmn:process id="CamundaFivePillarsSimpleProcess" 
+                isExecutable="true" 
+                camunda:versionTag="1.0"
+                camunda:historyTimeToLive="30">
+
+    <!-- Start Event -->
+    <bpmn:startEvent id="StartEvent_1" name="Customer Transaction Start">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!-- Service Task with DSPy -->
+    <bpmn:serviceTask id="ServiceTask_CustomerAnalysis" 
+                      name="AI Customer Analysis">
+      <bpmn:extensionElements>
+        <dspy:service name="customer_analysis" 
+                      signature="customer_analysis" 
+                      result="analysis_result">
+          <dspy:param name="customer_data" value="customer_name" />
+          <dspy:param name="risk_factors" value="customer_type" />
+        </dspy:service>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Service Task with DSPy Fraud Detection -->
+    <bpmn:serviceTask id="ServiceTask_FraudDetection" 
+                      name="AI Fraud Detection">
+      <bpmn:extensionElements>
+        <dspy:service name="fraud_detection" 
+                      signature="fraud_detection" 
+                      result="fraud_result">
+          <dspy:param name="transaction_data" value="transactionAmount" />
+        </dspy:service>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Business Rule Task with DMN -->
+    <bpmn:businessRuleTask id="BusinessRuleTask_Approval" 
+                           name="Approval Decision" 
+                           camunda:decisionRef="ApprovalDecision">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+
+    <!-- Script Task with Camunda Expression -->
+    <bpmn:scriptTask id="ScriptTask_ProcessResult" 
+                     name="Process Final Result">
+      <bpmn:script>
+        <![CDATA[
+          // Process the final result
+          var finalDecision = approvalDecision || 'PENDING';
+          var riskLevel = riskLevel || 'MEDIUM';
+          
+          // Set process variables
+          execution.setVariable('finalDecision', finalDecision);
+          execution.setVariable('riskLevel', riskLevel);
+          execution.setVariable('processedAt', new Date());
+        ]]>
+      </bpmn:script>
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:scriptTask>
+
+    <!-- End Event -->
+    <bpmn:endEvent id="EndEvent_1" name="Transaction Complete">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Sequence Flows -->
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="ServiceTask_CustomerAnalysis" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="ServiceTask_CustomerAnalysis" targetRef="ServiceTask_FraudDetection" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="ServiceTask_FraudDetection" targetRef="BusinessRuleTask_Approval" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="BusinessRuleTask_Approval" targetRef="ScriptTask_ProcessResult" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="ScriptTask_ProcessResult" targetRef="EndEvent_1" />
+
+  </bpmn:process>
+
+  <!-- BPMN Diagram -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="CamundaFivePillarsSimpleProcess">
+      <!-- Diagram elements would go here -->
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions> 

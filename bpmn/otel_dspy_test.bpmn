@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:dspy="http://autotel.ai/dspy"
+                  id="Definitions_1"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="OtelDspyTest" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1" name="Start"/>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="ServiceTask_1"/>
+    <bpmn:serviceTask id="ServiceTask_1" name="Interpret OTEL">
+      <bpmn:extensionElements>
+        <dspy:service name="interpret_otel_spans" result="otel_interpretation">
+          <dspy:param name="otel_spans" value="otel_spans_json"/>
+        </dspy:service>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="ServiceTask_1" targetRef="EndEvent_1"/>
+    <bpmn:endEvent id="EndEvent_1" name="End"/>
+  </bpmn:process>
+</bpmn:definitions> 

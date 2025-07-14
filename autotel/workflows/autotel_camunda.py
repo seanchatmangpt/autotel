@@ -133,6 +133,10 @@ class AutoTelCamundaParser(CamundaParser):
         self.schema_validator = schema_validator
         self.signature_definitions = {}
         self.dynamic_signatures = {}
+
+    def list_signatures(self):
+        """Return an empty dict for compatibility with orchestrator."""
+        return {}
     
     def add_bpmn_xml(self, bpmn, filename=None):
         """Override to parse DSPy signatures and DMN definitions"""

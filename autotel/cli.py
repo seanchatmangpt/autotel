@@ -111,7 +111,7 @@ def init(
         "[green]✅ AutoTel initialized successfully![/green]\n"
         f"Telemetry: {'Enabled' if telemetry_manager.is_configured() else 'Disabled'}\n"
         f"Schema Validation: {validation_level.value}\n"
-        f"DSPy Services: {len(advanced_dspy_registry.signatures)} signatures available",
+        f"DSPy Services: {len(advanced_dspy_registry.list_signatures())} signatures available",
         title="Initialization Complete"
     ))
 
@@ -262,13 +262,15 @@ def dspy(
         signatures_table.add_column("Signature", style="cyan")
         signatures_table.add_column("Status", style="green")
         
-        for signature in advanced_dspy_registry.signatures:
-            signatures_table.add_row(signature, "✅ Active")
+        signatures = advanced_dspy_registry.list_signatures()
+        for signature_name in signatures.keys():
+            signatures_table.add_row(signature_name, "✅ Active")
         
         console.print(signatures_table)
     
     if call_signature:
-        if call_signature not in advanced_dspy_registry.signatures:
+        signatures = advanced_dspy_registry.list_signatures()
+        if call_signature not in signatures:
             console.print(f"[red]❌ Signature not found: {call_signature}[/red]")
             raise typer.Exit(1)
         
@@ -305,10 +307,22 @@ def workflow(
                 console.print(f"  • {error}")
             raise typer.Exit(1)
     else:
-        orchestrator = Orchestrator(enable_telemetry=True)
+        orchestrator = Orchestrator(
+            specific_bpmn_file=str(file_path),
+            enable_telemetry=True
+        )
         
         try:
-            process_id = file_path.stem
+            # Parse the BPMN file to get the process definition ID
+            import xml.etree.ElementTree as ET
+            tree = ET.parse(str(file_path))
+            root = tree.getroot()
+            # Find the first process element
+            process_elem = root.find('.//{http://www.omg.org/spec/BPMN/20100524/MODEL}process')
+            if process_elem is not None and 'id' in process_elem.attrib:
+                process_id = process_elem.attrib['id']
+            else:
+                raise ValueError("Could not find process definition ID in BPMN file")
             instance = orchestrator.start_process(process_id, {})
             
             console.print(f"🚀 Started workflow: {process_id}")
@@ -330,46 +344,6 @@ def workflow(
 
 @app.command()
 @otel_command
-def dmn(
-    file_path: Path = typer.Argument(..., help="DMN decision file"),
-    input_data: Optional[str] = typer.Option(None, "--input", "-i", help="Input data as JSON"),
-    validate_only: bool = typer.Option(False, "--validate-only", help="Only validate, don't execute")
-):
-    """Execute or validate a DMN decision"""
-    
-    if not file_path.exists():
-        console.print(f"[red]❌ File not found: {file_path}[/red]")
-        raise typer.Exit(1)
-    
-    if validate_only:
-        schema_validator = SchemaValidator()
-        result = schema_validator.validate_dmn_file(str(file_path))
-        
-        if result.valid:
-            console.print(f"✅ DMN {file_path.name} is valid")
-        else:
-            console.print(f"❌ DMN {file_path.name} is invalid")
-            for error in result.errors:
-                console.print(f"  • {error}")
-            raise typer.Exit(1)
-    else:
-        try:
-            input_json = json.loads(input_data) if input_data else {}
-            
-            # Import DMN execution logic here
-            from .workflows.dmn_integration import DMNExecutor
-            
-            executor = DMNExecutor()
-            result = executor.execute_decision(str(file_path), input_json)
-            
-            console.print(f"✅ Decision result: {result}")
-            
-        except Exception as e:
-            console.print(f"[red]❌ DMN execution failed: {e}[/red]")
-            raise typer.Exit(1)
-
-@app.command()
-@otel_command
 def config(
     show: bool = typer.Option(False, "--show", help="Show current configuration"),
     validate: Optional[Path] = typer.Option(None, "--validate", help="Validate configuration file"),
@@ -381,7 +355,7 @@ def config(
         config_data = {
             "dspy": {
                 "cache_enabled": True,
-                "signatures": len(advanced_dspy_registry.signatures)
+                "signatures": len(advanced_dspy_registry.list_signatures())
             },
             "telemetry": {
                 "enabled": True,

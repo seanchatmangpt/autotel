@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:dspy="http://autotel.ai/dspy"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  id="Definitions_1"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  
+  <!-- Simple DSPy Signature -->
+  <dspy:signatures>
+    <dspy:signature name="analyze_data" description="Analyze input data">
+      <dspy:input name="data" description="Input data to analyze"/>
+      <dspy:output name="result" description="Analysis result"/>
+      <dspy:output name="quality" description="Data quality score"/>
+    </dspy:signature>
+  </dspy:signatures>
+  
+  <bpmn:process id="DspyDmnWorkflow" isExecutable="true">
+    
+    <!-- Start -->
+    <bpmn:startEvent id="StartEvent_1" name="Start">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    
+    <!-- DSPy Analysis -->
+    <bpmn:serviceTask id="ServiceTask_1" name="Analyze Data">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+      <bpmn:extensionElements>
+        <dspy:service name="analyze_data" result="analysis_result">
+          <dspy:param name="data" value="input_data"/>
+        </dspy:service>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    
+    <!-- DMN Decision -->
+    <bpmn:businessRuleTask id="BusinessRuleTask_1" name="Quality Decision" camunda:decisionRef="quality_decision">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+    
+    <!-- Exclusive Gateway -->
+    <bpmn:exclusiveGateway id="Gateway_1" name="Route Decision">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    
+    <!-- Continue Path -->
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Gateway_1" targetRef="EndEvent_1">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
+        ${action == "proceed"}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <!-- Stop Path -->
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Gateway_1" targetRef="EndEvent_2">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
+        ${action == "stop"}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <!-- Flows -->
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="ServiceTask_1"/>
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="ServiceTask_1" targetRef="BusinessRuleTask_1"/>
+    
+    <!-- End Events -->
+    <bpmn:endEvent id="EndEvent_1" name="Success">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+    </bpmn:endEvent>
+    
+    <bpmn:endEvent id="EndEvent_2" name="Stopped">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+    </bpmn:endEvent>
+    
+  </bpmn:process>
+  
+</bpmn:definitions> 

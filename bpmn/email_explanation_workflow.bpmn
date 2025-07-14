@@ -1,0 +1,398 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:dspy="http://autotel.ai/dspy"
+                  xmlns:shacl="http://www.w3.org/ns/shacl#"
+                  xmlns:owl="http://www.w3.org/2002/07/owl#"
+                  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                  xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:modeler="http://camunda.org/schema/modeler/1.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Definitions_EmailExplanationWorkflow"
+                  targetNamespace="http://bpmn.io/schema/bpmn"
+                  exporter="Camunda Modeler"
+                  exporterVersion="4.11.1"
+                  modeler:executionPlatform="Camunda Platform"
+                  modeler:executionPlatformVersion="7.15.0">
+
+  <!-- Email Explanation Workflow with DMN + DSPy + Jinja2 -->
+  
+  <!-- 1. DSPy Signatures for Analysis -->
+  <dspy:signatures>
+    <dspy:signature name="transaction_risk_analysis" description="AI-powered transaction risk analysis">
+      <dspy:input name="transaction_data" description="Transaction information" />
+      <dspy:input name="customer_profile" description="Customer profile data" />
+      <dspy:output name="risk_score" description="Overall risk score (0-100)" />
+      <dspy:output name="risk_factors" description="List of risk factors identified" />
+      <dspy:output name="confidence_level" description="Analysis confidence (LOW, MEDIUM, HIGH)" />
+      <dspy:output name="recommendations" description="AI recommendations" />
+    </dspy:signature>
+    
+    <dspy:signature name="fraud_detection" description="AI fraud detection analysis">
+      <dspy:input name="transaction_data" description="Transaction data" />
+      <dspy:input name="historical_patterns" description="Historical transaction patterns" />
+      <dspy:output name="fraud_probability" description="Fraud probability percentage (0-100)" />
+      <dspy:output name="fraud_indicators" description="Specific fraud indicators found" />
+      <dspy:output name="risk_level" description="Risk level (LOW, MEDIUM, HIGH, CRITICAL)" />
+    </dspy:signature>
+    
+    <dspy:signature name="generate_email_explanation" description="Generate email explanation using Jinja2">
+      <dspy:input name="decision_result" description="DMN decision result" />
+      <dspy:input name="analysis_data" description="DSPy analysis data" />
+      <dspy:input name="customer_info" description="Customer information" />
+      <dspy:input name="template_type" description="Email template type" />
+      <dspy:output name="email_subject" description="Generated email subject" />
+      <dspy:output name="email_body" description="Generated email body using Jinja2" />
+      <dspy:output name="email_metadata" description="Email metadata and formatting" />
+    </dspy:signature>
+  </dspy:signatures>
+
+  <!-- 2. SHACL Shapes for Data Validation -->
+  <shacl:shapes>
+    <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+             xmlns:shacl="http://www.w3.org/ns/shacl#"
+             xmlns:xsd="http://www.w3.org/2001/XMLSchema#">
+      
+      <shacl:NodeShape rdf:about="http://autotel.ai/shapes#EmailShape">
+        <shacl:property>
+          <shacl:PropertyShape>
+            <shacl:path rdf:resource="http://autotel.ai/props#emailSubject"/>
+            <shacl:datatype rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+            <shacl:minLength rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</shacl:minLength>
+            <shacl:maxLength rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">200</shacl:maxLength>
+          </shacl:PropertyShape>
+        </shacl:property>
+        <shacl:property>
+          <shacl:PropertyShape>
+            <shacl:path rdf:resource="http://autotel.ai/props#emailBody"/>
+            <shacl:datatype rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+            <shacl:minLength rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">10</shacl:minLength>
+          </shacl:PropertyShape>
+        </shacl:property>
+      </shacl:NodeShape>
+    </rdf:RDF>
+  </shacl:shapes>
+
+  <!-- 3. DMN Decision Table -->
+  <dmn:definitions xmlns:dmn="http://www.omg.org/spec/DMN/20191111/MODEL/"
+                   xmlns:camunda="http://camunda.org/schema/1.0/dmn"
+                   id="Definitions_EmailDecision"
+                   name="Email Decision Based on DSPy Analysis"
+                   namespace="http://camunda.org/schema/1.0/dmn"
+                   exporter="Camunda Modeler"
+                   exporterVersion="4.11.1">
+    
+    <dmn:decision id="EmailDecision" name="Email Decision">
+             <dmn:decisionTable id="DecisionTable_Email" hitPolicy="UNIQUE">
+         <dmn:input id="Input_1" label="Risk Score">
+          <dmn:inputExpression id="InputExpression_1" typeRef="integer">
+            <dmn:text>risk_score</dmn:text>
+          </dmn:inputExpression>
+        </dmn:input>
+        <dmn:input id="Input_2" label="Fraud Probability">
+          <dmn:inputExpression id="InputExpression_2" typeRef="double">
+            <dmn:text>fraud_probability</dmn:text>
+          </dmn:inputExpression>
+        </dmn:input>
+        <dmn:input id="Input_3" label="Transaction Amount">
+          <dmn:inputExpression id="InputExpression_3" typeRef="double">
+            <dmn:text>transaction_amount</dmn:text>
+          </dmn:inputExpression>
+                 </dmn:input>
+         
+         <dmn:output id="Output_1" label="Email Template" typeRef="string"/>
+        <dmn:output id="Output_2" label="Priority Level" typeRef="string"/>
+        <dmn:output id="Output_3" label="Action Required" typeRef="string"/>
+        <dmn:output id="Output_4" label="Recipient Groups" typeRef="string"/>
+        
+                 <dmn:rule id="Rule_1">
+           <dmn:inputEntry id="InputEntry_1">
+             <dmn:text>-</dmn:text>
+           </dmn:inputEntry>
+           <dmn:inputEntry id="InputEntry_2">
+             <dmn:text>-</dmn:text>
+           </dmn:inputEntry>
+           <dmn:inputEntry id="InputEntry_3">
+             <dmn:text>-</dmn:text>
+           </dmn:inputEntry>
+           <dmn:outputEntry id="OutputEntry_1">
+             <dmn:text>"standard_approval"</dmn:text>
+           </dmn:outputEntry>
+           <dmn:outputEntry id="OutputEntry_2">
+             <dmn:text>"LOW"</dmn:text>
+           </dmn:outputEntry>
+           <dmn:outputEntry id="OutputEntry_3">
+             <dmn:text>"NONE"</dmn:text>
+           </dmn:outputEntry>
+           <dmn:outputEntry id="OutputEntry_4">
+             <dmn:text>"customer"</dmn:text>
+           </dmn:outputEntry>
+         </dmn:rule>
+        
+                 <dmn:rule id="Rule_2">
+           <dmn:inputEntry id="InputEntry_5">
+             <dmn:text>-</dmn:text>
+           </dmn:inputEntry>
+           <dmn:inputEntry id="InputEntry_6">
+             <dmn:text>-</dmn:text>
+           </dmn:inputEntry>
+           <dmn:inputEntry id="InputEntry_7">
+             <dmn:text>-</dmn:text>
+           </dmn:inputEntry>
+           <dmn:outputEntry id="OutputEntry_5">
+             <dmn:text>"review_required"</dmn:text>
+           </dmn:outputEntry>
+           <dmn:outputEntry id="OutputEntry_6">
+             <dmn:text>"MEDIUM"</dmn:text>
+           </dmn:outputEntry>
+           <dmn:outputEntry id="OutputEntry_7">
+             <dmn:text>"REVIEW"</dmn:text>
+           </dmn:outputEntry>
+           <dmn:outputEntry id="OutputEntry_8">
+             <dmn:text>"customer,reviewer"</dmn:text>
+           </dmn:outputEntry>
+         </dmn:rule>
+        
+                 <dmn:rule id="Rule_3">
+           <dmn:inputEntry id="InputEntry_8">
+             <dmn:text>-</dmn:text>
+           </dmn:inputEntry>
+           <dmn:inputEntry id="InputEntry_9">
+             <dmn:text>-</dmn:text>
+           </dmn:inputEntry>
+           <dmn:inputEntry id="InputEntry_10">
+             <dmn:text>-</dmn:text>
+           </dmn:inputEntry>
+           <dmn:outputEntry id="OutputEntry_9">
+             <dmn:text>"investigation_required"</dmn:text>
+           </dmn:outputEntry>
+           <dmn:outputEntry id="OutputEntry_10">
+             <dmn:text>"HIGH"</dmn:text>
+           </dmn:outputEntry>
+           <dmn:outputEntry id="OutputEntry_11">
+             <dmn:text>"INVESTIGATE"</dmn:text>
+           </dmn:outputEntry>
+           <dmn:outputEntry id="OutputEntry_12">
+             <dmn:text>"customer,reviewer,investigator"</dmn:text>
+           </dmn:outputEntry>
+         </dmn:rule>
+        
+                 <dmn:rule id="Rule_4">
+          <dmn:inputEntry id="InputEntry_11">
+            <dmn:text>&gt; 80</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_12">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_13">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="OutputEntry_13">
+            <dmn:text>"critical_alert"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_14">
+            <dmn:text>"CRITICAL"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_15">
+            <dmn:text>"IMMEDIATE_ACTION"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_16">
+            <dmn:text>"customer,reviewer,investigator,manager"</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+        
+                 <dmn:rule id="Rule_5">
+          <dmn:inputEntry id="InputEntry_14">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_15">
+            <dmn:text>&gt;= 30.0</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_16">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="OutputEntry_17">
+            <dmn:text>"fraud_alert"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_18">
+            <dmn:text>"CRITICAL"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_19">
+            <dmn:text>"FRAUD_INVESTIGATION"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_20">
+            <dmn:text>"customer,reviewer,investigator,manager,fraud_team"</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+      </dmn:decisionTable>
+    </dmn:decision>
+  </dmn:definitions>
+
+  <!-- 4. Main BPMN Process -->
+  <bpmn:process id="EmailExplanationProcess" 
+                isExecutable="true" 
+                camunda:versionTag="1.0"
+                camunda:historyTimeToLive="30">
+
+    <!-- Start Event -->
+    <bpmn:startEvent id="StartEvent_1" name="Transaction Analysis Request">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!-- User Task: Collect Transaction Data -->
+    <bpmn:userTask id="UserTask_TransactionData" 
+                   name="Enter Transaction Details" 
+                   camunda:formKey="transaction_form">
+      <bpmn:extensionElements>
+        <camunda:formData>
+                     <camunda:formField id="customer_name" 
+                             label="Customer Name" 
+                             type="string" />
+           <camunda:formField id="customer_email" 
+                             label="Customer Email" 
+                             type="string" />
+           <camunda:formField id="transaction_amount" 
+                             label="Transaction Amount" 
+                             type="double" />
+           <camunda:formField id="transaction_type" 
+                             label="Transaction Type" 
+                             type="enum">
+             <camunda:value id="purchase" name="Purchase" />
+             <camunda:value id="transfer" name="Transfer" />
+             <camunda:value id="withdrawal" name="Withdrawal" />
+           </camunda:formField>
+           <camunda:formField id="merchant_name" 
+                             label="Merchant Name" 
+                             type="string" />
+        </camunda:formData>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- DSPy Service: Transaction Risk Analysis -->
+    <bpmn:serviceTask id="ServiceTask_RiskAnalysis" 
+                      name="AI Risk Analysis">
+      <bpmn:extensionElements>
+        <dspy:service name="transaction_risk_analysis" 
+                      signature="transaction_risk_analysis" 
+                      result="risk_analysis_result">
+          <dspy:param name="transaction_data" value="transaction" />
+          <dspy:param name="customer_profile" value="customer_name" />
+        </dspy:service>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- DSPy Service: Fraud Detection -->
+    <bpmn:serviceTask id="ServiceTask_FraudDetection" 
+                      name="AI Fraud Detection">
+      <bpmn:extensionElements>
+        <dspy:service name="fraud_detection" 
+                      signature="fraud_detection" 
+                      result="fraud_detection_result">
+          <dspy:param name="transaction_data" value="transaction" />
+          <dspy:param name="historical_patterns" value="customer_name" />
+        </dspy:service>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Business Rule Task: DMN Decision -->
+    <bpmn:businessRuleTask id="BusinessRuleTask_EmailDecision" 
+                           name="Email Decision" 
+                           camunda:decisionRef="EmailDecision">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+
+    <!-- DSPy Service: Generate Email Explanation -->
+    <bpmn:serviceTask id="ServiceTask_EmailGeneration" 
+                      name="Generate Email Explanation">
+      <bpmn:extensionElements>
+        <dspy:service name="generate_email_explanation" 
+                      signature="generate_email_explanation" 
+                      result="email_explanation_result">
+          <dspy:param name="decision_result" value="email_template" />
+          <dspy:param name="analysis_data" value="risk_analysis_result" />
+          <dspy:param name="customer_info" value="customer_name" />
+          <dspy:param name="template_type" value="email_template" />
+        </dspy:service>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- User Task: Review Generated Email -->
+    <bpmn:userTask id="UserTask_EmailReview" 
+                   name="Review Generated Email" 
+                   camunda:formKey="email_review_form"
+                   camunda:candidateGroups="reviewers">
+      <bpmn:extensionElements>
+        <camunda:formData>
+                     <camunda:formField id="email_subject" 
+                             label="Email Subject" 
+                             type="string" />
+           <camunda:formField id="email_body" 
+                             label="Email Body" 
+                             type="string" />
+           <camunda:formField id="approve_email" 
+                             label="Approve Email" 
+                             type="boolean" />
+          <camunda:formField id="review_notes" 
+                            label="Review Notes" 
+                            type="string" />
+        </camunda:formData>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- Exclusive Gateway: Email Approval -->
+    <bpmn:exclusiveGateway id="Gateway_EmailApproval" 
+                           name="Email Approval">
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+      <bpmn:outgoing>Flow_9</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- End Event: Email Sent -->
+    <bpmn:endEvent id="EndEvent_EmailSent" name="Email Sent Successfully">
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- End Event: Email Rejected -->
+    <bpmn:endEvent id="EndEvent_EmailRejected" name="Email Rejected">
+      <bpmn:incoming>Flow_9</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Sequence Flows -->
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="UserTask_TransactionData" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="UserTask_TransactionData" targetRef="ServiceTask_RiskAnalysis" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="ServiceTask_RiskAnalysis" targetRef="ServiceTask_FraudDetection" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="ServiceTask_FraudDetection" targetRef="BusinessRuleTask_EmailDecision" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="BusinessRuleTask_EmailDecision" targetRef="ServiceTask_EmailGeneration" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="ServiceTask_EmailGeneration" targetRef="UserTask_EmailReview" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="UserTask_EmailReview" targetRef="Gateway_EmailApproval" />
+    
+    <!-- Conditional flows -->
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Gateway_EmailApproval" targetRef="EndEvent_EmailSent">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
+        ${approve_email == true}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <bpmn:sequenceFlow id="Flow_9" sourceRef="Gateway_EmailApproval" targetRef="EndEvent_EmailRejected">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
+        ${approve_email == false}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+  </bpmn:process>
+
+</bpmn:definitions> 

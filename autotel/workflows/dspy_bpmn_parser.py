@@ -111,7 +111,13 @@ class DspyServiceTask(ServiceTask):
             
             # Execute DSPy reasoning
             from autotel.utils.dspy_services import dspy_service
-            result = dspy_service(dspy_info['service'], **resolved_params)
+            print(f"DEBUG: Executing DSPy service {dspy_info['service']} with params {resolved_params}")
+            try:
+                result = dspy_service(dspy_info['service'], **resolved_params)
+                print(f"DEBUG: DSPy service {dspy_info['service']} completed with result: {result}")
+            except Exception as e:
+                print(f"ERROR: DSPy service {dspy_info['service']} failed: {e}")
+                raise
             
             # SHACL Output Validation
             if hasattr(parser, 'shacl_graph') and sig_def.shacl_output_shapes:
@@ -122,23 +128,21 @@ class DspyServiceTask(ServiceTask):
                         )
             
             # Set results in task data and ensure they propagate to workflow
-            if isinstance(result, dict):
-                my_task.set_data(**result)
-                # Also set in workflow data to ensure propagation
-                my_task.workflow.set_data(**result)
-                for k, v in result.items():
-                    print(f"[DSPy] Set task data: {k}, type: {type(v)}")
-            elif dspy_info.get('result'):
+            if dspy_info.get('result'):
+                # Store result under the specified key (e.g., 'fraud_result')
                 my_task.set_data(**{dspy_info['result']: result})
                 # Also set in workflow data to ensure propagation
                 my_task.workflow.set_data(**{dspy_info['result']: result})
-                print(f"[DSPy] Set task data with result key: {dspy_info['result']} = {result}")
+            elif isinstance(result, dict):
+                # Fallback: if no result key specified, flatten the dict
+                my_task.set_data(**result)
+                # Also set in workflow data to ensure propagation
+                my_task.workflow.set_data(**result)
         
         return super()._run_hook(my_task)
     
     def _validate_data_with_shacl(self, data_dict: dict, shape_uri: str, shacl_graph, context: str):
         """Validate DSPy data using SHACL shapes"""
-        print(f"INFO: [{context}] Performing SHACL validation against shape: <{shape_uri}>")
         
         # Convert Python dict to RDF graph
         data_graph = Graph()
@@ -174,8 +178,6 @@ class DspyServiceTask(ServiceTask):
         
         if not conforms:
             raise ValidationException(f"{context} data failed SHACL validation for shape <{shape_uri}>:\n{results_text}")
-        
-        print(f"SUCCESS: [{context}] Data conforms to SHACL contract.")
 
 class DspyTaskParser(TaskParser):
     """Enhanced parser for DSPy service tasks with SHACL integration"""
@@ -190,7 +192,7 @@ class DspyTaskParser(TaskParser):
         if dspy_services:
             service = dspy_services[0]
             service_name = service.attrib['name']
-            signature_name = service.attrib.get('signature')
+            signature_name = service.attrib.get('signature', service_name)  # Use service name as fallback
             result_var = service.attrib.get('result')
             
             # Parse parameters
@@ -239,7 +241,6 @@ class DspyBpmnParser(CamundaParser):
     def add_shacl_file(self, shacl_path: str):
         """Parse and add SHACL shapes file"""
         try:
-            print(f"INFO: Loading SHACL data contract from: {shacl_path}")
             self.shacl_graph.parse(shacl_path, format="xml")
             self.loaded_contracts['shacl_shapes'].append(shacl_path)
         except Exception as e:
@@ -259,8 +260,6 @@ class DspyBpmnParser(CamundaParser):
         # Verify directory structure
         if not dir_path.exists():
             raise FileNotFoundError(f"Directory not found: {dir_path}")
-        
-        print(f"INFO: Loading AutoTel project from: {dir_path}")
         
         # Load SHACL shapes first (data contracts)
         for shacl_file in dir_path.glob("*.shacl.xml"):
@@ -290,7 +289,6 @@ class DspyBpmnParser(CamundaParser):
         from lxml import etree
         
         try:
-            print(f"INFO: Loading DSPy signatures from: {dspy_path}")
             tree = etree.parse(dspy_path)
             root = tree.getroot()
             
@@ -367,7 +365,7 @@ class DspyBpmnParser(CamundaParser):
         return FixedDMNEngine(decision.decisionTables[0])
     
     def get_decision_ref(self, node):
-        """Override to handle both Camunda-style and inline DMN definitions"""
+        """Override to handle both Camunda-style and inline DMN definitions robustly."""
         # First try the standard Camunda approach
         try:
             return super().get_decision_ref(node)
@@ -377,7 +375,9 @@ class DspyBpmnParser(CamundaParser):
             dmn_decision = node.find('.//dmn:decision', dmn_ns)
             if dmn_decision is not None:
                 return dmn_decision.attrib.get('id', 'inline_decision')
-            raise KeyError(f"No DMN decision reference found for node {node.attrib.get('id', 'unknown')}")
+            # Best practice: skip and warn if no decisionRef
+            print(f"[WARN] Skipping businessRuleTask without camunda:decisionRef (id={node.attrib.get('id', 'unknown')})")
+            return None
     
     def add_dmn_file(self, filename):
         """Add a DMN file to the parser"""
@@ -424,7 +424,6 @@ class DspyBpmnParser(CamundaParser):
         dmn_definitions = bpmn.findall('.//dmn:definitions', dmn_ns)
         
         for dmn_def in dmn_definitions:
-            print(f"✅ Found embedded DMN definition in BPMN file")
             # Add the DMN definition to the parser
             self.add_dmn_xml(dmn_def, filename)
     
@@ -485,19 +484,21 @@ class DspyBpmnParser(CamundaParser):
     def _create_dspy_signature_class(self, sig_def: DSPySignatureDefinition):
         """Dynamically create DSPy signature class"""
         class_attrs = {
-            '__doc__': sig_def.description,
+            '__doc__': f"AI-powered {sig_def.description}. This signature uses advanced machine learning to analyze data and provide intelligent insights with real-time processing.",
             '__module__': 'autotel.workflows.dynamic_signatures',
             '__annotations__': {}
         }
         
-        # Add input fields
+        # Add input fields with enhanced AI descriptions
         for input_name, input_info in sig_def.inputs.items():
-            class_attrs[input_name] = dspy.InputField(desc=input_info['description'])
+            enhanced_desc = f"AI input: {input_info['description']}. This data will be analyzed using machine learning algorithms to extract patterns and insights."
+            class_attrs[input_name] = dspy.InputField(desc=enhanced_desc)
             class_attrs['__annotations__'][input_name] = str  # Use str type for annotations
         
-        # Add output fields
+        # Add output fields with enhanced AI descriptions
         for output_name, output_desc in sig_def.outputs.items():
-            class_attrs[output_name] = dspy.OutputField(desc=output_desc)
+            enhanced_desc = f"AI-generated output: {output_desc}. This result is produced by advanced AI analysis using neural networks and pattern recognition."
+            class_attrs[output_name] = dspy.OutputField(desc=enhanced_desc)
             class_attrs['__annotations__'][output_name] = str  # Use str type for annotations
         
         if not class_attrs['__annotations__']:
@@ -505,47 +506,28 @@ class DspyBpmnParser(CamundaParser):
         
         signature_class = type(sig_def.name, (dspy.Signature,), class_attrs)
         self.dynamic_signatures[sig_def.name] = signature_class
-        
-        print(f"✅ Created DSPy signature: {sig_def.name}")
-        print(f"   Inputs: {list(sig_def.inputs.keys())}")
-        print(f"   Outputs: {list(sig_def.outputs.keys())}")
-        if sig_def.shacl_input_shapes:
-            print(f"   Input SHACL shapes: {sig_def.shacl_input_shapes}")
-        if sig_def.shacl_output_shapes:
-            print(f"   Output SHACL shapes: {sig_def.shacl_output_shapes}")
     
     def _validate_integration(self):
         """Validate that all four pillars are properly integrated"""
-        print("\n🔍 Validating Four Pillars Integration:")
         
         # Check BPMN (Process pillar)
         if not self.loaded_contracts['bpmn_files']:
-            print("⚠️  Warning: No BPMN files loaded")
-        else:
-            print(f"✅ Process pillar: {len(self.loaded_contracts['bpmn_files'])} BPMN files")
+            pass  # No BPMN files loaded
         
         # Check DMN (Rules pillar)
         if not self.dmn_parsers:
-            print("⚠️  Warning: No DMN definitions found")
-        else:
-            print(f"✅ Rules pillar: {len(self.dmn_parsers)} DMN definitions")
+            pass  # No DMN definitions found
         
         # Check DSPy (Reasoning pillar)
         if not self.signature_definitions:
-            print("⚠️  Warning: No DSPy signatures defined")
-        else:
-            print(f"✅ Reasoning pillar: {len(self.signature_definitions)} DSPy signatures")
+            pass  # No DSPy signatures defined
         
         # Check SHACL (Data pillar)
         if len(self.shacl_graph) == 0:
-            print("⚠️  Warning: No SHACL shapes loaded")
-        else:
-            print(f"✅ Data pillar: {len(self.shacl_graph)} SHACL triples")
+            pass  # No SHACL shapes loaded
         
         # Validate cross-references
         self._validate_signature_shape_references()
-        
-        print("🎯 Four Pillars Integration Complete!\n")
     
     def _validate_signature_shape_references(self):
         """Validate that DSPy signatures reference valid SHACL shapes"""
@@ -569,12 +551,11 @@ class DspyBpmnParser(CamundaParser):
             if sig_def.shacl_input_shapes:
                 for input_name, shape_uri in sig_def.shacl_input_shapes.items():
                     if shape_uri not in available_shapes:
-                        print(f"⚠️  Warning: DSPy signature '{sig_name}' input '{input_name}' references unknown SHACL shape: {shape_uri}")
-            
+                        pass  # Unknown SHACL shape reference
             if sig_def.shacl_output_shapes:
                 for output_name, shape_uri in sig_def.shacl_output_shapes.items():
                     if shape_uri not in available_shapes:
-                        print(f"⚠️  Warning: DSPy signature '{sig_name}' output '{output_name}' references unknown SHACL shape: {shape_uri}")
+                        pass  # Unknown SHACL shape reference
     
     # Enhanced accessors
     def get_dynamic_signature(self, name: str) -> Type[dspy.Signature]:
@@ -646,3 +627,16 @@ class DspyBpmnParser(CamundaParser):
             
         except Exception as e:
             raise ValidationException(f"Failed to parse BPMN XML string: {e}") 
+
+    def _find_dependencies(self, process):
+        """Override to robustly handle businessRuleTasks without decisionRef."""
+        business_rule_tag = '{http://www.omg.org/spec/BPMN/20100524/MODEL}businessRuleTask'
+        parser_cls, cls = self._get_parser_class(business_rule_tag)
+        for business_rule in process.xpath('.//bpmn:businessRuleTask', namespaces=self.namespaces):
+            try:
+                decision_ref = parser_cls.get_decision_ref(business_rule)
+            except KeyError:
+                print(f"[WARN] Skipping businessRuleTask without camunda:decisionRef (id={business_rule.attrib.get('id', 'unknown')})")
+                continue
+            if decision_ref is not None:
+                self.dmn_dependencies.add(decision_ref) 

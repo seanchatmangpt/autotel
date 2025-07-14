@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:dspy="http://autotel.ai/dspy"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:dmndi="http://www.omg.org/spec/DMN/20191111/DMNDI/"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC/"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI/"
+                  xmlns:dmn="http://www.omg.org/spec/DMN/20191111/MODEL/"
+                  id="Definitions_1"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+
+  <!-- DSPy Signature Definitions -->
+  <dspy:signatures>
+    <dspy:signature name="AnalyzeData" description="Analyze input data and provide insights">
+      <dspy:input name="data" description="The data to analyze"/>
+      <dspy:output name="analysis" description="Analysis results"/>
+      <dspy:output name="confidence" description="Confidence score (0-100)"/>
+      <dspy:output name="recommendation" description="Recommended action"/>
+    </dspy:signature>
+  </dspy:signatures>
+
+  <!-- DMN Decision as direct child -->
+  <dmn:definitions id="Definitions_2" name="DRD" namespace="http://camunda.org/schema/1.0/dmn">
+    <dmn:decision id="Decision_1" name="Approval Decision">
+      <dmn:decisionTable id="DecisionTable_1" hitPolicy="FIRST">
+        <dmn:input id="Input_1" label="Confidence">
+          <dmn:inputExpression id="InputExpression_1" typeRef="number">
+            <dmn:text>analysis_result.confidence</dmn:text>
+          </dmn:inputExpression>
+        </dmn:input>
+        <dmn:input id="Input_2" label="Recommendation">
+          <dmn:inputExpression id="InputExpression_2" typeRef="string">
+            <dmn:text>analysis_result.recommendation</dmn:text>
+          </dmn:inputExpression>
+        </dmn:input>
+        <dmn:output id="Output_1" label="Action" typeRef="string"/>
+        <dmn:rule id="Rule_1">
+          <dmn:inputEntry id="InputEntry_1">
+            <dmn:text>&gt;= 80</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_2">
+            <dmn:text>"proceed"</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="OutputEntry_1">
+            <dmn:text>"APPROVE"</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+        <dmn:rule id="Rule_2">
+          <dmn:inputEntry id="InputEntry_3">
+            <dmn:text>&gt;= 50</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_4">
+            <dmn:text>"review"</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="OutputEntry_2">
+            <dmn:text>"REVIEW"</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+        <dmn:rule id="Rule_3">
+          <dmn:inputEntry id="InputEntry_5">
+            <dmn:text>&lt; 50</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_6">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="OutputEntry_3">
+            <dmn:text>"REJECT"</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+      </dmn:decisionTable>
+    </dmn:decision>
+  </dmn:definitions>
+
+  <!-- BPMN Process -->
+  <bpmn:process id="SimpleDspyDmnExample" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1" name="Start"/>
+    
+    <!-- Analyze data using DSPy -->
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="ServiceTask_1"/>
+    <bpmn:serviceTask id="ServiceTask_1" name="Analyze Data">
+      <bpmn:extensionElements>
+        <dspy:service name="AnalyzeData" result="analysis_result">
+          <dspy:param name="data" value="input_data"/>
+        </dspy:service>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    
+    <!-- Make decision using DMN -->
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="ServiceTask_1" targetRef="BusinessRuleTask_1"/>
+    <bpmn:businessRuleTask id="BusinessRuleTask_1" name="Make Decision" camunda:decisionRef="Decision_1"/>
+    
+    <!-- End -->
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="BusinessRuleTask_1" targetRef="EndEvent_1"/>
+    <bpmn:endEvent id="EndEvent_1" name="End"/>
+  </bpmn:process>
+
+</bpmn:definitions> 

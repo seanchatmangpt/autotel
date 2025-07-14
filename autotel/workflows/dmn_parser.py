@@ -119,7 +119,6 @@ class DMNParser:
                     rules=rules
                 )
                 self.decisions[decision_id] = dmn_decision
-                print(f"✅ Parsed DMN decision: {name} ({len(rules)} rules)")
         return self.decisions
 
 class DMNExecutor:
@@ -134,8 +133,6 @@ class DMNExecutor:
         if not decision:
             raise ValueError(f"Decision '{decision_id}' not found")
         
-        print(f"🔍 Executing DMN decision: {decision.name}")
-        
         # Evaluate each rule
         for rule in decision.rules:
             if self._evaluate_rule(rule, decision.inputs, context):
@@ -149,12 +146,9 @@ class DMNExecutor:
                             output_value = output_value[1:-1]
                         result[output['id']] = output_value
                 
-                print(f"✅ Rule matched: {rule.description}")
-                print(f"📊 Outputs: {result}")
                 return result
         
         # No rule matched
-        print(f"⚠️ No rule matched for decision: {decision.name}")
         return {}
 
     def _evaluate_rule(self, rule: DMNRule, inputs: List[Dict[str, str]], context: Dict[str, Any]) -> bool:

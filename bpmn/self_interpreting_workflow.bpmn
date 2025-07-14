@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:dspy="http://autotel.ai/dspy"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Definitions_1"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  
+  <!-- DSPy Signature Definitions -->
+  <dspy:signatures>
+    <dspy:signature name="perform_work" description="Perform work based on type and context">
+      <dspy:input name="work_type" description="Type of work to perform (initial_work, continued_work)"/>
+      <dspy:input name="iteration" description="Current iteration number"/>
+      <dspy:input name="interpretation" description="Previous interpretation if available" optional="true"/>
+      <dspy:output name="work_result" description="Result of the work performed"/>
+      <dspy:output name="work_metadata" description="Metadata about the work performed"/>
+    </dspy:signature>
+    
+    <dspy:signature name="interpret_workflow_results" description="Interpret workflow results and decide on next steps">
+      <dspy:input name="work_result" description="Result of the work performed"/>
+      <dspy:input name="execution_history" description="History of previous executions"/>
+      <dspy:input name="current_iteration" description="Current iteration number"/>
+      <dspy:output name="should_continue" description="Whether the workflow should continue (true/false)"/>
+      <dspy:output name="reasoning" description="Reasoning for the decision"/>
+      <dspy:output name="recommendations" description="Recommendations for next steps"/>
+    </dspy:signature>
+    
+    <dspy:signature name="generate_workflow_summary" description="Generate a comprehensive summary of the workflow execution">
+      <dspy:input name="work_result" description="Final work result"/>
+      <dspy:input name="interpretation" description="Final interpretation"/>
+      <dspy:input name="execution_history" description="Complete execution history"/>
+      <dspy:input name="current_iteration" description="Final iteration number"/>
+      <dspy:output name="final_summary" description="Comprehensive summary of the workflow execution"/>
+      <dspy:output name="key_insights" description="Key insights from the execution"/>
+      <dspy:output name="performance_metrics" description="Performance metrics and statistics"/>
+    </dspy:signature>
+  </dspy:signatures>
+  
+  <bpmn:process id="SelfInterpretingWorkflow" isExecutable="true">
+    
+    <!-- Start Event -->
+    <bpmn:startEvent id="StartEvent_1" name="Start Self-Interpreting Workflow">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    
+    <!-- Initial Work Task -->
+    <bpmn:serviceTask id="ServiceTask_1" name="Perform Initial Work">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+      <bpmn:extensionElements>
+        <dspy:service name="perform_work" result="work_result">
+          <dspy:param name="work_type" value="initial_work"/>
+          <dspy:param name="iteration" value="current_iteration"/>
+        </dspy:service>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    
+    <!-- Sequence Flow from Start to Initial Work -->
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="ServiceTask_1"/>
+    
+    <!-- DSPy Interpretation Task -->
+    <bpmn:serviceTask id="ServiceTask_2" name="Interpret Results">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+      <bpmn:extensionElements>
+        <dspy:service name="interpret_workflow_results" result="interpretation">
+          <dspy:param name="work_result" value="work_result"/>
+          <dspy:param name="execution_history" value="execution_history"/>
+          <dspy:param name="current_iteration" value="current_iteration"/>
+        </dspy:service>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    
+    <!-- Sequence Flow from Initial Work to Interpretation -->
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="ServiceTask_1" targetRef="ServiceTask_2"/>
+    
+    <!-- Decision Gateway -->
+    <bpmn:exclusiveGateway id="Gateway_1" name="Continue or Complete?">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    
+    <!-- Sequence Flow from Interpretation to Decision -->
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="ServiceTask_2" targetRef="Gateway_1"/>
+    
+    <!-- Continue Workflow Path -->
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Gateway_1" targetRef="ServiceTask_3">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
+        ${interpretation.should_continue == true}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <!-- Continue Work Task -->
+    <bpmn:serviceTask id="ServiceTask_3" name="Continue Work">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+      <bpmn:extensionElements>
+        <dspy:service name="perform_work" result="work_result">
+          <dspy:param name="work_type" value="continued_work"/>
+          <dspy:param name="interpretation" value="interpretation"/>
+          <dspy:param name="iteration" value="current_iteration"/>
+        </dspy:service>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    
+    <!-- Loop Back to Interpretation -->
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="ServiceTask_3" targetRef="ServiceTask_2"/>
+    
+    <!-- Complete Workflow Path -->
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Gateway_1" targetRef="ServiceTask_4">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
+        ${interpretation.should_continue == false}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <!-- Final Summary Task -->
+    <bpmn:serviceTask id="ServiceTask_4" name="Generate Final Summary">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+      <bpmn:extensionElements>
+        <dspy:service name="generate_workflow_summary" result="final_summary">
+          <dspy:param name="work_result" value="work_result"/>
+          <dspy:param name="interpretation" value="interpretation"/>
+          <dspy:param name="execution_history" value="execution_history"/>
+          <dspy:param name="current_iteration" value="current_iteration"/>
+        </dspy:service>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    
+    <!-- Sequence Flow to End -->
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="ServiceTask_4" targetRef="EndEvent_1"/>
+    
+    <!-- End Event -->
+    <bpmn:endEvent id="EndEvent_1" name="Workflow Complete">
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+    </bpmn:endEvent>
+    
+  </bpmn:process>
+  
+  <!-- BPMN Diagram -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="SelfInterpretingWorkflow">
+      
+      <!-- Start Event -->
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="152" y="232" width="36" height="36"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="148" y="275" width="44" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <!-- Initial Work Task -->
+      <bpmndi:BPMNShape id="ServiceTask_1_di" bpmnElement="ServiceTask_1">
+        <dc:Bounds x="240" y="210" width="100" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+      
+      <!-- Interpretation Task -->
+      <bpmndi:BPMNShape id="ServiceTask_2_di" bpmnElement="ServiceTask_2">
+        <dc:Bounds x="400" y="210" width="100" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+      
+      <!-- Decision Gateway -->
+      <bpmndi:BPMNShape id="Gateway_1_di" bpmnElement="Gateway_1">
+        <dc:Bounds x="560" y="225" width="50" height="50"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+      
+      <!-- Continue Work Task -->
+      <bpmndi:BPMNShape id="ServiceTask_3_di" bpmnElement="ServiceTask_3">
+        <dc:Bounds x="400" y="350" width="100" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+      
+      <!-- Final Summary Task -->
+      <bpmndi:BPMNShape id="ServiceTask_4_di" bpmnElement="ServiceTask_4">
+        <dc:Bounds x="680" y="210" width="100" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+      
+      <!-- End Event -->
+      <bpmndi:BPMNShape id="EndEvent_1_di" bpmnElement="EndEvent_1">
+        <dc:Bounds x="842" y="232" width="36" height="36"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="838" y="275" width="44" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <!-- Sequence Flows -->
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="188" y="250"/>
+        <di:waypoint x="240" y="250"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="340" y="250"/>
+        <di:waypoint x="400" y="250"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="500" y="250"/>
+        <di:waypoint x="560" y="250"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="585" y="275"/>
+        <di:waypoint x="585" y="350"/>
+        <di:waypoint x="500" y="350"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="610" y="250"/>
+        <di:waypoint x="680" y="250"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="400" y="390"/>
+        <di:waypoint x="400" y="290"/>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
+        <di:waypoint x="780" y="250"/>
+        <di:waypoint x="842" y="250"/>
+      </bpmndi:BPMNEdge>
+      
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  
+</bpmn:definitions> 

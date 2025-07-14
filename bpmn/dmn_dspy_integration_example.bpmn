@@ -1,0 +1,490 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:dspy="http://autotel.ai/dspy"
+                  xmlns:shacl="http://www.w3.org/ns/shacl#"
+                  xmlns:owl="http://www.w3.org/2002/07/owl#"
+                  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                  xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:modeler="http://camunda.org/schema/modeler/1.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Definitions_DmnDspyIntegration"
+                  targetNamespace="http://bpmn.io/schema/bpmn"
+                  exporter="Camunda Modeler"
+                  exporterVersion="4.11.1"
+                  modeler:executionPlatform="Camunda Platform"
+                  modeler:executionPlatformVersion="7.15.0">
+
+  <!-- DMN + DSPy Integration Example -->
+  
+  <!-- 1. DSPy Signatures that produce data for DMN decisions -->
+  <dspy:signatures>
+    <dspy:signature name="customer_risk_assessment" description="AI-powered customer risk assessment">
+      <dspy:input name="customer_profile" description="Customer demographic and financial data" />
+      <dspy:input name="transaction_history" description="Historical transaction patterns" />
+      <dspy:output name="risk_score" description="Numerical risk score (0-1000)" />
+      <dspy:output name="risk_category" description="Risk category (LOW, MEDIUM, HIGH, CRITICAL)" />
+      <dspy:output name="fraud_probability" description="Fraud probability percentage (0-100)" />
+    </dspy:signature>
+    
+    <dspy:signature name="transaction_analysis" description="AI analysis of transaction patterns">
+      <dspy:input name="transaction_data" description="Current transaction information" />
+      <dspy:input name="customer_context" description="Customer context and history" />
+      <dspy:output name="anomaly_score" description="Anomaly detection score (0-100)" />
+      <dspy:output name="velocity_score" description="Velocity risk score (0-100)" />
+      <dspy:output name="pattern_match" description="Pattern matching confidence (0-100)" />
+    </dspy:signature>
+    
+    <dspy:signature name="market_analysis" description="AI-powered market and economic analysis">
+      <dspy:input name="market_data" description="Current market conditions" />
+      <dspy:input name="economic_indicators" description="Economic indicators" />
+      <dspy:output name="market_risk_score" description="Market risk assessment (0-100)" />
+      <dspy:output name="economic_outlook" description="Economic outlook (POSITIVE, NEUTRAL, NEGATIVE)" />
+      <dspy:output name="volatility_index" description="Market volatility index (0-100)" />
+    </dspy:signature>
+  </dspy:signatures>
+
+  <!-- 2. SHACL Shapes for data validation -->
+  <shacl:shapes>
+    <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+             xmlns:shacl="http://www.w3.org/ns/shacl#"
+             xmlns:xsd="http://www.w3.org/2001/XMLSchema#">
+      
+      <shacl:NodeShape rdf:about="http://autotel.ai/shapes#RiskScoreShape">
+        <shacl:property>
+          <shacl:PropertyShape>
+            <shacl:path rdf:resource="http://autotel.ai/props#riskScore"/>
+            <shacl:datatype rdf:resource="http://www.w3.org/2001/XMLSchema#integer"/>
+            <shacl:minInclusive rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">0</shacl:minInclusive>
+            <shacl:maxInclusive rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1000</shacl:maxInclusive>
+          </shacl:PropertyShape>
+        </shacl:property>
+      </shacl:NodeShape>
+
+      <shacl:NodeShape rdf:about="http://autotel.ai/shapes#FraudProbabilityShape">
+        <shacl:property>
+          <shacl:PropertyShape>
+            <shacl:path rdf:resource="http://autotel.ai/props#fraudProbability"/>
+            <shacl:datatype rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+            <shacl:minInclusive rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">0.0</shacl:minInclusive>
+            <shacl:maxInclusive rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">100.0</shacl:maxInclusive>
+          </shacl:PropertyShape>
+        </shacl:property>
+      </shacl:NodeShape>
+    </rdf:RDF>
+  </shacl:shapes>
+
+  <!-- 3. DMN Decision Table that uses DSPy outputs -->
+  <dmn:definitions xmlns:dmn="http://www.omg.org/spec/DMN/20191111/MODEL/"
+                   xmlns:camunda="http://camunda.org/schema/1.0/dmn"
+                   id="Definitions_EnhancedApprovalDecision"
+                   name="Enhanced Approval Decision Using DSPy Data"
+                   namespace="http://camunda.org/schema/1.0/dmn"
+                   exporter="Camunda Modeler"
+                   exporterVersion="4.11.1">
+    
+    <dmn:decision id="EnhancedApprovalDecision" name="Enhanced Approval Decision">
+      <dmn:decisionTable id="DecisionTable_EnhancedApproval" hitPolicy="UNIQUE">
+        <!-- Inputs from DSPy analysis -->
+        <dmn:input id="Input_1" label="Customer Risk Score">
+          <dmn:inputExpression id="InputExpression_1" typeRef="integer">
+            <dmn:text>risk_score</dmn:text>
+          </dmn:inputExpression>
+        </dmn:input>
+        <dmn:input id="Input_2" label="Fraud Probability">
+          <dmn:inputExpression id="InputExpression_2" typeRef="double">
+            <dmn:text>fraud_probability</dmn:text>
+          </dmn:inputExpression>
+        </dmn:input>
+        <dmn:input id="Input_3" label="Anomaly Score">
+          <dmn:inputExpression id="InputExpression_3" typeRef="double">
+            <dmn:text>anomaly_score</dmn:text>
+          </dmn:inputExpression>
+        </dmn:input>
+        <dmn:input id="Input_4" label="Market Risk Score">
+          <dmn:inputExpression id="InputExpression_4" typeRef="double">
+            <dmn:text>market_risk_score</dmn:text>
+          </dmn:inputExpression>
+        </dmn:input>
+        <dmn:input id="Input_5" label="Transaction Amount">
+          <dmn:inputExpression id="InputExpression_5" typeRef="double">
+            <dmn:text>transaction_amount</dmn:text>
+          </dmn:inputExpression>
+        </dmn:input>
+        
+        <!-- Decision outputs -->
+        <dmn:output id="Output_1" label="Approval Decision" typeRef="string"/>
+        <dmn:output id="Output_2" label="Risk Level" typeRef="string"/>
+        <dmn:output id="Output_3" label="Required Actions" typeRef="string"/>
+        <dmn:output id="Output_4" label="Review Level" typeRef="string"/>
+        
+        <!-- Rule 1: Low risk, auto-approve -->
+        <dmn:rule id="Rule_1">
+          <dmn:inputEntry id="InputEntry_1">
+            <dmn:text>&lt;= 300</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_2">
+            <dmn:text>&lt; 5.0</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_3">
+            <dmn:text>&lt; 20.0</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_4">
+            <dmn:text>&lt; 30.0</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_5">
+            <dmn:text>&lt;= 5000</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="OutputEntry_1">
+            <dmn:text>"AUTO_APPROVED"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_2">
+            <dmn:text>"LOW"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_3">
+            <dmn:text>"NONE"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_4">
+            <dmn:text>"NONE"</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+        
+        <!-- Rule 2: Medium risk, standard review -->
+        <dmn:rule id="Rule_2">
+          <dmn:inputEntry id="InputEntry_6">
+            <dmn:text>&lt;= 600</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_7">
+            <dmn:text>&lt; 15.0</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_8">
+            <dmn:text>&lt; 50.0</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_9">
+            <dmn:text>&lt; 60.0</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_10">
+            <dmn:text>&lt;= 15000</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="OutputEntry_5">
+            <dmn:text>"APPROVED_WITH_REVIEW"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_6">
+            <dmn:text>"MEDIUM"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_7">
+            <dmn:text>"STANDARD_MONITORING"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_8">
+            <dmn:text>"STANDARD"</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+        
+        <!-- Rule 3: High risk, enhanced review -->
+        <dmn:rule id="Rule_3">
+          <dmn:inputEntry id="InputEntry_11">
+            <dmn:text>&lt;= 800</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_12">
+            <dmn:text>&lt; 30.0</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_13">
+            <dmn:text>&lt; 80.0</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_14">
+            <dmn:text>&lt; 80.0</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_15">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="OutputEntry_9">
+            <dmn:text>"REQUIRES_MANUAL_REVIEW"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_10">
+            <dmn:text>"HIGH"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_11">
+            <dmn:text>"ENHANCED_MONITORING"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_12">
+            <dmn:text>"ENHANCED"</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+        
+        <!-- Rule 4: Critical risk, reject -->
+        <dmn:rule id="Rule_4">
+          <dmn:inputEntry id="InputEntry_16">
+            <dmn:text>&gt; 800</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_17">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_18">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_19">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_20">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="OutputEntry_13">
+            <dmn:text>"REJECTED"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_14">
+            <dmn:text>"CRITICAL"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_15">
+            <dmn:text>"IMMEDIATE_BLOCK"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_16">
+            <dmn:text>"CRITICAL"</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+        
+        <!-- Rule 5: High fraud probability, reject -->
+        <dmn:rule id="Rule_5">
+          <dmn:inputEntry id="InputEntry_21">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_22">
+            <dmn:text>&gt;= 30.0</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_23">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_24">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:inputEntry id="InputEntry_25">
+            <dmn:text>-</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="OutputEntry_17">
+            <dmn:text>"REJECTED"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_18">
+            <dmn:text>"CRITICAL"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_19">
+            <dmn:text>"FRAUD_INVESTIGATION"</dmn:text>
+          </dmn:outputEntry>
+          <dmn:outputEntry id="OutputEntry_20">
+            <dmn:text>"CRITICAL"</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+      </dmn:decisionTable>
+    </dmn:decision>
+  </dmn:definitions>
+
+  <!-- 4. Main BPMN Process showing DMN + DSPy integration -->
+  <bpmn:process id="DmnDspyIntegrationProcess" 
+                isExecutable="true" 
+                camunda:versionTag="1.0"
+                camunda:historyTimeToLive="30">
+
+    <!-- Start Event -->
+    <bpmn:startEvent id="StartEvent_1" name="Transaction Request Start">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!-- User Task: Collect Transaction Data -->
+    <bpmn:userTask id="UserTask_TransactionData" 
+                   name="Enter Transaction Details" 
+                   camunda:formKey="transaction_form">
+      <bpmn:extensionElements>
+        <camunda:formData>
+          <camunda:formField id="customer_id" 
+                            label="Customer ID" 
+                            type="string" />
+          <camunda:formField id="transaction_amount" 
+                            label="Transaction Amount" 
+                            type="double" />
+          <camunda:formField id="transaction_type" 
+                            label="Transaction Type" 
+                            type="enum" 
+                            defaultValue="purchase">
+            <camunda:value id="purchase" name="Purchase" />
+            <camunda:value id="transfer" name="Transfer" />
+            <camunda:value id="withdrawal" name="Withdrawal" />
+          </camunda:formField>
+          <camunda:formField id="merchant_name" 
+                            label="Merchant Name" 
+                            type="string" />
+        </camunda:formData>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- DSPy Service: Customer Risk Assessment -->
+    <bpmn:serviceTask id="ServiceTask_CustomerRisk" 
+                      name="AI Customer Risk Assessment">
+      <bpmn:extensionElements>
+        <dspy:service name="customer_risk_assessment" 
+                      signature="customer_risk_assessment" 
+                      result="customer_risk_result">
+          <dspy:param name="customer_profile" value="customer_id" />
+          <dspy:param name="transaction_history" value="customer_id" />
+        </dspy:service>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- DSPy Service: Transaction Analysis -->
+    <bpmn:serviceTask id="ServiceTask_TransactionAnalysis" 
+                      name="AI Transaction Analysis">
+      <bpmn:extensionElements>
+        <dspy:service name="transaction_analysis" 
+                      signature="transaction_analysis" 
+                      result="transaction_analysis_result">
+          <dspy:param name="transaction_data" value="transaction" />
+          <dspy:param name="customer_context" value="customer_id" />
+        </dspy:service>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- DSPy Service: Market Analysis -->
+    <bpmn:serviceTask id="ServiceTask_MarketAnalysis" 
+                      name="AI Market Analysis">
+      <bpmn:extensionElements>
+        <dspy:service name="market_analysis" 
+                      signature="market_analysis" 
+                      result="market_analysis_result">
+          <dspy:param name="market_data" value="current_market" />
+          <dspy:param name="economic_indicators" value="economic_data" />
+        </dspy:service>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Business Rule Task: DMN Decision using DSPy outputs -->
+    <bpmn:businessRuleTask id="BusinessRuleTask_EnhancedApproval" 
+                           name="Enhanced Approval Decision" 
+                           camunda:decisionRef="EnhancedApprovalDecision">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+
+    <!-- Exclusive Gateway: Route based on DMN decision -->
+    <bpmn:exclusiveGateway id="Gateway_ApprovalRouting" 
+                           name="Approval Routing">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+      <bpmn:outgoing>Flow_9</bpmn:outgoing>
+      <bpmn:outgoing>Flow_10</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- Auto-Approved Path -->
+    <bpmn:endEvent id="EndEvent_AutoApproved" name="Transaction Auto-Approved">
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Standard Review Path -->
+    <bpmn:userTask id="UserTask_StandardReview" 
+                   name="Standard Review" 
+                   camunda:formKey="standard_review_form"
+                   camunda:candidateGroups="reviewers">
+      <bpmn:extensionElements>
+        <camunda:formData>
+          <camunda:formField id="review_decision" 
+                            label="Review Decision" 
+                            type="enum" 
+                            defaultValue="pending">
+            <camunda:value id="approved" name="Approve" />
+            <camunda:value id="rejected" name="Reject" />
+            <camunda:value id="escalate" name="Escalate" />
+          </camunda:formField>
+          <camunda:formField id="review_notes" 
+                            label="Review Notes" 
+                            type="string" />
+        </camunda:formData>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+      <bpmn:outgoing>Flow_11</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- Enhanced Review Path -->
+    <bpmn:userTask id="UserTask_EnhancedReview" 
+                   name="Enhanced Review" 
+                   camunda:formKey="enhanced_review_form"
+                   camunda:candidateGroups="senior_reviewers">
+      <bpmn:extensionElements>
+        <camunda:formData>
+          <camunda:formField id="enhanced_review_decision" 
+                            label="Enhanced Review Decision" 
+                            type="enum" 
+                            defaultValue="pending">
+            <camunda:value id="approved" name="Approve" />
+            <camunda:value id="rejected" name="Reject" />
+            <camunda:value id="investigation" name="Request Investigation" />
+          </camunda:formField>
+          <camunda:formField id="enhanced_review_notes" 
+                            label="Enhanced Review Notes" 
+                            type="string" />
+          <camunda:formField id="risk_assessment" 
+                            label="Risk Assessment" 
+                            type="string" />
+        </camunda:formData>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_9</bpmn:incoming>
+      <bpmn:outgoing>Flow_12</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- Rejected Path -->
+    <bpmn:endEvent id="EndEvent_Rejected" name="Transaction Rejected">
+      <bpmn:incoming>Flow_10</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Final Approval -->
+    <bpmn:endEvent id="EndEvent_Approved" name="Transaction Approved">
+      <bpmn:incoming>Flow_11</bpmn:incoming>
+      <bpmn:incoming>Flow_12</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Sequence Flows -->
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="UserTask_TransactionData" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="UserTask_TransactionData" targetRef="ServiceTask_CustomerRisk" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="ServiceTask_CustomerRisk" targetRef="ServiceTask_TransactionAnalysis" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="ServiceTask_TransactionAnalysis" targetRef="ServiceTask_MarketAnalysis" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="ServiceTask_MarketAnalysis" targetRef="BusinessRuleTask_EnhancedApproval" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="BusinessRuleTask_EnhancedApproval" targetRef="Gateway_ApprovalRouting" />
+    
+    <!-- Conditional flows based on DMN decision -->
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Gateway_ApprovalRouting" targetRef="EndEvent_AutoApproved">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
+        ${approval_decision == "AUTO_APPROVED"}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Gateway_ApprovalRouting" targetRef="UserTask_StandardReview">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
+        ${approval_decision == "APPROVED_WITH_REVIEW"}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <bpmn:sequenceFlow id="Flow_9" sourceRef="Gateway_ApprovalRouting" targetRef="UserTask_EnhancedReview">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
+        ${approval_decision == "REQUIRES_MANUAL_REVIEW"}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <bpmn:sequenceFlow id="Flow_10" sourceRef="Gateway_ApprovalRouting" targetRef="EndEvent_Rejected">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
+        ${approval_decision == "REJECTED"}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <bpmn:sequenceFlow id="Flow_11" sourceRef="UserTask_StandardReview" targetRef="EndEvent_Approved" />
+    <bpmn:sequenceFlow id="Flow_12" sourceRef="UserTask_EnhancedReview" targetRef="EndEvent_Approved" />
+
+  </bpmn:process>
+
+</bpmn:definitions> 

@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:dspy="http://autotel.ai/dspy"
+                  xmlns:dmn="http://www.omg.org/spec/DMN/20191111/MODEL/"
+                  id="Definitions_1"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  
+  <!-- Simple DSPy Signature -->
+  <dspy:signatures>
+    <dspy:signature name="analyze_data" description="Analyze input data">
+      <dspy:input name="data" description="Input data to analyze"/>
+      <dspy:output name="result" description="Analysis result"/>
+      <dspy:output name="quality" description="Data quality score"/>
+    </dspy:signature>
+  </dspy:signatures>
+  
+
+  
+  <bpmn:process id="SimpleDMNWorkflow" isExecutable="true">
+    
+    <!-- Start -->
+    <bpmn:startEvent id="StartEvent_1" name="Start">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    
+    <!-- DSPy Analysis -->
+    <bpmn:serviceTask id="ServiceTask_1" name="Analyze Data">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+      <bpmn:extensionElements>
+        <dspy:service name="analyze_data" result="analysis_result">
+          <dspy:param name="data" value="input_data"/>
+        </dspy:service>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    
+    <!-- DMN Decision -->
+    <bpmn:businessRuleTask id="BusinessRuleTask_1" name="Make Decision">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+      <bpmn:extensionElements>
+        <dmn:decision id="ProcessDecision" name="Process Decision">
+          <dmn:decisionTable id="DecisionTable" hitPolicy="UNIQUE">
+            <dmn:input id="QualityInput" label="Quality Score">
+              <dmn:inputExpression id="QualityExpression" typeRef="double">
+                <dmn:text>quality_score</dmn:text>
+              </dmn:inputExpression>
+            </dmn:input>
+            <dmn:output id="ActionOutput" label="Action" typeRef="string"/>
+            
+            <dmn:rule id="Rule1">
+              <dmn:description>High quality - proceed</dmn:description>
+              <dmn:inputEntry id="Input1">
+                <dmn:text>&gt;= 0.8</dmn:text>
+              </dmn:inputEntry>
+              <dmn:outputEntry id="Output1">
+                <dmn:text>"proceed"</dmn:text>
+              </dmn:outputEntry>
+            </dmn:rule>
+            
+            <dmn:rule id="Rule2">
+              <dmn:description>Low quality - stop</dmn:description>
+              <dmn:inputEntry id="Input2">
+                <dmn:text>&lt; 0.8</dmn:text>
+              </dmn:inputEntry>
+              <dmn:outputEntry id="Output2">
+                <dmn:text>"stop"</dmn:text>
+              </dmn:outputEntry>
+            </dmn:rule>
+          </dmn:decisionTable>
+        </dmn:decision>
+      </bpmn:extensionElements>
+    </bpmn:businessRuleTask>
+    
+    <!-- Continue Path -->
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="BusinessRuleTask_1" targetRef="EndEvent_1">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
+        ${decision_action == "proceed"}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <!-- Stop Path -->
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="BusinessRuleTask_1" targetRef="EndEvent_2">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
+        ${decision_action == "stop"}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <!-- Flows -->
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="ServiceTask_1"/>
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="ServiceTask_1" targetRef="BusinessRuleTask_1"/>
+    
+    <!-- End Events -->
+    <bpmn:endEvent id="EndEvent_1" name="Success">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+    </bpmn:endEvent>
+    
+    <bpmn:endEvent id="EndEvent_2" name="Stopped">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+    </bpmn:endEvent>
+    
+  </bpmn:process>
+  
+</bpmn:definitions> 

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:dmndi="http://www.omg.org/spec/DMN/20191111/DMNDI/"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC/"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI/"
+                  xmlns:dmn="http://www.omg.org/spec/DMN/20191111/MODEL/"
+                  id="Definitions_1"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+
+  <!-- DMN Decision as direct child of BPMN definitions -->
+  <dmn:definitions id="Definitions_2" name="DRD" namespace="http://camunda.org/schema/1.0/dmn">
+    <dmn:decision id="product_prices" name="Product Prices">
+      <dmn:decisionTable id="DecisionTable_0irsx4u" hitPolicy="FIRST">
+        <dmn:input id="Input_1">
+          <dmn:inputExpression id="InputExpression_1" typeRef="string">
+            <dmn:text>product_name</dmn:text>
+          </dmn:inputExpression>
+        </dmn:input>
+        <dmn:output id="Output_1" label="product_price" typeRef="long" />
+        <dmn:rule id="DecisionRule_0yzfvwg">
+          <dmn:description>Product A</dmn:description>
+          <dmn:inputEntry id="UnaryTests_09p3f1m">
+            <dmn:text>"product_a"</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="LiteralExpression_04z7pbc">
+            <dmn:text>15.00</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+        <dmn:rule id="DecisionRule_06r9cs6">
+          <dmn:description>Product B</dmn:description>
+          <dmn:inputEntry id="UnaryTests_081dqoi">
+            <dmn:text>"product_b"</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="LiteralExpression_09pcew9">
+            <dmn:text>15.00</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+        <dmn:rule id="DecisionRule_1p0fmx5">
+          <dmn:description>Product C</dmn:description>
+          <dmn:inputEntry id="UnaryTests_0iajjkd">
+            <dmn:text>"product_c"</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="LiteralExpression_0xey55a">
+            <dmn:text>25.00</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+        <dmn:rule id="DecisionRule_1yvfyok">
+          <dmn:description>Product D</dmn:description>
+          <dmn:inputEntry id="UnaryTests_012k20z">
+            <dmn:text>"product_d"</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="LiteralExpression_0l1h1st">
+            <dmn:text>20.00</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+        <dmn:rule id="DecisionRule_034qyb9">
+          <dmn:description>Product E</dmn:description>
+          <dmn:inputEntry id="UnaryTests_1751ikg">
+            <dmn:text>"product_e"</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="LiteralExpression_1yaavlq">
+            <dmn:text>25.00</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+        <dmn:rule id="DecisionRule_1m9eyai">
+          <dmn:description>Product F</dmn:description>
+          <dmn:inputEntry id="UnaryTests_0w5l948">
+            <dmn:text>"product_f"</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="LiteralExpression_0lic6qk">
+            <dmn:text>30.00</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+        <dmn:rule id="DecisionRule_08r1zzy">
+          <dmn:description>Product G</dmn:description>
+          <dmn:inputEntry id="UnaryTests_1wn1qis">
+            <dmn:text>"product_g"</dmn:text>
+          </dmn:inputEntry>
+          <dmn:outputEntry id="LiteralExpression_1vi74nu">
+            <dmn:text>25.00</dmn:text>
+          </dmn:outputEntry>
+        </dmn:rule>
+      </dmn:decisionTable>
+    </dmn:decision>
+  </dmn:definitions>
+
+  <!-- BPMN Process -->
+  <bpmn:process id="SimpleDMNExample" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1" name="Start"/>
+    
+    <!-- Business Rule Task that uses DMN -->
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="BusinessRuleTask_1"/>
+    <bpmn:businessRuleTask id="BusinessRuleTask_1" name="Get Product Price" camunda:decisionRef="product_prices"/>
+    
+    <!-- End -->
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="BusinessRuleTask_1" targetRef="EndEvent_1"/>
+    <bpmn:endEvent id="EndEvent_1" name="End"/>
+  </bpmn:process>
+
+</bpmn:definitions> 

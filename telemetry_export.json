@@ -1,86 +1,35 @@
 {
-  "resource": {
-    "service.name": "autotel-bpmn-engine",
-    "service.version": "1.0.0"
-  },
-  "spans": [
+  "instances": [
     {
-      "name": "bpmn.servicetask",
-      "task_id": "ServiceTask_1",
-      "task_type": "serviceTask",
-      "start_time": "2025-07-11T14:42:41.688610",
-      "end_time": "2025-07-11T14:42:41.793758",
-      "duration_ms": 105.14800000000001,
-      "attributes": {
-        "bpmn.task_name": "Analyze Data",
-        "bpmn.task_id": "ServiceTask_1",
-        "bpmn.task_type": "serviceTask",
-        "dspy.service_id": "analyze_data",
-        "dspy.result_variable": "analysis_result"
-      },
-      "events": [
-        {
-          "name": "dspy.service.started",
-          "timestamp": "2025-07-11T14:42:41.688672",
-          "attributes": {
-            "service_id": "analyze_data"
-          }
-        },
-        {
-          "name": "dspy.service.completed",
-          "timestamp": "2025-07-11T14:42:41.793709",
-          "attributes": {
-            "confidence": 85
-          }
-        },
-        {
-          "name": "task.completed",
-          "timestamp": "2025-07-11T14:42:41.793750",
-          "attributes": {
-            "result": "{'analysis': 'Data analysis completed successfully', 'confidence': 85, 'recommendations': ['Proceed with approval', 'Monitor performance']}"
-          }
-        }
-      ],
-      "status": "SUCCESS"
+      "instance_id": "DynamicEmailWorkflow_b15b7319",
+      "process_definition_id": "DynamicEmailWorkflow",
+      "start_time": "2025-07-14T08:26:50.795683",
+      "end_time": null,
+      "status": "running",
+      "variables": {},
+      "execution_path": [],
+      "error_message": null,
+      "telemetry_data": {}
     },
     {
-      "name": "bpmn.businessruletask",
-      "task_id": "BusinessRuleTask_1",
-      "task_type": "businessRuleTask",
-      "start_time": "2025-07-11T14:42:41.793911",
-      "end_time": "2025-07-11T14:42:41.844382",
-      "duration_ms": 50.471000000000004,
-      "attributes": {
-        "bpmn.task_name": "Make Decision",
-        "bpmn.task_id": "BusinessRuleTask_1",
-        "bpmn.task_type": "businessRuleTask",
-        "dmn.decision_ref": "simple_decision",
-        "dmn.input.analysis_score": 85
-      },
-      "events": [
-        {
-          "name": "dmn.decision.started",
-          "timestamp": "2025-07-11T14:42:41.793940",
-          "attributes": {
-            "decision_ref": "simple_decision"
-          }
-        },
-        {
-          "name": "dmn.decision.completed",
-          "timestamp": "2025-07-11T14:42:41.844348",
-          "attributes": {
-            "decision": "APPROVE"
-          }
-        },
-        {
-          "name": "task.completed",
-          "timestamp": "2025-07-11T14:42:41.844374",
-          "attributes": {
-            "result": "{'decision': 'APPROVE', 'analysis_score': 85, 'reasoning': 'Score 85 resulted in APPROVE decision'}"
-          }
-        }
-      ],
-      "status": "SUCCESS"
+      "instance_id": "DynamicEmailWorkflow_6f2d4731",
+      "process_definition_id": "DynamicEmailWorkflow",
+      "start_time": "2025-07-14T08:28:27.695696",
+      "end_time": null,
+      "status": "failed",
+      "variables": {},
+      "execution_path": [],
+      "error_message": "Workflow execution failed: 'int' object has no attribute 'workflow'",
+      "telemetry_data": {}
     }
-  ]
+  ],
+  "statistics": {
+    "total_instances": 2,
+    "running_instances": 1,
+    "completed_instances": 0,
+    "failed_instances": 1,
+    "avg_execution_time": null,
+    "process_definitions": 1
+  },
+  "export_timestamp": "2025-07-14T08:28:27.698444"
 }
