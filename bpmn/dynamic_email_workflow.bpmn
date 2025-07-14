@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:dspy="http://autotel.ai/dspy"
+                  targetNamespace="http://autotel.ai/workflows">
+
+  <!-- DSPy Signature Definitions -->
+  <dspy:signatures>
+    <dspy:signature name="RiskAnalysis" description="Analyze transaction data for risk assessment using AI">
+      <dspy:input name="customer_name" description="Customer name for analysis"/>
+      <dspy:input name="transaction_amount" description="Transaction amount in dollars"/>
+      <dspy:input name="transaction_type" description="Type of transaction (purchase/transfer/withdrawal)"/>
+      <dspy:input name="merchant_name" description="Name of merchant or recipient"/>
+      <dspy:input name="customer_email" description="Customer email address"/>
+      <dspy:output name="risk_score" description="Risk score from 0-100"/>
+      <dspy:output name="risk_factors" description="List of identified risk factors"/>
+      <dspy:output name="confidence_level" description="Confidence level (LOW/MEDIUM/HIGH)"/>
+      <dspy:output name="recommendations" description="AI-generated recommendations"/>
+      <dspy:output name="why" description="Detailed explanation of the risk assessment reasoning"/>
+    </dspy:signature>
+  </dspy:signatures>
+
+  <!-- BPMN Process -->
+  <bpmn:process id="DynamicEmailWorkflow" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1" name="Transaction Received">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!-- DSPy Risk Analysis -->
+    <bpmn:serviceTask id="ServiceTask_1" name="Risk Analysis">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+      <bpmn:extensionElements>
+        <dspy:service name="RiskAnalysis" signature="RiskAnalysis" result="risk_analysis">
+          <dspy:param name="customer_name" value="customer_name"/>
+          <dspy:param name="transaction_amount" value="transaction_amount"/>
+          <dspy:param name="transaction_type" value="transaction_type"/>
+          <dspy:param name="merchant_name" value="merchant_name"/>
+          <dspy:param name="customer_email" value="customer_email"/>
+        </dspy:service>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_1" name="Analysis Complete">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Sequence Flows -->
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="ServiceTask_1"/>
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="ServiceTask_1" targetRef="EndEvent_1"/>
+  </bpmn:process>
+
+</bpmn:definitions> 

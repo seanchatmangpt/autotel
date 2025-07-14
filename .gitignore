@@ -233,7 +233,7 @@ $RECYCLE.BIN/
 
 # Project-specific
 # BPMN generated files
-bpmn/*.bpmn
+# bpmn/*.bpmn
 !bpmn/sample_process.bpmn
 !bpmn/simple_process.bpmn
 !bpmn/human_task_process.bpmn
