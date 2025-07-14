@@ -1,0 +1,345 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://autotel.ai/ontology/workflow#"
+     xml:base="http://autotel.ai/ontology/workflow"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:dspy="http://autotel.ai/dspy#"
+     xmlns:dmn="http://autotel.ai/dmn#"
+     xmlns:shacl="http://autotel.ai/shacl#">
+    
+    <owl:Ontology rdf:about="http://autotel.ai/ontology/workflow">
+        <rdfs:label>AutoTel Workflow Ontology</rdfs:label>
+        <rdfs:comment>Ontology for AutoTel workflow concepts integrating BPMN, DMN, DSPy, and SHACL</rdfs:comment>
+        <owl:versionInfo>1.0.0</owl:versionInfo>
+    </owl:Ontology>
+    
+    <!-- Core Workflow Classes -->
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#Workflow">
+        <rdfs:label>Workflow</rdfs:label>
+        <rdfs:comment>A business process workflow that orchestrates tasks and decisions</rdfs:comment>
+    </owl:Class>
+    
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#WorkflowElement">
+        <rdfs:label>WorkflowElement</rdfs:label>
+        <rdfs:comment>Base class for all workflow elements</rdfs:comment>
+    </owl:Class>
+    
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#Task">
+        <rdfs:label>Task</rdfs:label>
+        <rdfs:comment>A task within a workflow</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://autotel.ai/ontology/workflow#WorkflowElement"/>
+    </owl:Class>
+    
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#ServiceTask">
+        <rdfs:label>ServiceTask</rdfs:label>
+        <rdfs:comment>A service task that performs automated operations</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://autotel.ai/ontology/workflow#Task"/>
+    </owl:Class>
+    
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#UserTask">
+        <rdfs:label>UserTask</rdfs:label>
+        <rdfs:comment>A task that requires human interaction</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://autotel.ai/ontology/workflow#Task"/>
+    </owl:Class>
+    
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#DecisionTask">
+        <rdfs:label>DecisionTask</rdfs:label>
+        <rdfs:comment>A task that makes decisions based on business rules</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://autotel.ai/ontology/workflow#Task"/>
+    </owl:Class>
+    
+    <!-- DSPy Integration Classes -->
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#DSPySignature">
+        <rdfs:label>DSPySignature</rdfs:label>
+        <rdfs:comment>An AI signature for DSPy reasoning</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://autotel.ai/ontology/workflow#WorkflowElement"/>
+    </owl:Class>
+    
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#DSPyServiceTask">
+        <rdfs:label>DSPyServiceTask</rdfs:label>
+        <rdfs:comment>A service task that uses DSPy for AI reasoning</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://autotel.ai/ontology/workflow#ServiceTask"/>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://autotel.ai/ontology/workflow#hasDSPySignature"/>
+                <owl:minCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:minCardinality>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+    <!-- DMN Integration Classes -->
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#DMNDecisionTable">
+        <rdfs:label>DMNDecisionTable</rdfs:label>
+        <rdfs:comment>A DMN decision table for business rules</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://autotel.ai/ontology/workflow#WorkflowElement"/>
+    </owl:Class>
+    
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#DMNDecisionTask">
+        <rdfs:label>DMNDecisionTask</rdfs:label>
+        <rdfs:comment>A decision task that uses DMN decision tables</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://autotel.ai/ontology/workflow#DecisionTask"/>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://autotel.ai/ontology/workflow#hasDMNDecisionTable"/>
+                <owl:minCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:minCardinality>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+    <!-- SHACL Integration Classes -->
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#SHACLShape">
+        <rdfs:label>SHACLShape</rdfs:label>
+        <rdfs:comment>A SHACL shape for data validation</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://autotel.ai/ontology/workflow#WorkflowElement"/>
+    </owl:Class>
+    
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#ValidationTask">
+        <rdfs:label>ValidationTask</rdfs:label>
+        <rdfs:comment>A task that validates data using SHACL shapes</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://autotel.ai/ontology/workflow#ServiceTask"/>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://autotel.ai/ontology/workflow#hasSHACLShape"/>
+                <owl:minCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:minCardinality>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+    <!-- Business Domain Classes -->
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#Customer">
+        <rdfs:label>Customer</rdfs:label>
+        <rdfs:comment>A customer entity in business processes</rdfs:comment>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://autotel.ai/ontology/workflow#hasCustomerId"/>
+                <owl:minCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:minCardinality>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://autotel.ai/ontology/workflow#hasCustomerName"/>
+                <owl:minCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:minCardinality>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#Order">
+        <rdfs:label>Order</rdfs:label>
+        <rdfs:comment>An order entity in business processes</rdfs:comment>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://autotel.ai/ontology/workflow#hasOrderId"/>
+                <owl:minCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:minCardinality>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://autotel.ai/ontology/workflow#hasCustomer"/>
+                <owl:minCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:minCardinality>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#RiskAssessment">
+        <rdfs:label>RiskAssessment</rdfs:label>
+        <rdfs:comment>A risk assessment result from AI analysis</rdfs:comment>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://autotel.ai/ontology/workflow#hasRiskLevel"/>
+                <owl:minCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:minCardinality>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+    <!-- Status Classes -->
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#Status">
+        <rdfs:label>Status</rdfs:label>
+        <rdfs:comment>Base class for status values</rdfs:comment>
+    </owl:Class>
+    
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#WorkflowStatus">
+        <rdfs:label>WorkflowStatus</rdfs:label>
+        <rdfs:comment>Status of a workflow</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://autotel.ai/ontology/workflow#Status"/>
+    </owl:Class>
+    
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#TaskStatus">
+        <rdfs:label>TaskStatus</rdfs:label>
+        <rdfs:comment>Status of a task</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://autotel.ai/ontology/workflow#Status"/>
+    </owl:Class>
+    
+    <!-- Object Properties -->
+    <owl:ObjectProperty rdf:about="http://autotel.ai/ontology/workflow#hasTask">
+        <rdfs:label>hasTask</rdfs:label>
+        <rdfs:domain rdf:resource="http://autotel.ai/ontology/workflow#Workflow"/>
+        <rdfs:range rdf:resource="http://autotel.ai/ontology/workflow#Task"/>
+    </owl:ObjectProperty>
+    
+    <owl:ObjectProperty rdf:about="http://autotel.ai/ontology/workflow#hasCustomer">
+        <rdfs:label>hasCustomer</rdfs:label>
+        <rdfs:domain rdf:resource="http://autotel.ai/ontology/workflow#Order"/>
+        <rdfs:range rdf:resource="http://autotel.ai/ontology/workflow#Customer"/>
+    </owl:ObjectProperty>
+    
+    <owl:ObjectProperty rdf:about="http://autotel.ai/ontology/workflow#hasDSPySignature">
+        <rdfs:label>hasDSPySignature</rdfs:label>
+        <rdfs:domain rdf:resource="http://autotel.ai/ontology/workflow#DSPyServiceTask"/>
+        <rdfs:range rdf:resource="http://autotel.ai/ontology/workflow#DSPySignature"/>
+    </owl:ObjectProperty>
+    
+    <owl:ObjectProperty rdf:about="http://autotel.ai/ontology/workflow#hasDMNDecisionTable">
+        <rdfs:label>hasDMNDecisionTable</rdfs:label>
+        <rdfs:domain rdf:resource="http://autotel.ai/ontology/workflow#DMNDecisionTask"/>
+        <rdfs:range rdf:resource="http://autotel.ai/ontology/workflow#DMNDecisionTable"/>
+    </owl:ObjectProperty>
+    
+    <owl:ObjectProperty rdf:about="http://autotel.ai/ontology/workflow#hasSHACLShape">
+        <rdfs:label>hasSHACLShape</rdfs:label>
+        <rdfs:domain rdf:resource="http://autotel.ai/ontology/workflow#ValidationTask"/>
+        <rdfs:range rdf:resource="http://autotel.ai/ontology/workflow#SHACLShape"/>
+    </owl:ObjectProperty>
+    
+    <owl:ObjectProperty rdf:about="http://autotel.ai/ontology/workflow#hasStatus">
+        <rdfs:label>hasStatus</rdfs:label>
+        <rdfs:domain rdf:resource="http://autotel.ai/ontology/workflow#WorkflowElement"/>
+        <rdfs:range rdf:resource="http://autotel.ai/ontology/workflow#Status"/>
+    </owl:ObjectProperty>
+    
+    <owl:ObjectProperty rdf:about="http://autotel.ai/ontology/workflow#hasRiskAssessment">
+        <rdfs:label>hasRiskAssessment</rdfs:label>
+        <rdfs:domain rdf:resource="http://autotel.ai/ontology/workflow#Order"/>
+        <rdfs:range rdf:resource="http://autotel.ai/ontology/workflow#RiskAssessment"/>
+    </owl:ObjectProperty>
+    
+    <!-- Data Properties -->
+    <owl:DatatypeProperty rdf:about="http://autotel.ai/ontology/workflow#hasCustomerId">
+        <rdfs:label>hasCustomerId</rdfs:label>
+        <rdfs:domain rdf:resource="http://autotel.ai/ontology/workflow#Customer"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+    <owl:DatatypeProperty rdf:about="http://autotel.ai/ontology/workflow#hasCustomerName">
+        <rdfs:label>hasCustomerName</rdfs:label>
+        <rdfs:domain rdf:resource="http://autotel.ai/ontology/workflow#Customer"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+    <owl:DatatypeProperty rdf:about="http://autotel.ai/ontology/workflow#hasOrderId">
+        <rdfs:label>hasOrderId</rdfs:label>
+        <rdfs:domain rdf:resource="http://autotel.ai/ontology/workflow#Order"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+    <owl:DatatypeProperty rdf:about="http://autotel.ai/ontology/workflow#hasOrderAmount">
+        <rdfs:label>hasOrderAmount</rdfs:label>
+        <rdfs:domain rdf:resource="http://autotel.ai/ontology/workflow#Order"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+    </owl:DatatypeProperty>
+    
+    <owl:DatatypeProperty rdf:about="http://autotel.ai/ontology/workflow#hasRiskLevel">
+        <rdfs:label>hasRiskLevel</rdfs:label>
+        <rdfs:domain rdf:resource="http://autotel.ai/ontology/workflow#RiskAssessment"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+    <owl:DatatypeProperty rdf:about="http://autotel.ai/ontology/workflow#hasConfidence">
+        <rdfs:label>hasConfidence</rdfs:label>
+        <rdfs:domain rdf:resource="http://autotel.ai/ontology/workflow#RiskAssessment"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+    </owl:DatatypeProperty>
+    
+    <owl:DatatypeProperty rdf:about="http://autotel.ai/ontology/workflow#hasStatusValue">
+        <rdfs:label>hasStatusValue</rdfs:label>
+        <rdfs:domain rdf:resource="http://autotel.ai/ontology/workflow#Status"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+    <!-- Status Individuals -->
+    <owl:NamedIndividual rdf:about="http://autotel.ai/ontology/workflow#PendingStatus">
+        <rdf:type rdf:resource="http://autotel.ai/ontology/workflow#WorkflowStatus"/>
+        <rdfs:label>Pending</rdfs:label>
+        <rdf:type rdf:resource="http://autotel.ai/ontology/workflow#Status"/>
+        <rdf:type rdf:resource="http://autotel.ai/ontology/workflow#TaskStatus"/>
+    </owl:NamedIndividual>
+    
+    <owl:NamedIndividual rdf:about="http://autotel.ai/ontology/workflow#RunningStatus">
+        <rdf:type rdf:resource="http://autotel.ai/ontology/workflow#WorkflowStatus"/>
+        <rdfs:label>Running</rdfs:label>
+        <rdf:type rdf:resource="http://autotel.ai/ontology/workflow#Status"/>
+        <rdf:type rdf:resource="http://autotel.ai/ontology/workflow#TaskStatus"/>
+    </owl:NamedIndividual>
+    
+    <owl:NamedIndividual rdf:about="http://autotel.ai/ontology/workflow#CompletedStatus">
+        <rdf:type rdf:resource="http://autotel.ai/ontology/workflow#WorkflowStatus"/>
+        <rdfs:label>Completed</rdfs:label>
+        <rdf:type rdf:resource="http://autotel.ai/ontology/workflow#Status"/>
+        <rdf:type rdf:resource="http://autotel.ai/ontology/workflow#TaskStatus"/>
+    </owl:NamedIndividual>
+    
+    <owl:NamedIndividual rdf:about="http://autotel.ai/ontology/workflow#FailedStatus">
+        <rdf:type rdf:resource="http://autotel.ai/ontology/workflow#WorkflowStatus"/>
+        <rdfs:label>Failed</rdfs:label>
+        <rdf:type rdf:resource="http://autotel.ai/ontology/workflow#Status"/>
+        <rdf:type rdf:resource="http://autotel.ai/ontology/workflow#TaskStatus"/>
+    </owl:NamedIndividual>
+    
+    <owl:NamedIndividual rdf:about="http://autotel.ai/ontology/workflow#ApprovedStatus">
+        <rdf:type rdf:resource="http://autotel.ai/ontology/workflow#WorkflowStatus"/>
+        <rdfs:label>Approved</rdfs:label>
+        <rdf:type rdf:resource="http://autotel.ai/ontology/workflow#Status"/>
+    </owl:NamedIndividual>
+    
+    <owl:NamedIndividual rdf:about="http://autotel.ai/ontology/workflow#RejectedStatus">
+        <rdf:type rdf:resource="http://autotel.ai/ontology/workflow#WorkflowStatus"/>
+        <rdfs:label>Rejected</rdfs:label>
+        <rdf:type rdf:resource="http://autotel.ai/ontology/workflow#Status"/>
+    </owl:NamedIndividual>
+    
+    <!-- Risk Level Individuals -->
+    <owl:NamedIndividual rdf:about="http://autotel.ai/ontology/workflow#LowRisk">
+        <rdfs:label>Low Risk</rdfs:label>
+    </owl:NamedIndividual>
+    
+    <owl:NamedIndividual rdf:about="http://autotel.ai/ontology/workflow#MediumRisk">
+        <rdfs:label>Medium Risk</rdfs:label>
+    </owl:NamedIndividual>
+    
+    <owl:NamedIndividual rdf:about="http://autotel.ai/ontology/workflow#HighRisk">
+        <rdfs:label>High Risk</rdfs:label>
+    </owl:NamedIndividual>
+    
+    <!-- Axioms -->
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#Workflow">
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://autotel.ai/ontology/workflow#hasStatus"/>
+                <owl:minCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:minCardinality>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#Task">
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://autotel.ai/ontology/workflow#hasStatus"/>
+                <owl:minCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:minCardinality>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+    <!-- Disjoint Classes -->
+    <owl:AllDisjointClasses>
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AllDisjointClasses"/>
+        <owl:members rdf:parseType="Collection">
+            <rdf:Description rdf:about="http://autotel.ai/ontology/workflow#Workflow"/>
+            <rdf:Description rdf:about="http://autotel.ai/ontology/workflow#Task"/>
+            <rdf:Description rdf:about="http://autotel.ai/ontology/workflow#Customer"/>
+            <rdf:Description rdf:about="http://autotel.ai/ontology/workflow#Order"/>
+        </owl:members>
+    </owl:AllDisjointClasses>
+    
+</rdf:RDF> 

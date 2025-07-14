@@ -64,6 +64,7 @@ dependencies = [
   "rdflib>=7.0.0",
   "pyshacl>=0.25.0",
   "lxml>=5.0.0",
+  "owlready2>=0.47",
 ]
 
 [project.optional-dependencies]

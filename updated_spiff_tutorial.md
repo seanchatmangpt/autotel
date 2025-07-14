@@ -1634,21 +1634,23 @@ This creates a "Four Pillars" architecture where each component handles a specif
 1. [Architecture Overview](#architecture-overview)
 2. [DSPy Integration](#dspy-integration)
 3. [SHACL Integration](#shacl-integration)
-4. [Complete Parser Implementation](#complete-parser-implementation)
-5. [Advanced Use Cases](#advanced-use-cases)
-6. [Production Examples](#production-examples)
+4. [OWL Integration](#owl-integration)
+5. [Complete Parser Implementation](#complete-parser-implementation)
+6. [Advanced Use Cases](#advanced-use-cases)
+7. [Production Examples](#production-examples)
 
 ## Architecture Overview
 
 The complete system follows the "Humble Integration" pattern, extending SpiffWorkflow's existing architecture:
 
 ```python
-# The Four Pillars Architecture
+# The Five Pillars Architecture
 PILLARS = {
     'Process': 'BPMN - Native SpiffWorkflow orchestration',
     'Rules': 'DMN - Business decision logic',
     'Reasoning': 'DSPy - AI-powered language model integration', 
-    'Data': 'SHACL - Semantic data validation and contracts'
+    'Data': 'SHACL - Semantic data validation and contracts',
+    'Ontology': 'OWL - Formal ontology definitions and reasoning'
 }
 ```
 
@@ -1813,6 +1815,189 @@ class DspyTaskParser(TaskParser):
             }
         
         return extensions
+```
+
+## SHACL Integration
+
+### 1. Enhanced SHACL Validation Task
+
+Building on the previous SHACL implementation, but now integrated with DSPy:
+
+## OWL Integration
+
+### 1. OWL XML Parser
+
+OWL (Web Ontology Language) provides formal ontology definitions and reasoning capabilities:
+
+```python
+from autotel.utils.owl_integration import OWLXMLParser, OWLReasoner, OWLWorkflowTask
+
+class OWLXMLParser:
+    """Parser for OWL XML files with full ontology support"""
+    
+    def __init__(self):
+        self.ontologies: Dict[str, OWLOntologyDefinition] = {}
+        self.owl_graph = Graph()
+    
+    def parse_owl_xml(self, owl_xml_content: str, ontology_name: str = "default") -> OWLOntologyDefinition:
+        """Parse OWL XML content and create ontology definition"""
+        # Parse classes, properties, individuals, and axioms
+        # Create RDF graph for reasoning
+        # Return structured ontology definition
+```
+
+### 2. OWL Reasoning Engine
+
+```python
+class OWLReasoner:
+    """OWL reasoning engine using OwlReady2"""
+    
+    def __init__(self):
+        self.ontologies = {}
+        self.reasoners = {}
+    
+    def load_ontology(self, ontology_def: OWLOntologyDefinition, ontology_name: str = "default"):
+        """Load ontology into OwlReady2 for reasoning"""
+        # Create ontology in OwlReady2
+        # Add classes, properties, individuals
+        # Create reasoner instance
+    
+    def reason(self, ontology_name: str = "default") -> Dict[str, Any]:
+        """Perform reasoning on ontology"""
+        # Perform OWL reasoning
+        # Return inferred classes, properties, individuals
+        # Check consistency and entailments
+```
+
+### 3. OWL Workflow Task
+
+```python
+class OWLWorkflowTask:
+    """OWL-aware workflow task for BPMN integration"""
+    
+    def __init__(self, owl_parser: OWLXMLParser, owl_reasoner: OWLReasoner):
+        self.owl_parser = owl_parser
+        self.owl_reasoner = owl_reasoner
+    
+    def validate_with_ontology(self, data: Dict[str, Any], ontology_name: str = "default") -> Dict[str, Any]:
+        """Validate data against OWL ontology"""
+        # Validate data against ontology classes
+        # Check restrictions and constraints
+        # Perform reasoning for inferences
+        # Return validation results
+```
+
+### 4. Example OWL XML Ontology
+
+```xml
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://autotel.ai/ontology/workflow#"
+     xml:base="http://autotel.ai/ontology/workflow"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">
+    
+    <owl:Ontology rdf:about="http://autotel.ai/ontology/workflow">
+        <rdfs:label>AutoTel Workflow Ontology</rdfs:label>
+        <rdfs:comment>Ontology for AutoTel workflow concepts</rdfs:comment>
+    </owl:Ontology>
+    
+    <!-- Core Workflow Classes -->
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#Workflow">
+        <rdfs:label>Workflow</rdfs:label>
+        <rdfs:comment>A business process workflow</rdfs:comment>
+    </owl:Class>
+    
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#Task">
+        <rdfs:label>Task</rdfs:label>
+        <rdfs:comment>A task within a workflow</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://autotel.ai/ontology/workflow#WorkflowElement"/>
+    </owl:Class>
+    
+    <!-- DSPy Integration Classes -->
+    <owl:Class rdf:about="http://autotel.ai/ontology/workflow#DSPyServiceTask">
+        <rdfs:label>DSPyServiceTask</rdfs:label>
+        <rdfs:comment>A service task that uses DSPy for AI reasoning</rdfs:comment>
+        <rdfs:subClassOf rdf:resource="http://autotel.ai/ontology/workflow#ServiceTask"/>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://autotel.ai/ontology/workflow#hasDSPySignature"/>
+                <owl:minCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:minCardinality>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+    <!-- Object Properties -->
+    <owl:ObjectProperty rdf:about="http://autotel.ai/ontology/workflow#hasTask">
+        <rdfs:label>hasTask</rdfs:label>
+        <rdfs:domain rdf:resource="http://autotel.ai/ontology/workflow#Workflow"/>
+        <rdfs:range rdf:resource="http://autotel.ai/ontology/workflow#Task"/>
+    </owl:ObjectProperty>
+    
+    <!-- Data Properties -->
+    <owl:DatatypeProperty rdf:about="http://autotel.ai/ontology/workflow#hasStatus">
+        <rdfs:label>hasStatus</rdfs:label>
+        <rdfs:domain rdf:resource="http://autotel.ai/ontology/workflow#WorkflowElement"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+</rdf:RDF>
+```
+
+### 5. OWL Integration with Five Pillars
+
+```python
+# Complete Five Pillars integration with OWL
+class FivePillarsBpmnParser(CamundaParser):
+    """
+    The complete AutoTel V5 parser handling BPMN, DMN, DSPy, SHACL, and OWL
+    This implements the "Five Pillars" architecture
+    """
+    
+    def __init__(self):
+        super().__init__()
+        # DSPy signature management
+        self.signature_definitions: Dict[str, DSPySignatureDefinition] = {}
+        self.dynamic_signatures: Dict[str, Type[dspy.Signature]] = {}
+        
+        # SHACL shapes management
+        self.shacl_graph = Graph()
+        
+        # OWL ontology management
+        self.owl_parser = OWLXMLParser()
+        self.owl_reasoner = OWLReasoner()
+        self.owl_workflow_task = OWLWorkflowTask(self.owl_parser, self.owl_reasoner)
+        
+        # Integration tracking
+        self.loaded_contracts = {
+            'bpmn_files': [],
+            'dmn_files': [],
+            'dspy_signatures': [],
+            'shacl_shapes': [],
+            'owl_ontologies': []
+        }
+    
+    def add_owl_file(self, owl_path: str):
+        """Parse and add OWL ontology file"""
+        try:
+            print(f"INFO: Loading OWL ontology from: {owl_path}")
+            with open(owl_path, 'r') as f:
+                owl_xml_content = f.read()
+            
+            ontology_def = self.owl_parser.parse_owl_xml(owl_xml_content, Path(owl_path).stem)
+            self.owl_reasoner.load_ontology(ontology_def, Path(owl_path).stem)
+            self.loaded_contracts['owl_ontologies'].append(owl_path)
+            
+        except Exception as e:
+            raise ValidationException(f"Failed to parse OWL file '{owl_path}': {e}")
+    
+    def validate_with_ontology(self, data: Dict[str, Any], ontology_name: str = "default") -> Dict[str, Any]:
+        """Validate data against loaded OWL ontologies"""
+        return self.owl_workflow_task.validate_with_ontology(data, ontology_name)
+    
+    def reason_with_ontology(self, ontology_name: str = "default") -> Dict[str, Any]:
+        """Perform reasoning on loaded OWL ontologies"""
+        return self.owl_reasoner.reason(ontology_name)
 ```
 
 ## SHACL Integration
