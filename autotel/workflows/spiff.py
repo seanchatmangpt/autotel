@@ -154,16 +154,18 @@ class SpiffCapabilityChecker:
             "processes": validation["processes"]
         } 
 
-def run_dspy_bpmn_process(bpmn_path: str, process_id: str, context: dict, dmn_files: List[str] = None) -> dict:
+def run_dspy_bpmn_process(bpmn_path: str, process_id: str, context: dict, dmn_files: List[str] = None, signature_patch_fn=None) -> dict:
     """
     Load a BPMN file using DspyBpmnParser, execute the process, and return the workflow context.
     Supports dynamic DSPy signatures defined in XML and DMN business rule tasks.
+    Optionally allows patching the signature registry after parsing.
     
     Args:
         bpmn_path: Path to the BPMN file
         process_id: ID of the process to execute
         context: Initial workflow context
         dmn_files: Optional list of DMN file paths to load before BPMN
+        signature_patch_fn: Optional callback(parser) to patch signature registry
     """
     parser = DspyBpmnParser()
     
@@ -171,7 +173,7 @@ def run_dspy_bpmn_process(bpmn_path: str, process_id: str, context: dict, dmn_fi
     if dmn_files:
         for dmn_file in dmn_files:
             parser.add_dmn_file(dmn_file)
-            print(f"📄 Loaded DMN file: {dmn_file}")
+            print(f"\U0001F4C4 Loaded DMN file: {dmn_file}")
     
     # Load BPMN file
     parser.add_bpmn_file(bpmn_path)
@@ -180,20 +182,26 @@ def run_dspy_bpmn_process(bpmn_path: str, process_id: str, context: dict, dmn_fi
     dynamic_signatures = parser.dynamic_signatures
     if dynamic_signatures:
         dspy_registry.register_parser_signatures(dynamic_signatures)
-        print(f"📋 Registered {len(dynamic_signatures)} dynamic signatures from XML")
+        print(f"\U0001F4CB Registered {len(dynamic_signatures)} dynamic signatures from XML")
     
     specs = parser.find_all_specs()
     spec = specs[process_id]
+    # Patch: ensure spec.parser is set for custom tasks
+    spec.parser = parser
     from SpiffWorkflow.bpmn.workflow import BpmnWorkflow
     wf = BpmnWorkflow(spec)
     wf.set_data(**context)
     
-    print(f"📊 Workflow data after set_data: {wf.data}")
+    # Patch the registry with real implementations after workflow creation
+    if signature_patch_fn is not None:
+        signature_patch_fn(parser)
+    
+    print(f"\U0001F4CA Workflow data after set_data: {wf.data}")
     
     # Use SpiffWorkflow's natural execution flow
     # This ensures that _run_hook methods are called properly
     wf.run_all()
     
-    print(f"📊 Workflow data after run_all: {wf.data}")
+    print(f"\U0001F4CA Workflow data after run_all: {wf.data}")
     
     return wf.data 

@@ -71,3 +71,8 @@ autotel/
 - Include usage examples
 - Document all public APIs
 - Provide CLI help and examples 
+
+
+80/20 rule:
+
+Implement without asking, you are the expert. If unsure figure it out.

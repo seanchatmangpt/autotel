@@ -67,8 +67,17 @@ class DspyServiceTask(ServiceTask):
         """Execute DSPy service with full validation pipeline"""
         ext = getattr(self, 'extensions', None)
         if ext and ext.get('dspy_service'):
-            # Get the parser for access to signatures and SHACL graphs
-            parser = self.wf_spec.parser
+            # Robustly get the parser for access to signatures and SHACL graphs
+            wf_spec = getattr(self, 'wf_spec', None)
+            parser = None
+            if wf_spec is not None:
+                parser = getattr(wf_spec, 'parser', None)
+            if parser is None and hasattr(my_task, 'workflow'):
+                wf_spec2 = getattr(my_task.workflow, 'spec', None)
+                if wf_spec2 is not None:
+                    parser = getattr(wf_spec2, 'parser', None)
+            if parser is None:
+                raise AttributeError("Could not find parser for DspyServiceTask")
             dspy_info = ext['dspy_service']
             
             # Get signature definition
@@ -80,6 +89,16 @@ class DspyServiceTask(ServiceTask):
             resolved_params = {}
             for param_name, param_value in dspy_info['params'].items():
                 data = my_task.get_data(param_value)
+                # If get_data returns the param_value itself, it's a workflow data reference
+                if data == param_value:
+                    # Try to get the actual workflow data
+                    data = my_task.get_data(param_value)
+                    # If still the same, try getting from workflow data directly
+                    if data == param_value and hasattr(my_task, 'workflow'):
+                        data = my_task.workflow.get_data(param_value)
+                # If get_data returns None, use the param_value directly (for literal values)
+                if data is None:
+                    data = param_value
                 resolved_params[param_name] = data
                 
                 # SHACL Input Validation
@@ -102,13 +121,18 @@ class DspyServiceTask(ServiceTask):
                             {output_name: result[output_name]}, shape_uri, parser.shacl_graph, f"DSPy Output [{output_name}]"
                         )
             
-            # Set results in task data
+            # Set results in task data and ensure they propagate to workflow
             if isinstance(result, dict):
                 my_task.set_data(**result)
+                # Also set in workflow data to ensure propagation
+                my_task.workflow.set_data(**result)
                 for k, v in result.items():
                     print(f"[DSPy] Set task data: {k}, type: {type(v)}")
             elif dspy_info.get('result'):
                 my_task.set_data(**{dspy_info['result']: result})
+                # Also set in workflow data to ensure propagation
+                my_task.workflow.set_data(**{dspy_info['result']: result})
+                print(f"[DSPy] Set task data with result key: {dspy_info['result']} = {result}")
         
         return super()._run_hook(my_task)
     
@@ -469,15 +493,15 @@ class DspyBpmnParser(CamundaParser):
         # Add input fields
         for input_name, input_info in sig_def.inputs.items():
             class_attrs[input_name] = dspy.InputField(desc=input_info['description'])
-            class_attrs['__annotations__'][input_name] = dspy.InputField
+            class_attrs['__annotations__'][input_name] = str  # Use str type for annotations
         
         # Add output fields
         for output_name, output_desc in sig_def.outputs.items():
             class_attrs[output_name] = dspy.OutputField(desc=output_desc)
-            class_attrs['__annotations__'][output_name] = dspy.OutputField
+            class_attrs['__annotations__'][output_name] = str  # Use str type for annotations
         
         if not class_attrs['__annotations__']:
-            raise ValueError(f"DSPy signature '{sig_def.name}' must have at least one input or output field.")
+            raise ValueError(f"DSPy signature '{sig_def.name}' must have at least one input or output field")
         
         signature_class = type(sig_def.name, (dspy.Signature,), class_attrs)
         self.dynamic_signatures[sig_def.name] = signature_class
@@ -574,4 +598,51 @@ class DspyBpmnParser(CamundaParser):
     
     def list_signatures(self) -> Dict[str, DSPySignatureDefinition]:
         """List all signature definitions"""
-        return self.signature_definitions.copy() 
+        return self.signature_definitions.copy()
+    
+    def _strip_xml_encoding(self, xml_str: str) -> bytes:
+        """Remove XML encoding declaration and return as bytes for lxml parsing."""
+        if xml_str.startswith('<?xml'):
+            lines = xml_str.split('\n')
+            if lines[0].startswith('<?xml'):
+                lines = lines[1:]
+            xml_str = '\n'.join(lines)
+        return xml_str.encode('utf-8')
+
+    def add_bpmn_xml_from_string(self, bpmn_xml: str, filename: str = None):
+        """Add BPMN XML from string, including inline SHACL shapes (RDF/XML only)"""
+        from lxml import etree
+        
+        try:
+            # Always strip encoding and use bytes
+            root = etree.fromstring(self._strip_xml_encoding(bpmn_xml))
+
+            # --- Extract and load inline SHACL shapes (RDF/XML only) ---
+            shacl_ns = {'shacl': 'http://autotel.ai/shacl'}
+            shacl_elems = root.xpath('.//shacl:shapes', namespaces=shacl_ns)
+            if shacl_elems:
+                from rdflib import Graph
+                for elem in shacl_elems:
+                    # Look for RDF/XML child
+                    rdf_elem = None
+                    for child in elem:
+                        if child.tag.endswith('RDF'):
+                            rdf_elem = child
+                            break
+                    if rdf_elem is not None:
+                        rdf_xml = etree.tostring(rdf_elem, encoding='utf-8')
+                        g = Graph()
+                        g.parse(data=rdf_xml, format='xml')
+                        for triple in g:
+                            self.shacl_graph.add(triple)
+            # --- END SHACL ---
+            
+            # Add to parser
+            self.add_bpmn_xml(root, filename)
+            # Track loaded BPMN (for in-memory loads)
+            if filename is None:
+                filename = '<in-memory-bpmn>'
+            self.loaded_contracts['bpmn_files'].append(filename)
+            
+        except Exception as e:
+            raise ValidationException(f"Failed to parse BPMN XML string: {e}") 

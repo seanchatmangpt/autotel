@@ -191,6 +191,7 @@ dependencies = [
     { name = "opentelemetry-instrumentation" },
     { name = "opentelemetry-sdk" },
     { name = "opentelemetry-semantic-conventions" },
+    { name = "owlready2" },
     { name = "pandas" },
     { name = "pydantic" },
     { name = "pyshacl" },
@@ -250,6 +251,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation", specifier = ">=0.55b1" },
     { name = "opentelemetry-sdk", specifier = ">=1.34.0" },
     { name = "opentelemetry-semantic-conventions", specifier = ">=0.55b1" },
+    { name = "owlready2", specifier = ">=0.47" },
     { name = "pandas", specifier = ">=2.3.1" },
     { name = "pydantic", specifier = ">=2.8.0" },
     { name = "pyshacl", specifier = ">=0.25.0" },
@@ -1695,6 +1697,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/a5/e0/b303190ae8032d12f
 wheels = [
     { url = "https://files.pythonhosted.org/packages/5c/5e/068798a8c7087863e7772e9363a880ab13fe55a5a7ede8ec42fab8a1acbb/optuna-4.4.0-py3-none-any.whl", hash = "sha256:fad8d9c5d5af993ae1280d6ce140aecc031c514a44c3b639d8c8658a8b7920ea", size = 395949, upload-time = "2025-06-16T05:12:58.37Z" },
 ]
+
+[[package]]
+name = "owlready2"
+version = "0.48"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/8d/79/01daa72fbd07b1d4dd0907356d0ae486a684f0bd4654430f27a3e31206ee/owlready2-0.48.tar.gz", hash = "sha256:86b4d8500d769a674c524b54397fdd738ff5d0a96878432b69f4d606d6a7a4d8", size = 27298462, upload-time = "2025-05-27T09:15:03.095Z" }
 
 [[package]]
 name = "owlrl"
