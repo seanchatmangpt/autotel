@@ -1,367 +1,372 @@
-#!/usr/bin/env python3
 """
-Advanced DSPy Services - Enhanced LLM integration with caching, model selection, and async execution
+Advanced DSPy Services for BPMN Integration with SHACL Validation
+Supports the Four Pillars architecture: BPMN + DMN + DSPy + SHACL
 """
 
 import json
-import asyncio
-import time
-import hashlib
-from typing import Dict, Any, Optional, List, Union, Callable, Type
-from dataclasses import dataclass, field
-from enum import Enum
-from functools import wraps
-import threading
-import logging
-
 import dspy
-from dspy import Predict, Signature
+from typing import Dict, Any, Optional, Type, List
+from dataclasses import dataclass
+from pathlib import Path
+import logging
+from rdflib import Graph, URIRef, Literal, Namespace
+from rdflib.namespace import RDF, XSD
+import pyshacl
 
+# Configure logging
 logger = logging.getLogger(__name__)
 
-class ModelProvider(Enum):
-    """Supported LLM providers"""
-    OLLAMA = "ollama"
-    OPENAI = "openai"
-    ANTHROPIC = "anthropic"
-    GOOGLE = "google"
-    LOCAL = "local"
+# Configure DSPy globally
+try:
+    ollama_lm = dspy.LM('ollama/qwen3:latest', temperature=0.7)
+    dspy.configure(lm=ollama_lm)
+except Exception as e:
+    logger.warning(f"Could not configure DSPy with Ollama: {e}")
+    # Fallback to mock LM for testing
+    dspy.configure(lm=dspy.MockLM())
 
 @dataclass
-class ModelConfig:
-    """Configuration for an LLM model"""
-    provider: ModelProvider
-    model_name: str
-    temperature: float = 0.7
-    max_tokens: Optional[int] = None
-    api_key: Optional[str] = None
-    api_base: Optional[str] = None
-    priority: int = 1  # Lower number = higher priority
+class AdvancedDSPySignature:
+    """Enhanced registry entry for a DSPy signature with SHACL integration"""
+    signature_class: Type[dspy.Signature]
+    description: str
+    input_fields: Dict[str, str]  # field_name -> description
+    output_fields: Dict[str, str]  # field_name -> description
+    shacl_input_shapes: Dict[str, str] = None  # field_name -> shape_uri
+    shacl_output_shapes: Dict[str, str] = None  # field_name -> shape_uri
+    validation_enabled: bool = True
 
-@dataclass
-class CacheEntry:
-    """Cache entry for DSPy results"""
-    signature_name: str
-    input_hash: str
-    result: Dict[str, Any]
-    timestamp: float
-    model_used: str
-    duration: float
-
-class DSPyCache:
-    """Intelligent caching for DSPy results"""
-    
-    def __init__(self, max_size: int = 1000, ttl_seconds: int = 3600):
-        self.max_size = max_size
-        self.ttl_seconds = ttl_seconds
-        self.cache: Dict[str, CacheEntry] = {}
-        self._lock = threading.Lock()
-    
-    def _generate_cache_key(self, signature_name: str, **kwargs) -> str:
-        """Generate a cache key from signature name and parameters"""
-        # Sort parameters for consistent hashing
-        sorted_params = sorted(kwargs.items())
-        param_str = json.dumps(sorted_params, sort_keys=True)
-        
-        # Create hash
-        hash_input = f"{signature_name}:{param_str}"
-        return hashlib.md5(hash_input.encode()).hexdigest()
-    
-    def get(self, signature_name: str, **kwargs) -> Optional[Dict[str, Any]]:
-        """Get cached result if available and not expired"""
-        with self._lock:
-            cache_key = self._generate_cache_key(signature_name, **kwargs)
-            entry = self.cache.get(cache_key)
-            
-            if entry:
-                # Check if expired
-                if time.time() - entry.timestamp > self.ttl_seconds:
-                    del self.cache[cache_key]
-                    return None
-                
-                logger.info(f"Cache hit for {signature_name}")
-                return entry.result
-            
-            return None
-    
-    def set(self, signature_name: str, result: Dict[str, Any], model_used: str, duration: float, **kwargs) -> None:
-        """Cache a result"""
-        with self._lock:
-            cache_key = self._generate_cache_key(signature_name, **kwargs)
-            
-            # Check cache size
-            if len(self.cache) >= self.max_size:
-                # Remove oldest entry
-                oldest_key = min(self.cache.keys(), key=lambda k: self.cache[k].timestamp)
-                del self.cache[oldest_key]
-            
-            entry = CacheEntry(
-                signature_name=signature_name,
-                input_hash=cache_key,
-                result=result,
-                timestamp=time.time(),
-                model_used=model_used,
-                duration=duration
-            )
-            
-            self.cache[cache_key] = entry
-            logger.info(f"Cached result for {signature_name}")
-    
-    def clear(self) -> None:
-        """Clear all cached results"""
-        with self._lock:
-            self.cache.clear()
-            logger.info("DSPy cache cleared")
-    
-    def get_stats(self) -> Dict[str, Any]:
-        """Get cache statistics"""
-        with self._lock:
-            return {
-                "size": len(self.cache),
-                "max_size": self.max_size,
-                "ttl_seconds": self.ttl_seconds,
-                "oldest_entry": min((entry.timestamp for entry in self.cache.values()), default=0),
-                "newest_entry": max((entry.timestamp for entry in self.cache.values()), default=0)
-            }
-
-class ModelSelector:
-    """Intelligent model selection based on task requirements"""
+class AdvancedDSPyServiceRegistry:
+    """Advanced registry for DSPy signatures with SHACL validation"""
     
     def __init__(self):
-        self.models: Dict[str, ModelConfig] = {}
-        self.model_performance: Dict[str, List[float]] = {}  # model_name -> [durations]
-        self._lock = threading.Lock()
+        self._signatures: Dict[str, AdvancedDSPySignature] = {}
+        self._predict_modules: Dict[str, dspy.Predict] = {}
+        self._parser_signatures: Dict[str, Type[dspy.Signature]] = {}
+        self._shacl_graph = Graph()
+        self._validation_cache = {}
     
-    def add_model(self, model_config: ModelConfig) -> None:
-        """Add a model configuration"""
-        with self._lock:
-            model_key = f"{model_config.provider.value}:{model_config.model_name}"
-            self.models[model_key] = model_config
-            self.model_performance[model_key] = []
-            logger.info(f"Added model: {model_key}")
-    
-    def select_model(self, signature_name: str, **kwargs) -> ModelConfig:
-        """Select the best model for a given signature and parameters"""
-        with self._lock:
-            if not self.models:
-                raise ValueError("No models configured")
-            
-            # Simple selection strategy: choose model with highest priority
-            # In a real implementation, this could consider:
-            # - Task complexity (based on signature name)
-            # - Input size
-            # - Historical performance
-            # - Cost considerations
-            # - Model availability
-            
-            best_model = min(self.models.values(), key=lambda m: m.priority)
-            return best_model
-    
-    def record_performance(self, model_name: str, duration: float) -> None:
-        """Record performance metrics for model selection"""
-        with self._lock:
-            if model_name in self.model_performance:
-                self.model_performance[model_name].append(duration)
-                # Keep only last 100 measurements
-                if len(self.model_performance[model_name]) > 100:
-                    self.model_performance[model_name] = self.model_performance[model_name][-100:]
-    
-    def get_model_stats(self) -> Dict[str, Any]:
-        """Get model performance statistics"""
-        with self._lock:
-            stats = {}
-            for model_name, durations in self.model_performance.items():
-                if durations:
-                    stats[model_name] = {
-                        "avg_duration": sum(durations) / len(durations),
-                        "min_duration": min(durations),
-                        "max_duration": max(durations),
-                        "count": len(durations)
-                    }
-            return stats
-
-class AdvancedDSPyRegistry:
-    """Enhanced DSPy registry with advanced features"""
-    
-    def __init__(self, cache_size: int = 1000, cache_ttl: int = 3600):
-        self.cache = DSPyCache(max_size=cache_size, ttl_seconds=cache_ttl)
-        self.model_selector = ModelSelector()
-        self.signatures: Dict[str, Type[Signature]] = {}
-        self.predict_modules: Dict[str, Predict] = {}
-        self.rate_limiters: Dict[str, float] = {}  # signature_name -> last_call_time
-        self._lock = threading.Lock()
-    
-    def register_signature(self, name: str, signature_class: Type[Signature], 
-                          model_config: Optional[ModelConfig] = None,
-                          rate_limit_seconds: float = 0.0) -> None:
-        """Register a DSPy signature with advanced configuration"""
-        with self._lock:
-            self.signatures[name] = signature_class
-            self.predict_modules[name] = Predict(signature_class)
-            
-            if model_config:
-                self.model_selector.add_model(model_config)
-            
-            if rate_limit_seconds > 0:
-                self.rate_limiters[name] = rate_limit_seconds
-            
-            logger.info(f"Registered advanced DSPy signature: {name}")
-    
-    def call_signature(self, signature_name: str, use_cache: bool = True, **kwargs) -> Dict[str, Any]:
-        """Call a DSPy signature with advanced features"""
-        with self._lock:
-            if signature_name not in self.signatures:
-                raise ValueError(f"Unknown DSPy signature: {signature_name}")
-            
-            # Check cache first
-            if use_cache:
-                cached_result = self.cache.get(signature_name, **kwargs)
-                if cached_result:
-                    return cached_result
-            
-            # Rate limiting
-            if signature_name in self.rate_limiters:
-                self._check_rate_limit(signature_name)
-            
-            # Model selection
-            model_config = self.model_selector.select_model(signature_name, **kwargs)
-            
-            # Configure DSPy with selected model
-            self._configure_dspy_model(model_config)
-            
-            # Execute with timing
-            start_time = time.time()
-            try:
-                result = self.predict_modules[signature_name](**kwargs)
-                duration = time.time() - start_time
-                
-                # Record performance
-                model_key = f"{model_config.provider.value}:{model_config.model_name}"
-                self.model_selector.record_performance(model_key, duration)
-                
-                # Extract result
-                if hasattr(result, '_store') and isinstance(result._store, dict):
-                    output_dict = dict(result._store)
-                else:
-                    output_dict = {k: v for k, v in vars(result).items() if not k.startswith('_')}
-                
-                # Cache result
-                if use_cache:
-                    self.cache.set(signature_name, output_dict, model_key, duration, **kwargs)
-                
-                logger.info(f"Executed {signature_name} with {model_key} in {duration:.3f}s")
-                return output_dict
-                
-            except Exception as e:
-                duration = time.time() - start_time
-                logger.error(f"Failed to execute {signature_name}: {e}")
-                raise
-    
-    async def call_signature_async(self, signature_name: str, use_cache: bool = True, **kwargs) -> Dict[str, Any]:
-        """Async version of call_signature"""
-        # Run in thread pool to avoid blocking
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None, 
-            lambda: self.call_signature(signature_name, use_cache, **kwargs)
+    def register_signature(self, name: str, signature_class: Type[dspy.Signature], 
+                          description: str = "", shacl_shapes: Dict[str, Dict[str, str]] = None):
+        """Register a DSPy signature with optional SHACL shapes"""
+        # Extract field information
+        input_fields = {}
+        output_fields = {}
+        
+        # Get all attributes of the class
+        for attr_name in dir(signature_class):
+            if not attr_name.startswith('_'):
+                attr_value = getattr(signature_class, attr_name)
+                if hasattr(attr_value, '__class__'):
+                    tname = attr_value.__class__.__name__
+                    if tname == 'InputField':
+                        input_fields[attr_name] = getattr(attr_value, 'desc', attr_name)
+                    elif tname == 'OutputField':
+                        output_fields[attr_name] = getattr(attr_value, 'desc', attr_name)
+        
+        # Extract SHACL shapes if provided
+        shacl_input_shapes = shacl_shapes.get('inputs', {}) if shacl_shapes else None
+        shacl_output_shapes = shacl_shapes.get('outputs', {}) if shacl_shapes else None
+        
+        # Create registry entry
+        signature_info = AdvancedDSPySignature(
+            signature_class=signature_class,
+            description=description,
+            input_fields=input_fields,
+            output_fields=output_fields,
+            shacl_input_shapes=shacl_input_shapes,
+            shacl_output_shapes=shacl_output_shapes
         )
-    
-    def batch_call_signatures(self, calls: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Execute multiple DSPy calls in batch"""
-        results = []
+        self._signatures[name] = signature_info
+        self._predict_modules[name] = dspy.Predict(signature_class)
         
-        for call in calls:
-            signature_name = call['signature_name']
-            kwargs = call.get('kwargs', {})
-            use_cache = call.get('use_cache', True)
+        logger.info(f"Registered DSPy signature: {name}")
+        logger.info(f"  Inputs: {list(input_fields.keys())}")
+        logger.info(f"  Outputs: {list(output_fields.keys())}")
+        if shacl_input_shapes:
+            logger.info(f"  Input SHACL shapes: {shacl_input_shapes}")
+        if shacl_output_shapes:
+            logger.info(f"  Output SHACL shapes: {shacl_output_shapes}")
+    
+    def register_parser_signatures(self, parser_signatures: Dict[str, Type[dspy.Signature]], 
+                                 shacl_graph: Graph = None):
+        """Register dynamic signatures from the BPMN parser with SHACL support"""
+        if shacl_graph:
+            self._shacl_graph = shacl_graph
+        
+        for name, signature_class in parser_signatures.items():
+            self._parser_signatures[name] = signature_class
+            self._predict_modules[name] = dspy.Predict(signature_class)
+            logger.info(f"Registered parser signature: {name}")
+    
+    def add_shacl_shapes(self, shacl_graph: Graph):
+        """Add SHACL shapes to the registry"""
+        self._shacl_graph = shacl_graph
+    
+    def call_signature(self, signature_name: str, **kwargs) -> Dict[str, Any]:
+        """Call a registered DSPy signature with SHACL validation"""
+        # Validate inputs if SHACL shapes are available
+        if signature_name in self._signatures:
+            sig_info = self._signatures[signature_name]
+            if sig_info.validation_enabled and sig_info.shacl_input_shapes:
+                self._validate_inputs_with_shacl(signature_name, kwargs, sig_info)
+        
+        try:
+            # Call the DSPy signature
+            if signature_name in self._parser_signatures:
+                result = self._predict_modules[signature_name](**kwargs)
+            else:
+                result = self._predict_modules[signature_name](**kwargs)
             
-            try:
-                result = self.call_signature(signature_name, use_cache, **kwargs)
-                results.append({
-                    'signature_name': signature_name,
-                    'success': True,
-                    'result': result
-                })
-            except Exception as e:
-                results.append({
-                    'signature_name': signature_name,
-                    'success': False,
-                    'error': str(e)
-                })
-        
-        return results
+            # Extract results
+            output_dict = self._extract_signature_output(result)
+            
+            # Validate outputs if SHACL shapes are available
+            if signature_name in self._signatures:
+                sig_info = self._signatures[signature_name]
+                if sig_info.validation_enabled and sig_info.shacl_output_shapes:
+                    self._validate_outputs_with_shacl(signature_name, output_dict, sig_info)
+            
+            return output_dict
+            
+        except Exception as e:
+            logger.error(f"Error calling DSPy signature '{signature_name}': {str(e)}")
+            raise
     
-    def _check_rate_limit(self, signature_name: str) -> None:
-        """Check and enforce rate limiting"""
-        current_time = time.time()
-        last_call = getattr(self, f'_last_call_{signature_name}', 0)
-        rate_limit = self.rate_limiters[signature_name]
+    def _validate_inputs_with_shacl(self, signature_name: str, inputs: Dict[str, Any], 
+                                   sig_info: AdvancedDSPySignature):
+        """Validate input parameters using SHACL shapes"""
+        if not sig_info.shacl_input_shapes or len(self._shacl_graph) == 0:
+            return
         
-        if current_time - last_call < rate_limit:
-            sleep_time = rate_limit - (current_time - last_call)
-            time.sleep(sleep_time)
-        
-        setattr(self, f'_last_call_{signature_name}', time.time())
+        for field_name, shape_uri in sig_info.shacl_input_shapes.items():
+            if field_name in inputs:
+                self._validate_data_with_shacl(
+                    {field_name: inputs[field_name]}, 
+                    shape_uri, 
+                    f"DSPy Input [{signature_name}.{field_name}]"
+                )
     
-    def _configure_dspy_model(self, model_config: ModelConfig) -> None:
-        """Configure DSPy with the selected model"""
-        if model_config.provider == ModelProvider.OLLAMA:
-            lm = dspy.LM(f'ollama/{model_config.model_name}', 
-                        temperature=model_config.temperature,
-                        api_base=model_config.api_base)
-        elif model_config.provider == ModelProvider.OPENAI:
-            lm = dspy.OpenAI(model=model_config.model_name,
-                           temperature=model_config.temperature,
-                           api_key=model_config.api_key)
-        elif model_config.provider == ModelProvider.ANTHROPIC:
-            lm = dspy.Anthropic(model=model_config.model_name,
-                              temperature=model_config.temperature,
-                              api_key=model_config.api_key)
+    def _validate_outputs_with_shacl(self, signature_name: str, outputs: Dict[str, Any], 
+                                    sig_info: AdvancedDSPySignature):
+        """Validate output parameters using SHACL shapes"""
+        if not sig_info.shacl_output_shapes or len(self._shacl_graph) == 0:
+            return
+        
+        for field_name, shape_uri in sig_info.shacl_output_shapes.items():
+            if field_name in outputs:
+                self._validate_data_with_shacl(
+                    {field_name: outputs[field_name]}, 
+                    shape_uri, 
+                    f"DSPy Output [{signature_name}.{field_name}]"
+                )
+    
+    def _validate_data_with_shacl(self, data_dict: dict, shape_uri: str, context: str):
+        """Validate data using SHACL shapes"""
+        logger.info(f"Validating {context} against shape: <{shape_uri}>")
+        
+        # Convert Python dict to RDF graph
+        data_graph = Graph()
+        autotel_ns = Namespace("http://autotel.ai/data/")
+        instance_uri = autotel_ns.instance
+        
+        # Add type information
+        data_graph.add((instance_uri, RDF.type, URIRef(shape_uri)))
+        
+        # Convert data to RDF triples
+        for key, value in data_dict.items():
+            predicate = autotel_ns[key]
+            if isinstance(value, str):
+                data_graph.add((instance_uri, predicate, Literal(value, datatype=XSD.string)))
+            elif isinstance(value, int):
+                data_graph.add((instance_uri, predicate, Literal(value, datatype=XSD.integer)))
+            elif isinstance(value, float):
+                data_graph.add((instance_uri, predicate, Literal(value, datatype=XSD.decimal)))
+            elif isinstance(value, bool):
+                data_graph.add((instance_uri, predicate, Literal(value, datatype=XSD.boolean)))
+            else:
+                # Serialize complex objects as JSON strings
+                json_value = json.dumps(value) if not isinstance(value, str) else str(value)
+                data_graph.add((instance_uri, predicate, Literal(json_value, datatype=XSD.string)))
+        
+        # Perform SHACL validation
+        conforms, results_graph, results_text = pyshacl.validate(
+            data_graph,
+            shacl_graph=self._shacl_graph,
+            inference='rdfs'
+        )
+        
+        if not conforms:
+            raise ValueError(f"{context} data failed SHACL validation for shape <{shape_uri}>:\n{results_text}")
+        
+        logger.info(f"SUCCESS: {context} data conforms to SHACL contract")
+    
+    def _extract_signature_output(self, result) -> Dict[str, Any]:
+        """Extract output from DSPy signature result"""
+        if hasattr(result, '_store') and isinstance(result._store, dict) and result._store:
+            return dict(result._store)
         else:
-            # Default to Ollama
-            lm = dspy.LM(f'ollama/{model_config.model_name}', 
-                        temperature=model_config.temperature)
-        
-        dspy.configure(lm=lm)
+            # Fallback: return all public fields
+            return {k: v for k, v in vars(result).items() if not k.startswith('_')}
     
-    def get_stats(self) -> Dict[str, Any]:
-        """Get comprehensive statistics"""
-        return {
-            "cache_stats": self.cache.get_stats(),
-            "model_stats": self.model_selector.get_model_stats(),
-            "signatures": list(self.signatures.keys()),
-            "rate_limited_signatures": list(self.rate_limiters.keys())
-        }
+    def get_signature_info(self, signature_name: str) -> Optional[AdvancedDSPySignature]:
+        """Get information about a registered signature"""
+        return self._signatures.get(signature_name)
+    
+    def list_signatures(self) -> Dict[str, AdvancedDSPySignature]:
+        """List all registered signatures"""
+        return self._signatures.copy()
+    
+    def list_parser_signatures(self) -> Dict[str, Type[dspy.Signature]]:
+        """List all parser signatures"""
+        return self._parser_signatures.copy()
+    
+    def enable_validation(self, signature_name: str, enabled: bool = True):
+        """Enable or disable SHACL validation for a signature"""
+        if signature_name in self._signatures:
+            self._signatures[signature_name].validation_enabled = enabled
+            logger.info(f"SHACL validation {'enabled' if enabled else 'disabled'} for signature: {signature_name}")
 
 # Global advanced registry instance
-advanced_dspy_registry = AdvancedDSPyRegistry()
+advanced_dspy_registry = AdvancedDSPyServiceRegistry()
 
-def initialize_advanced_dspy_services() -> None:
-    """Initialize advanced DSPy services with default models"""
-    # Add default models
-    ollama_model = ModelConfig(
-        provider=ModelProvider.OLLAMA,
-        model_name="qwen2.5:7b",
-        temperature=0.7,
-        priority=1
-    )
-    
-    openai_model = ModelConfig(
-        provider=ModelProvider.OPENAI,
-        model_name="gpt-4o-mini",
-        temperature=0.7,
-        priority=2
-    )
-    
-    advanced_dspy_registry.model_selector.add_model(ollama_model)
-    advanced_dspy_registry.model_selector.add_model(openai_model)
-    
-    logger.info("Advanced DSPy services initialized")
+# Advanced DSPy signatures with SHACL integration
+class CustomerRiskAnalysis(dspy.Signature):
+    """AI-powered customer risk assessment with SHACL validation"""
+    customer_profile = dspy.InputField(desc="Customer demographic and financial data")
+    transaction_history = dspy.InputField(desc="Historical transaction patterns")
+    risk_score = dspy.OutputField(desc="Numerical risk assessment (0-100)")
+    risk_factors = dspy.OutputField(desc="Key risk factors identified")
 
-def call_advanced_dspy_service(signature_name: str, use_cache: bool = True, **kwargs) -> Dict[str, Any]:
-    """Convenience function to call advanced DSPy services"""
-    return advanced_dspy_registry.call_signature(signature_name, use_cache, **kwargs)
+class DocumentGeneration(dspy.Signature):
+    """Generate documents from templates with validation"""
+    template_type = dspy.InputField(desc="Type of document to generate")
+    data_context = dspy.InputField(desc="Context data for document generation")
+    generated_document = dspy.OutputField(desc="Generated document content")
 
-async def call_advanced_dspy_service_async(signature_name: str, use_cache: bool = True, **kwargs) -> Dict[str, Any]:
-    """Async convenience function to call advanced DSPy services"""
-    return await advanced_dspy_registry.call_signature_async(signature_name, use_cache, **kwargs) 
+class DataQualityAssessment(dspy.Signature):
+    """Assess data quality using AI and SHACL validation"""
+    data_sample = dspy.InputField(desc="Sample of data to assess")
+    quality_metrics = dspy.OutputField(desc="Quality assessment metrics")
+    recommendations = dspy.OutputField(desc="Recommendations for improvement")
+
+class ProcessOptimization(dspy.Signature):
+    """Optimize business processes using AI analysis"""
+    process_data = dspy.InputField(desc="Process execution data")
+    optimization_suggestions = dspy.OutputField(desc="Process optimization suggestions")
+    expected_improvement = dspy.OutputField(desc="Expected improvement percentage")
+
+# Register advanced signatures with SHACL shapes
+advanced_dspy_registry.register_signature(
+    "customer_risk_analysis",
+    CustomerRiskAnalysis,
+    "AI-powered customer risk assessment with SHACL validation",
+    {
+        'inputs': {
+            'customer_profile': 'http://autotel.ai/shapes#CustomerShape',
+            'transaction_history': 'http://autotel.ai/shapes#TransactionHistoryShape'
+        },
+        'outputs': {
+            'risk_score': 'http://autotel.ai/shapes#RiskScoreShape',
+            'risk_factors': 'http://autotel.ai/shapes#RiskFactorsShape'
+        }
+    }
+)
+
+advanced_dspy_registry.register_signature(
+    "document_generation",
+    DocumentGeneration,
+    "Generate documents from templates with validation",
+    {
+        'inputs': {
+            'template_type': 'http://autotel.ai/shapes#TemplateTypeShape',
+            'data_context': 'http://autotel.ai/shapes#DocumentContextShape'
+        },
+        'outputs': {
+            'generated_document': 'http://autotel.ai/shapes#DocumentShape'
+        }
+    }
+)
+
+advanced_dspy_registry.register_signature(
+    "data_quality_assessment",
+    DataQualityAssessment,
+    "Assess data quality using AI and SHACL validation",
+    {
+        'inputs': {
+            'data_sample': 'http://autotel.ai/shapes#DataSampleShape'
+        },
+        'outputs': {
+            'quality_metrics': 'http://autotel.ai/shapes#QualityMetricsShape',
+            'recommendations': 'http://autotel.ai/shapes#RecommendationsShape'
+        }
+    }
+)
+
+advanced_dspy_registry.register_signature(
+    "process_optimization",
+    ProcessOptimization,
+    "Optimize business processes using AI analysis",
+    {
+        'inputs': {
+            'process_data': 'http://autotel.ai/shapes#ProcessDataShape'
+        },
+        'outputs': {
+            'optimization_suggestions': 'http://autotel.ai/shapes#OptimizationSuggestionsShape',
+            'expected_improvement': 'http://autotel.ai/shapes#ImprovementShape'
+        }
+    }
+)
+
+# Advanced service functions
+def advanced_dspy_service(operation_name: str, **operation_params) -> Dict[str, Any]:
+    """
+    Advanced function to call any DSPy signature with SHACL validation.
+    This is the main entry point for Service Tasks with validation.
+    
+    Args:
+        operation_name: Name of the registered DSPy signature
+        **operation_params: Parameters to pass to the signature
+    
+    Returns:
+        Dictionary containing the results
+    """
+    try:
+        # Call the DSPy signature with validation
+        result = advanced_dspy_registry.call_signature(operation_name, **operation_params)
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error in advanced DSPy service '{operation_name}': {str(e)}")
+        # Return error information
+        return {
+            "error": True,
+            "message": str(e),
+            "operation": operation_name
+        }
+
+def call_customer_risk_analysis(customer_profile: Dict[str, Any], 
+                              transaction_history: Dict[str, Any]) -> Dict[str, Any]:
+    """Convenience function for customer risk analysis"""
+    return advanced_dspy_service("customer_risk_analysis", 
+                               customer_profile=customer_profile,
+                               transaction_history=transaction_history)
+
+def call_document_generation(template_type: str, data_context: Dict[str, Any]) -> Dict[str, Any]:
+    """Convenience function for document generation"""
+    return advanced_dspy_service("document_generation", 
+                               template_type=template_type,
+                               data_context=data_context)
+
+def call_data_quality_assessment(data_sample: Dict[str, Any]) -> Dict[str, Any]:
+    """Convenience function for data quality assessment"""
+    return advanced_dspy_service("data_quality_assessment", 
+                               data_sample=data_sample)
+
+def call_process_optimization(process_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Convenience function for process optimization"""
+    return advanced_dspy_service("process_optimization", 
+                               process_data=process_data)
+
+# Export for workflow integration
+advanced_dspy_service = advanced_dspy_service 

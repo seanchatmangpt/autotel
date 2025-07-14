@@ -175,10 +175,12 @@ dependencies = [
     { name = "confz" },
     { name = "dspy-ai" },
     { name = "httpx" },
+    { name = "httpx-aiohttp" },
     { name = "jinja2" },
     { name = "jsonschema" },
     { name = "linkml-runtime" },
     { name = "litellm" },
+    { name = "lxml" },
     { name = "marshmallow" },
     { name = "numpy" },
     { name = "ollama" },
@@ -191,8 +193,10 @@ dependencies = [
     { name = "opentelemetry-semantic-conventions" },
     { name = "pandas" },
     { name = "pydantic" },
+    { name = "pyshacl" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
+    { name = "rdflib" },
     { name = "rich" },
     { name = "spiffworkflow" },
     { name = "typer" },
@@ -227,17 +231,19 @@ requires-dist = [
     { name = "confz", specifier = ">=1.5.0" },
     { name = "dspy-ai", specifier = ">=2.6.27" },
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=7.0.0" },
-    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "httpx", specifier = "==0.27.0" },
+    { name = "httpx-aiohttp", specifier = "==0.1.8" },
     { name = "isort", marker = "extra == 'dev'", specifier = ">=5.13.2" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "jsonschema", specifier = ">=4.24.0" },
     { name = "linkml-runtime", specifier = ">=1.9.3" },
     { name = "litellm", specifier = ">=1.74.0.post1" },
+    { name = "lxml", specifier = ">=5.0.0" },
     { name = "marshmallow", specifier = ">=3.21.1" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.8.0" },
     { name = "numpy", specifier = ">=2.3.1" },
     { name = "ollama" },
-    { name = "openai", specifier = ">=1.93.3" },
+    { name = "openai", specifier = ">=1.68.2" },
     { name = "opentelemetry-api", specifier = ">=1.34.0" },
     { name = "opentelemetry-exporter-otlp-proto-grpc", specifier = ">=1.34.0" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.34.0" },
@@ -246,6 +252,7 @@ requires-dist = [
     { name = "opentelemetry-semantic-conventions", specifier = ">=0.55b1" },
     { name = "pandas", specifier = ">=2.3.1" },
     { name = "pydantic", specifier = ">=2.8.0" },
+    { name = "pyshacl", specifier = ">=0.25.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.1" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.4.1" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24.0" },
@@ -254,6 +261,7 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=5.0.0" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
     { name = "pyyaml", specifier = ">=6.0.2" },
+    { name = "rdflib", specifier = ">=7.0.0" },
     { name = "rich", specifier = ">=13.0.0" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=7.3.7" },
     { name = "sphinx-rtd-theme", marker = "extra == 'docs'", specifier = ">=2.0.0" },
@@ -861,6 +869,15 @@ wheels = [
 ]
 
 [[package]]
+name = "html5rdf"
+version = "1.2.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/4c/55/1b839c43f5ed8207e17a9a02d8b395179520b8b4f00c00a41e113bc205ca/html5rdf-1.2.1.tar.gz", hash = "sha256:ace9b420ce52995bb4f05e7425eedf19e433c981dfe7a831ab391e2fa2e1a195", size = 287899, upload-time = "2024-10-30T05:06:56.384Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7d/c9/f6e1e8567660bc5b0aba281f2b0017b2a7665fcad6bf3ed67286a0c72cd4/html5rdf-1.2.1-py2.py3-none-any.whl", hash = "sha256:1f519121bc366af3e485310dc8041d2e86e5173c1a320fac3dc9d2604069b83e", size = 109765, upload-time = "2024-10-30T05:06:52.507Z" },
+]
+
+[[package]]
 name = "httpcore"
 version = "1.0.9"
 source = { registry = "https://pypi.org/simple" }
@@ -875,17 +892,31 @@ wheels = [
 
 [[package]]
 name = "httpx"
-version = "0.28.1"
+version = "0.27.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "certifi" },
     { name = "httpcore" },
     { name = "idna" },
+    { name = "sniffio" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b1/df/48c586a5fe32a0f01324ee087459e112ebb7224f646c0b5023f5e79e9956/httpx-0.28.1.tar.gz", hash = "sha256:75e98c5f16b0f35b567856f597f06ff2270a374470a5c2392242528e3e3e42fc", size = 141406, upload-time = "2024-12-06T15:37:23.222Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5c/2d/3da5bdf4408b8b2800061c339f240c1802f2e82d55e50bd39c5a881f47f0/httpx-0.27.0.tar.gz", hash = "sha256:a0cb88a46f32dc874e04ee956e4c2764aba2aa228f650b06788ba6bda2962ab5", size = 126413, upload-time = "2024-02-21T13:07:52.434Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl", hash = "sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad", size = 73517, upload-time = "2024-12-06T15:37:21.509Z" },
+    { url = "https://files.pythonhosted.org/packages/41/7b/ddacf6dcebb42466abd03f368782142baa82e08fc0c1f8eaa05b4bae87d5/httpx-0.27.0-py3-none-any.whl", hash = "sha256:71d5465162c13681bff01ad59b2cc68dd838ea1f10e51574bac27103f00c91a5", size = 75590, upload-time = "2024-02-21T13:07:50.455Z" },
+]
+
+[[package]]
+name = "httpx-aiohttp"
+version = "0.1.8"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "httpx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/37/19/ae2d2bf1f57fdd23c8ad83675599fb5c407fa13bc20e90f00cffa4dea3aa/httpx_aiohttp-0.1.8.tar.gz", hash = "sha256:756c5e74cdb568c3248ba63fe82bfe8bbe64b928728720f7eaac64b3cf46f308", size = 25401, upload-time = "2025-07-04T10:40:32.329Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/54/7a/514c484b88cc4ebbcd2e27e92b86019c0c5bb920582f5fbb10b7e6c78574/httpx_aiohttp-0.1.8-py3-none-any.whl", hash = "sha256:b7bd958d1331f3759a38a0ba22ad29832cb63ca69498c17735228055bf78fa7e", size = 6180, upload-time = "2025-07-04T10:40:31.522Z" },
 ]
 
 [[package]]
@@ -1666,6 +1697,18 @@ wheels = [
 ]
 
 [[package]]
+name = "owlrl"
+version = "7.1.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "rdflib" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/23/ea/2f0bde9ba07aeafce53e8ca89a158ae2fb196ccc396d2d10263f33b02d53/owlrl-7.1.3.tar.gz", hash = "sha256:c9acf66135821ed7a6c4e002387bdb60a5804c86bf0210310df7d5a5da5d2eb1", size = 45026, upload-time = "2025-01-21T02:01:28.641Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f5/49/a29d0b6e615048f7f01b640711c9cb8c07973a3a65c04e731d508f7a3a5f/owlrl-7.1.3-py3-none-any.whl", hash = "sha256:371076ed3427b7962bf5675aded0bb2d23bee61595b85582f8dce11f75ee10a8", size = 51921, upload-time = "2025-01-21T02:01:26.236Z" },
+]
+
+[[package]]
 name = "packaging"
 version = "25.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1768,6 +1811,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/4d/cf/f588bcdfd2c841839b9d59ce219a46695da56aa2805faff937bbafb9ee2b/prefixmaps-0.2.6.tar.gz", hash = "sha256:7421e1244eea610217fa1ba96c9aebd64e8162a930dc0626207cd8bf62ecf4b9", size = 709899, upload-time = "2024-10-17T16:30:57.738Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/89/b2/2b2153173f2819e3d7d1949918612981bc6bd895b75ffa392d63d115f327/prefixmaps-0.2.6-py3-none-any.whl", hash = "sha256:f6cef28a7320fc6337cf411be212948ce570333a0ce958940ef684c7fb192a62", size = 754732, upload-time = "2024-10-17T16:30:55.731Z" },
+]
+
+[[package]]
+name = "prettytable"
+version = "3.16.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "wcwidth" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/99/b1/85e18ac92afd08c533603e3393977b6bc1443043115a47bb094f3b98f94f/prettytable-3.16.0.tar.gz", hash = "sha256:3c64b31719d961bf69c9a7e03d0c1e477320906a98da63952bc6698d6164ff57", size = 66276, upload-time = "2025-03-24T19:39:04.008Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/02/c7/5613524e606ea1688b3bdbf48aa64bafb6d0a4ac3750274c43b6158a390f/prettytable-3.16.0-py3-none-any.whl", hash = "sha256:b5eccfabb82222f5aa46b798ff02a8452cf530a352c31bddfa29be41242863aa", size = 33863, upload-time = "2025-03-24T19:39:02.359Z" },
 ]
 
 [[package]]
@@ -2018,6 +2073,22 @@ wheels = [
 ]
 
 [[package]]
+name = "pyshacl"
+version = "0.30.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "importlib-metadata", marker = "python_full_version < '3.12'" },
+    { name = "owlrl" },
+    { name = "packaging" },
+    { name = "prettytable" },
+    { name = "rdflib", extra = ["html"] },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c0/32/1602c3f4ab567b6d020bdd630c348fcf25d899f9e2b7a50385b10761673c/pyshacl-0.30.1.tar.gz", hash = "sha256:df712ac961b1ee7bcf0b27fa71ecab7785a135b2af69783ce30cb05fe41bcaf5", size = 1392238, upload-time = "2025-03-14T23:28:15.702Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d8/12/3747eff45147d416c054881b7c0902b21ac7767b905f666c714233688c81/pyshacl-0.30.1-py3-none-any.whl", hash = "sha256:d7e0c21b25e948bb643dbc5db6258da64a90a8ac89055c1fe562b469031072aa", size = 1290522, upload-time = "2025-03-14T23:28:12.72Z" },
+]
+
+[[package]]
 name = "pytest"
 version = "8.4.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2155,6 +2226,11 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e8/7e/cb2d74466bd8495051ebe2d241b1cb1d4acf9740d481126aef19ef2697f5/rdflib-7.1.4.tar.gz", hash = "sha256:fed46e24f26a788e2ab8e445f7077f00edcf95abb73bcef4b86cefa8b62dd174", size = 4692745, upload-time = "2025-03-29T02:23:02.386Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f4/31/e9b6f04288dcd3fa60cb3179260d6dad81b92aef3063d679ac7d80a827ea/rdflib-7.1.4-py3-none-any.whl", hash = "sha256:72f4adb1990fa5241abd22ddaf36d7cafa5d91d9ff2ba13f3086d339b213d997", size = 565051, upload-time = "2025-03-29T02:22:44.987Z" },
+]
+
+[package.optional-dependencies]
+html = [
+    { name = "html5rdf" },
 ]
 
 [[package]]
@@ -2778,6 +2854,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/15/22/9ee70a2574a4f4599c47dd506532914ce044817c7752a79b6a51286319bc/urllib3-2.5.0.tar.gz", hash = "sha256:3fc47733c7e419d4bc3f6b3dc2b4f890bb743906a30d56ba4a5bfa4bbff92760", size = 393185, upload-time = "2025-06-18T14:07:41.644Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a7/c2/fe1e52489ae3122415c51f387e221dd0773709bad6c6cdaa599e8a2c5185/urllib3-2.5.0-py3-none-any.whl", hash = "sha256:e6b01673c0fa6a13e374b50871808eb3bf7046c4b125b216f6bf1cc604cff0dc", size = 129795, upload-time = "2025-06-18T14:07:40.39Z" },
+]
+
+[[package]]
+name = "wcwidth"
+version = "0.2.13"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/6c/63/53559446a878410fc5a5974feb13d31d78d752eb18aeba59c7fef1af7598/wcwidth-0.2.13.tar.gz", hash = "sha256:72ea0c06399eb286d978fdedb6923a9eb47e1c486ce63e9b4e64fc18303972b5", size = 101301, upload-time = "2024-01-06T02:10:57.829Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fd/84/fd2ba7aafacbad3c4201d395674fc6348826569da3c0937e75505ead3528/wcwidth-0.2.13-py2.py3-none-any.whl", hash = "sha256:3da69048e4540d84af32131829ff948f1e022c1c6bdb8d6102117aac784f6859", size = 34166, upload-time = "2024-01-06T02:10:55.763Z" },
 ]
 
 [[package]]
