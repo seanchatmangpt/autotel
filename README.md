@@ -12,6 +12,35 @@ AutoTel is an enterprise-grade BPMN 2.0 orchestration framework that combines **
 - **File System Routing** - Automatic metadata capture for observability
 - **Enterprise CLI** - Comprehensive command-line interface
 
+## ✅ What is Working
+
+AutoTel now supports a robust, production-grade Five Pillars architecture:
+
+- **BPMN 2.0 Orchestration**: Full support for BPMN workflows, including user tasks, service tasks, gateways, and end-to-end process automation.
+- **DMN Decision Tables**: Integrated DMN business rules, both embedded and external, with full decision logic execution.
+- **DSPy AI Reasoning**: AI-powered service tasks using DSPy signatures, dynamic signature loading, and LLM-backed reasoning.
+- **SHACL Data Validation**: Semantic data validation using SHACL shapes, with inline and external shape support, and workflow-level validation.
+- **OWL Ontology Integration**: Formal ontology support via OWL XML, including ontology parsing, RDF graph creation, and (where available) reasoning with OwlReady2.
+- **Telemetry-First Architecture**: All operations are automatically instrumented with OpenTelemetry, with schema-driven validation and rich attribute capture.
+- **LinkML Schema Validation**: All telemetry is validated against LinkML schemas by default, ensuring data integrity and contract compliance.
+- **Comprehensive CLI**: Typer-based CLI with grouped commands for workflows, DMN, DSPy, telemetry, and configuration.
+- **Test Coverage**: Extensive test suite covering all pillars, integration scenarios, and production-like workflows. All advanced and production tests pass (except for optional OWL reasoning if OwlReady2 is not installed).
+- **Documentation**: Updated tutorial and examples for the Five Pillars, including example ontologies and workflow files.
+
+**Recent Additions:**
+- OWL XML integration module (`autotel/utils/owl_integration.py`)
+- Example ontology (`examples/workflow_ontology.owl`)
+- Comprehensive OWL tests (`tests/test_owl_integration.py`)
+- Tutorial and docs updated for Five Pillars
+
+**What you can do now:**
+- Run and validate integrated BPMN+DMN+DSPy+SHACL+OWL workflows
+- Use the CLI for all operations
+- Export and analyze OpenTelemetry traces
+- Extend with new ontologies, signatures, or validation rules
+
+See the test suite and `examples/` directory for working demos and integration patterns.
+
 ## 🚀 Quick Start
 
 ### Installation
