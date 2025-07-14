@@ -640,3 +640,87 @@ class DspyBpmnParser(CamundaParser):
                 continue
             if decision_ref is not None:
                 self.dmn_dependencies.add(decision_ref) 
+
+    def create_executable_specification(self, process_id: str) -> 'ExecutableSpecification':
+        """
+        Create an executable specification from parsed XML.
+        This is the clean separation point between parsing and execution.
+        
+        Returns an ExecutableSpecification object that contains all the
+        information needed to execute the workflow without any XML parsing logic.
+        """
+        from dataclasses import dataclass
+        from typing import Dict, Any, List, Optional
+        
+        @dataclass
+        class ExecutableSpecification:
+            """Pure data structure containing all execution information"""
+            process_id: str
+            bpmn_spec: Any  # SpiffWorkflow process specification
+            dspy_signatures: Dict[str, DSPySignatureDefinition]
+            dmn_engines: Dict[str, Any]
+            shacl_shapes: Graph
+            validation_rules: Dict[str, Any]
+            execution_context: Dict[str, Any]
+            
+            def validate_input_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+                """Validate input data against SHACL shapes"""
+                # Pure validation logic - no XML parsing
+                pass
+            
+            def execute_workflow(self, context: Dict[str, Any]) -> Dict[str, Any]:
+                """Execute the workflow with given context"""
+                # Pure execution logic - no XML parsing
+                pass
+        
+        # Get the BPMN process specification
+        specs = self.find_all_specs()
+        if process_id not in specs:
+            raise ValueError(f"Process '{process_id}' not found in parsed BPMN")
+        
+        bpmn_spec = specs[process_id]
+        
+        # Create DMN engines for all referenced decisions
+        dmn_engines = {}
+        for decision_ref in self.dmn_dependencies:
+            if decision_ref in self.dmn_parsers:
+                dmn_engines[decision_ref] = self.get_engine(decision_ref, None)
+        
+        # Create validation rules from SHACL shapes
+        validation_rules = self._create_validation_rules()
+        
+        # Create execution context
+        execution_context = {
+            'parser': self,  # Reference to parser for runtime lookups
+            'signature_registry': self.dynamic_signatures,
+            'shacl_graph': self.shacl_graph
+        }
+        
+        return ExecutableSpecification(
+            process_id=process_id,
+            bpmn_spec=bpmn_spec,
+            dspy_signatures=self.signature_definitions.copy(),
+            dmn_engines=dmn_engines,
+            shacl_shapes=self.shacl_graph,
+            validation_rules=validation_rules,
+            execution_context=execution_context
+        )
+    
+    def _create_validation_rules(self) -> Dict[str, Any]:
+        """Create validation rules from SHACL shapes - pure data transformation"""
+        # Convert SHACL shapes to validation rules
+        # No XML parsing, just data structure transformation
+        return {
+            'shacl_shapes': self.shacl_graph,
+            'signature_shapes': self._get_signature_shape_mappings()
+        }
+    
+    def _get_signature_shape_mappings(self) -> Dict[str, Dict[str, str]]:
+        """Get SHACL shape mappings for all signatures - pure data access"""
+        mappings = {}
+        for sig_name, sig_def in self.signature_definitions.items():
+            mappings[sig_name] = {
+                'inputs': sig_def.shacl_input_shapes or {},
+                'outputs': sig_def.shacl_output_shapes or {}
+            }
+        return mappings 

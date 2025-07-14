@@ -14,6 +14,81 @@ from linkml_runtime.utils.schemaview import SchemaView
 from linkml_runtime.loaders import yaml_loader, json_loader
 from linkml_runtime.dumpers import yaml_dumper, json_dumper
 
+"""
+SHACL Validation Utilities for DMN Data
+
+Provides robust, reusable functions to validate DMN decision row data against SHACL shapes.
+"""
+from typing import Dict, Any
+from rdflib import Graph, Namespace, URIRef, Literal
+from rdflib.namespace import RDF, XSD
+import pyshacl
+
+AUTOTEL_NS = Namespace("http://autotel.ai/data/")
+
+
+def dmn_row_to_rdf_graph(
+    data: Dict[str, Any],
+    shape_uri: str,
+    instance_uri: str = None
+) -> Graph:
+    """
+    Convert a DMN row (dict) to an RDF graph for SHACL validation.
+    Args:
+        data: Dict of field -> value (e.g., {"customerScore": 800})
+        shape_uri: URI of the SHACL NodeShape to use as rdf:type
+        instance_uri: Optional URI for the instance (default: AUTOTEL_NS['instance'])
+    Returns:
+        rdflib.Graph representing the data instance
+    """
+    g = Graph()
+    subj = URIRef(instance_uri) if instance_uri else AUTOTEL_NS['instance']
+    g.add((subj, RDF.type, URIRef(shape_uri)))
+    for key, value in data.items():
+        pred = AUTOTEL_NS[key]
+        if isinstance(value, int):
+            g.add((subj, pred, Literal(value, datatype=XSD.integer)))
+        elif isinstance(value, float):
+            g.add((subj, pred, Literal(value, datatype=XSD.decimal)))
+        elif isinstance(value, bool):
+            g.add((subj, pred, Literal(value, datatype=XSD.boolean)))
+        else:
+            g.add((subj, pred, Literal(str(value), datatype=XSD.string)))
+    return g
+
+
+def validate_dmn_row_with_shacl(
+    data: Dict[str, Any],
+    shape_uri: str,
+    shacl_graph: Graph,
+    instance_uri: str = None,
+    raise_on_error: bool = True
+) -> bool:
+    """
+    Validate a DMN row (dict) against a SHACL NodeShape.
+    Args:
+        data: Dict of field -> value
+        shape_uri: URI of the SHACL NodeShape
+        shacl_graph: rdflib.Graph containing SHACL shapes
+        instance_uri: Optional URI for the instance
+        raise_on_error: If True, raise AssertionError on failure; else return False
+    Returns:
+        True if valid, False if not (unless raise_on_error=True)
+    """
+    data_graph = dmn_row_to_rdf_graph(data, shape_uri, instance_uri)
+    conforms, results_graph, results_text = pyshacl.validate(
+        data_graph,
+        shacl_graph=shacl_graph,
+        inference='rdfs',
+        debug=False
+    )
+    if not conforms:
+        msg = f"SHACL validation failed for shape <{shape_uri}>:\n{results_text}"
+        if raise_on_error:
+            raise AssertionError(msg)
+        return False
+    return True
+
 class ValidationLevel(Enum):
     """Validation levels for different contexts"""
     STRICT = "strict"
