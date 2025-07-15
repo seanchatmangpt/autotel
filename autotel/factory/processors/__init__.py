@@ -7,15 +7,21 @@ their respective XML elements into trusted, executable objects.
 
 from .bpmn_processor import BPMNProcessor
 from .dmn_processor import DMNProcessor
-from .dspy_processor import DSPyProcessor, DSPySignatureDefinition
+from .dspy_processor import DSPyProcessor, DSPySignatureDefinition, DSPyModuleDefinition, DSPyModelConfiguration
 from .shacl_processor import SHACLProcessor
-from .owl_processor import OWLProcessor
+from .owl_processor import OWLProcessor, OWLOntologyDefinition, OWLClassDefinition, OWLPropertyDefinition, OWLIndividualDefinition
 
 __all__ = [
     'BPMNProcessor',
     'DMNProcessor',
     'DSPyProcessor', 
     'DSPySignatureDefinition',
+    'DSPyModuleDefinition',
+    'DSPyModelConfiguration',
     'SHACLProcessor',
-    'OWLProcessor'
+    'OWLProcessor',
+    'OWLOntologyDefinition',
+    'OWLClassDefinition',
+    'OWLPropertyDefinition',
+    'OWLIndividualDefinition'
 ] 

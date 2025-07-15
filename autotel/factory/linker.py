@@ -56,7 +56,7 @@ class SemanticLinker:
             dspy_signatures_dict = {sig.name: sig for sig in dspy_signatures}
             
             # Iterate through all tasks in the BPMN spec
-            for task_spec in bpmn_spec.get_tasks():
+            for task_spec in bpmn_spec.task_specs.values():
                 self._link_task(task_spec, dmn_decisions, dspy_signatures_dict)
             
             return bpmn_spec
@@ -127,7 +127,7 @@ class SemanticLinker:
         missing_dspy_refs = []
         
         # Check all tasks for missing references
-        for task_spec in bpmn_spec.get_tasks():
+        for task_spec in bpmn_spec.task_specs.values():
             # Check DMN references
             if hasattr(task_spec, 'decisionRef') and task_spec.decisionRef:
                 if task_spec.decisionRef not in dmn_decisions:
@@ -145,7 +145,7 @@ class SemanticLinker:
             'valid': len(missing_dmn_refs) == 0 and len(missing_dspy_refs) == 0,
             'missing_dmn_refs': missing_dmn_refs,
             'missing_dspy_refs': missing_dspy_refs,
-            'total_tasks': len(list(bpmn_spec.get_tasks())),
+            'total_tasks': len(bpmn_spec.task_specs),
             'available_dmn_decisions': list(dmn_decisions.keys()),
             'available_dspy_signatures': list(dspy_signatures_dict.keys())
         }

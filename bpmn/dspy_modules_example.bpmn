@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" 
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" 
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" 
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn" 
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI" 
+                  xmlns:modeler="http://camunda.org/schema/modeler/1.0" 
+                  xmlns:dspy="http://autotel.ai/dspy" 
+                  id="Definitions_1" 
+                  targetNamespace="http://bpmn.io/schema/bpmn" 
+                  exporter="Camunda Modeler" 
+                  exporterVersion="4.11.1" 
+                  modeler:executionPlatform="Camunda Platform" 
+                  modeler:executionPlatformVersion="7.15.0">
+  
+  <bpmn:process id="ai_workflow" name="AI-Powered Workflow" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1" name="Start">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="ServiceTask_1" />
+    
+    <!-- Simple Prediction Task -->
+    <bpmn:serviceTask id="ServiceTask_1" name="Classify Email">
+      <bpmn:extensionElements>
+        <dspy:predict signature="EmailClassifier" result="classification_result">
+          <dspy:param name="email_body" value="incoming_email_content"/>
+          <dspy:param name="sender_info" value="email_sender"/>
+        </dspy:predict>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="ServiceTask_1" targetRef="ServiceTask_2" />
+    
+    <!-- Chain of Thought Task -->
+    <bpmn:serviceTask id="ServiceTask_2" name="Diagnose Complex Issue">
+      <bpmn:extensionElements>
+        <dspy:chain-of-thought 
+            signature="IssueDiagnoser" 
+            rationale_field="diagnostic_reasoning" 
+            result="diagnosis_result">
+          <dspy:param name="ticket_details" value="support_ticket"/>
+          <dspy:param name="user_history" value="customer_interaction_log"/>
+          <dspy:param name="system_logs" value="error_logs"/>
+        </dspy:chain-of-thought>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="ServiceTask_2" targetRef="ServiceTask_3" />
+    
+    <!-- Another Prediction Task -->
+    <bpmn:serviceTask id="ServiceTask_3" name="Generate Response">
+      <bpmn:extensionElements>
+        <dspy:predict signature="ResponseGenerator" result="response_text">
+          <dspy:param name="diagnosis" value="diagnosis_result"/>
+          <dspy:param name="customer_tier" value="customer_level"/>
+        </dspy:predict>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="ServiceTask_3" targetRef="EndEvent_1" />
+    
+    <bpmn:endEvent id="EndEvent_1" name="End">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+    </bpmn:endEvent>
+  </bpmn:process>
+  
+  <!-- DSPy Model Configuration -->
+  <dspy:model model="ollama/qwen3:latest" temperature="0.7" max_tokens="4000" model_type="chat" cache="true" />
+  
+  <!-- DSPy Signatures for AI modules -->
+  <dspy:signatures>
+    <dspy:signature name="EmailClassifier" description="Classify incoming emails by type and priority">
+      <dspy:input name="email_body" description="Content of the email" optional="false" />
+      <dspy:input name="sender_info" description="Information about the sender" optional="true" />
+      <dspy:output name="email_type" description="Type of email (support, sales, spam, etc.)" />
+      <dspy:output name="priority" description="Priority level (high, medium, low)" />
+      <dspy:output name="confidence" description="Confidence score for classification" />
+      <dspy:output name="why" description="Explanation of the classification decision" />
+    </dspy:signature>
+    
+    <dspy:signature name="IssueDiagnoser" description="Diagnose complex technical issues step by step">
+      <dspy:input name="ticket_details" description="Support ticket information" optional="false" />
+      <dspy:input name="user_history" description="Customer interaction history" optional="true" />
+      <dspy:input name="system_logs" description="Relevant system logs" optional="true" />
+      <dspy:output name="root_cause" description="Identified root cause of the issue" />
+      <dspy:output name="solution" description="Recommended solution" />
+      <dspy:output name="complexity" description="Issue complexity level" />
+      <dspy:output name="why" description="Step-by-step reasoning for the diagnosis" />
+    </dspy:signature>
+    
+    <dspy:signature name="ResponseGenerator" description="Generate appropriate customer response">
+      <dspy:input name="diagnosis" description="Issue diagnosis from previous step" optional="false" />
+      <dspy:input name="customer_tier" description="Customer loyalty tier" optional="true" />
+      <dspy:output name="response_text" description="Generated response text" />
+      <dspy:output name="tone" description="Response tone (professional, friendly, urgent)" />
+      <dspy:output name="escalation_needed" description="Whether escalation is required" />
+      <dspy:output name="why" description="Explanation of response generation strategy" />
+    </dspy:signature>
+  </dspy:signatures>
+  
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="ai_workflow">
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="215" y="117" />
+        <di:waypoint x="270" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="370" y="117" />
+        <di:waypoint x="430" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="530" y="117" />
+        <di:waypoint x="590" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="690" y="117" />
+        <di:waypoint x="750" y="117" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="179" y="99" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="ServiceTask_1_di" bpmnElement="ServiceTask_1">
+        <dc:Bounds x="270" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="ServiceTask_2_di" bpmnElement="ServiceTask_2">
+        <dc:Bounds x="430" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="ServiceTask_3_di" bpmnElement="ServiceTask_3">
+        <dc:Bounds x="590" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="EndEvent_1_di" bpmnElement="EndEvent_1">
+        <dc:Bounds x="750" y="99" width="36" height="36" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions> 

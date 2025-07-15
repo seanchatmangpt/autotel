@@ -18,9 +18,14 @@ class BPMNProcessor:
     for parsing standard BPMN 2.0 elements, completely ignoring all custom DSLs.
     """
     
-    def __init__(self):
-        """Initialize the BPMN processor with a CamundaParser instance."""
-        self.parser = CamundaParser()
+    def __init__(self, parser: Optional[CamundaParser] = None):
+        """
+        Initialize the BPMN processor with a CamundaParser instance.
+        
+        Args:
+            parser: Optional shared CamundaParser instance. If None, creates a new one.
+        """
+        self.parser = parser if parser is not None else CamundaParser()
     
     def parse(self, xml_string: str, process_id: str) -> WorkflowSpec:
         """

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:dspy="http://autotel.ai/dspy"
+                  targetNamespace="http://autotel.ai/workflows">
+
+  <dspy:model name="qwen3:latest" provider="ollama"/>
+
+  <dspy:signatures>
+    <dspy:signature name="explain_choice" description="Explain a simple AI choice">
+      <dspy:input name="user_input" description="User's input"/>
+      <dspy:output name="recommendation" description="AI recommendation"/>
+      <dspy:output name="why" description="Reasoning for the recommendation"/>
+    </dspy:signature>
+  </dspy:signatures>
+
+  <bpmn:process id="simple_dspy_process" isExecutable="true">
+    <bpmn:startEvent id="start"/>
+    <bpmn:sequenceFlow id="flow1" sourceRef="start" targetRef="ai_task"/>
+    <bpmn:serviceTask id="ai_task" name="AI Decision">
+      <bpmn:extensionElements>
+        <dspy:chain-of-thought signature="explain_choice" resultVariable="recommendation">
+          <dspy:param name="user_input" value="#{user_input}"/>
+        </dspy:chain-of-thought>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="flow2" sourceRef="ai_task" targetRef="end"/>
+    <bpmn:endEvent id="end"/>
+  </bpmn:process>
+
+</bpmn:definitions> 

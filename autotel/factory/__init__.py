@@ -6,7 +6,7 @@ into a trusted, executable object. The factory implements isolated processors fo
 each DSL (BPMN, DMN, DSPy, SHACL, OWL) and a semantic linker that combines them.
 """
 
-from .pipeline import AutoTelFactory
+from .pipeline import AutoTelPipeline
 from .processors.bpmn_processor import BPMNProcessor
 from .processors.dmn_processor import DMNProcessor
 from .processors.dspy_processor import DSPyProcessor, DSPySignatureDefinition
@@ -15,7 +15,7 @@ from .processors.owl_processor import OWLProcessor
 from .linker import SemanticLinker, SemanticLinkerError
 
 __all__ = [
-    'AutoTelFactory',
+    'AutoTelPipeline',
     'BPMNProcessor',
     'DMNProcessor', 
     'DSPyProcessor',
