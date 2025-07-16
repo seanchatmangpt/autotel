@@ -156,21 +156,19 @@ class AutoTelCamundaParser(CamundaParser):
         """Return an empty dict for compatibility with orchestrator."""
         return {}
     
+    def add_bpmn_file(self, filename):
+        """Override to check for CDATA before parsing"""
+        # Check for CDATA sections in raw XML before parsing
+        with open(filename, 'r', encoding='utf-8') as f:
+            content = f.read()
+            if '<![CDATA[' in content:
+                raise ValueError(f"CDATA sections are not allowed in BPMN XML. Found CDATA in file: {filename}")
+        
+        # Call parent method to parse normally
+        super().add_bpmn_file(filename)
+    
     def add_bpmn_xml(self, bpmn, filename=None):
         """Override to parse DSPy signatures and DMN definitions"""
-        # Check for CDATA sections - more comprehensive check
-        cdata_found = False
-        for elem in bpmn.iter():
-            if elem.text and '<![CDATA[' in elem.text:
-                cdata_found = True
-                break
-            if elem.tail and '<![CDATA[' in elem.tail:
-                cdata_found = True
-                break
-        
-        if cdata_found:
-            raise ValueError(f"CDATA sections are not allowed in BPMN XML. Found CDATA in file: {filename}")
-        
         # Parse DSPy signature definitions
         self._parse_dspy_signatures(bpmn)
         
