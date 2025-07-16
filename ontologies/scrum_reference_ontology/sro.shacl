@@ -1,0 +1,459 @@
+<?xml version="1.0"?>
+<rdf:RDF
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:sh="http://www.w3.org/ns/shacl#"
+    xmlns:sro="http://example.com/sro#"
+    xmlns:seon="http://example.com/seon#"
+    xmlns:rsro="http://example.com/rsro#"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema#">
+
+  <!-- ScrumProject -->
+  <sh:NodeShape rdf:about="sro:ScrumProjectShape">
+    <sh:targetClass rdf:resource="sro:ScrumProject"/>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path       rdf:resource="sro:scrum_process"/>
+        <sh:class      rdf:resource="sro:ScrumProcess"/>
+        <sh:minCount   rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount   rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+  </sh:NodeShape>
+
+  <!-- ScrumProcess -->
+  <sh:NodeShape rdf:about="sro:ScrumProcessShape">
+    <sh:targetClass rdf:resource="sro:ScrumProcess"/>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path       rdf:resource="sro:product_backlog_definition"/>
+        <sh:class      rdf:resource="sro:ProductBacklogDefinition"/>
+        <sh:minCount   rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount   rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path       rdf:resource="sro:sprints"/>
+        <sh:class      rdf:resource="sro:Sprint"/>
+        <sh:minCount   rdf:datatype="xsd:integer">2</sh:minCount>
+      </sh:PropertyShape>
+    </sh:property>
+  </sh:NodeShape>
+
+  <!-- ProductBacklogDefinition -->
+  <sh:NodeShape rdf:about="sro:ProductBacklogDefinitionShape">
+    <sh:targetClass rdf:resource="sro:ProductBacklogDefinition"/>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path       rdf:resource="sro:product_backlog"/>
+        <sh:class      rdf:resource="sro:ProductBacklog"/>
+        <sh:minCount   rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount   rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+  </sh:NodeShape>
+
+  <!-- Sprint -->
+  <sh:NodeShape rdf:about="sro:SprintShape">
+    <sh:targetClass rdf:resource="sro:Sprint"/>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path       rdf:resource="sro:sprint_backlog"/>
+        <sh:class      rdf:resource="sro:SprintBacklog"/>
+        <sh:minCount   rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount   rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path       rdf:resource="sro:planning_meeting"/>
+        <sh:class      rdf:resource="sro:PlanningMeeting"/>
+        <sh:minCount   rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount   rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path       rdf:resource="sro:daily_standup_meetings"/>
+        <sh:class      rdf:resource="sro:DailyStandupMeeting"/>
+        <sh:minCount   rdf:datatype="xsd:integer">1</sh:minCount>
+      </sh:PropertyShape>
+    </sh:property>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path       rdf:resource="sro:review_meeting"/>
+        <sh:class      rdf:resource="sro:ReviewMeeting"/>
+        <sh:minCount   rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount   rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path       rdf:resource="sro:retrospective_meeting"/>
+        <sh:class      rdf:resource="sro:RetrospectiveMeeting"/>
+        <sh:minCount   rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount   rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path       rdf:resource="sro:performed_scrum_development_tasks"/>
+        <sh:class      rdf:resource="sro:PerformedScrumDevelopmentTask"/>
+      </sh:PropertyShape>
+    </sh:property>
+  </sh:NodeShape>
+
+  <!-- Ceremony -->
+  <sh:NodeShape rdf:about="sro:CeremonyShape">
+    <sh:targetClass rdf:resource="sro:Ceremony"/>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path       rdf:resource="sro:performed_in_sprint"/>
+        <sh:class      rdf:resource="sro:Sprint"/>
+        <sh:minCount   rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount   rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+  </sh:NodeShape>
+
+  <!-- Meetings -->
+  <sh:NodeShape rdf:about="sro:PlanningMeetingShape">
+    <sh:targetClass rdf:resource="sro:PlanningMeeting"/>
+  </sh:NodeShape>
+  <sh:NodeShape rdf:about="sro:DailyStandupMeetingShape">
+    <sh:targetClass rdf:resource="sro:DailyStandupMeeting"/>
+  </sh:NodeShape>
+  <sh:NodeShape rdf:about="sro:ReviewMeetingShape">
+    <sh:targetClass rdf:resource="sro:ReviewMeeting"/>
+  </sh:NodeShape>
+  <sh:NodeShape rdf:about="sro:RetrospectiveMeetingShape">
+    <sh:targetClass rdf:resource="sro:RetrospectiveMeeting"/>
+  </sh:NodeShape>
+
+  <!-- PerformedScrumDevelopmentTask -->
+  <sh:NodeShape rdf:about="sro:PerformedScrumDevelopmentTaskShape">
+    <sh:targetClass rdf:resource="sro:PerformedScrumDevelopmentTask"/>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path       rdf:resource="sro:performed_in_sprint"/>
+        <sh:class      rdf:resource="sro:Sprint"/>
+        <sh:minCount   rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount   rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path       rdf:resource="sro:caused_by"/>
+        <sh:class      rdf:resource="sro:IntendedScrumDevelopmentTask"/>
+      </sh:PropertyShape>
+    </sh:property>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path       rdf:resource="sro:performed_to_meet"/>
+        <sh:class      rdf:resource="sro:UserStory"/>
+      </sh:PropertyShape>
+    </sh:property>
+  </sh:NodeShape>
+
+  <!-- ScrumTeamMember -->
+  <sh:NodeShape rdf:about="sro:ScrumTeamMemberShape">
+    <sh:targetClass rdf:resource="sro:ScrumTeamMember"/>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path       rdf:resource="sro:interested_in"/>
+        <sh:class      rdf:resource="sro:ScrumProject"/>
+        <sh:minCount   rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount   rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path       rdf:resource="sro:allocated_to"/>
+        <sh:class      rdf:resource="sro:ScrumTeam"/>
+        <sh:minCount   rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount   rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+  </sh:NodeShape>
+
+  <!-- ScrumTeam -->
+  <sh:NodeShape rdf:about="sro:ScrumTeamShape">
+    <sh:targetClass rdf:resource="sro:ScrumTeam"/>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path       rdf:resource="sro:interested_in"/>
+        <sh:class      rdf:resource="sro:ScrumProject"/>
+        <sh:minCount   rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount   rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+  </sh:NodeShape>
+
+  <!-- Memberships -->
+  <sh:NodeShape rdf:about="sro:ProductOwnerMembershipShape">
+    <sh:targetClass rdf:resource="sro:ProductOwnerMembership"/>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path rdf:resource="sro:team"/>
+        <sh:class rdf:resource="sro:ScrumTeam"/>
+        <sh:minCount rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path rdf:resource="sro:member"/>
+        <sh:class rdf:resource="sro:ProductOwner"/>
+        <sh:minCount rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+  </sh:NodeShape>
+
+  <sh:NodeShape rdf:about="sro:ScrumMasterMembershipShape">
+    <sh:targetClass rdf:resource="sro:ScrumMasterMembership"/>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path rdf:resource="sro:team"/>
+        <sh:class rdf:resource="sro:ScrumTeam"/>
+        <sh:minCount rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path rdf:resource="sro:member"/>
+        <sh:class rdf:resource="sro:ScrumMaster"/>
+        <sh:minCount rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+  </sh:NodeShape>
+
+  <sh:NodeShape rdf:about="sro:DeveloperMembershipShape">
+    <sh:targetClass rdf:resource="sro:DeveloperMembership"/>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path rdf:resource="sro:team"/>
+        <sh:class rdf:resource="sro:ScrumTeam"/>
+        <sh:minCount rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path rdf:resource="sro:member"/>
+        <sh:class rdf:resource="sro:Developer"/>
+        <sh:minCount rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+  </sh:NodeShape>
+
+  <!-- Roles -->
+  <sh:NodeShape rdf:about="sro:ProductOwnerShape">
+    <sh:targetClass rdf:resource="sro:ProductOwner"/>
+  </sh:NodeShape>
+  <sh:NodeShape rdf:about="sro:ScrumMasterShape">
+    <sh:targetClass rdf:resource="sro:ScrumMaster"/>
+  </sh:NodeShape>
+  <sh:NodeShape rdf:about="sro:DeveloperShape">
+    <sh:targetClass rdf:resource="sro:Developer"/>
+  </sh:NodeShape>
+  <sh:NodeShape rdf:about="sro:ProductOwnerClientShape">
+    <sh:targetClass rdf:resource="sro:ProductOwnerClient"/>
+  </sh:NodeShape>
+  <sh:NodeShape rdf:about="sro:ProductOwnerProjectStakeholderShape">
+    <sh:targetClass rdf:resource="sro:ProductOwnerProjectStakeholder"/>
+  </sh:NodeShape>
+
+  <!-- DevelopmentTeam -->
+  <sh:NodeShape rdf:about="sro:DevelopmentTeamShape">
+    <sh:targetClass rdf:resource="sro:DevelopmentTeam"/>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path rdf:resource="sro:interested_in"/>
+        <sh:class rdf:resource="sro:ScrumProject"/>
+        <sh:minCount rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path rdf:resource="sro:part_of_scrum_team"/>
+        <sh:class rdf:resource="sro:ScrumTeam"/>
+        <sh:minCount rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+  </sh:NodeShape>
+
+  <!-- ProductBacklog -->
+  <sh:NodeShape rdf:about="sro:ProductBacklogShape">
+    <sh:targetClass rdf:resource="sro:ProductBacklog"/>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path rdf:resource="sro:user_stories"/>
+        <sh:class rdf:resource="sro:UserStory"/>
+        <sh:minCount rdf:datatype="xsd:integer">1</sh:minCount>
+      </sh:PropertyShape>
+    </sh:property>
+  </sh:NodeShape>
+
+  <!-- UserStory -->
+  <sh:NodeShape rdf:about="sro:UserStoryShape">
+    <sh:targetClass rdf:resource="sro:UserStory"/>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path rdf:resource="sro:importance"/>
+        <sh:datatype rdf:resource="xsd:decimal"/>
+      </sh:PropertyShape>
+    </sh:property>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path rdf:resource="sro:effort"/>
+        <sh:datatype rdf:resource="xsd:decimal"/>
+      </sh:PropertyShape>
+    </sh:property>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path rdf:resource="sro:acceptanceCriteria"/>
+        <sh:class rdf:resource="sro:AcceptanceCriterion"/>
+      </sh:PropertyShape>
+    </sh:property>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path rdf:resource="sro:decomposedInto"/>
+        <sh:class rdf:resource="sro:UserStory"/>
+      </sh:PropertyShape>
+    </sh:property>
+  </sh:NodeShape>
+
+  <!-- AtomicUserStory, Epic -->
+  <sh:NodeShape rdf:about="sro:AtomicUserStoryShape">
+    <sh:targetClass rdf:resource="sro:AtomicUserStory"/>
+  </sh:NodeShape>
+  <sh:NodeShape rdf:about="sro:EpicShape">
+    <sh:targetClass rdf:resource="sro:Epic"/>
+  </sh:NodeShape>
+
+  <!-- AcceptanceCriterion -->
+  <sh:NodeShape rdf:about="sro:AcceptanceCriterionShape">
+    <sh:targetClass rdf:resource="sro:AcceptanceCriterion"/>
+  </sh:NodeShape>
+  <sh:NodeShape rdf:about="sro:FunctionalAcceptanceCriterionShape">
+    <sh:targetClass rdf:resource="sro:FunctionalAcceptanceCriterion"/>
+  </sh:NodeShape>
+  <sh:NodeShape rdf:about="sro:NonFunctionalAcceptanceCriterionShape">
+    <sh:targetClass rdf:resource="sro:NonFunctionalAcceptanceCriterion"/>
+  </sh:NodeShape>
+
+  <!-- SprintBacklog -->
+  <sh:NodeShape rdf:about="sro:SprintBacklogShape">
+    <sh:targetClass rdf:resource="sro:SprintBacklog"/>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path rdf:resource="sro:intended_scrum_development_tasks"/>
+        <sh:class rdf:resource="sro:IntendedScrumDevelopmentTask"/>
+        <sh:minCount rdf:datatype="xsd:integer">1</sh:minCount>
+      </sh:PropertyShape>
+    </sh:property>
+  </sh:NodeShape>
+
+  <!-- IntendedScrumDevelopmentTask -->
+  <sh:NodeShape rdf:about="sro:IntendedScrumDevelopmentTaskShape">
+    <sh:targetClass rdf:resource="sro:IntendedScrumDevelopmentTask"/>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path rdf:resource="sro:planned_to_meet"/>
+        <sh:class rdf:resource="sro:UserStory"/>
+        <sh:minCount rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path rdf:resource="sro:specified_in_sprint_backlog"/>
+        <sh:class rdf:resource="sro:SprintBacklog"/>
+        <sh:minCount rdf:datatype="xsd:integer">1</sh:minCount>
+      </sh:PropertyShape>
+    </sh:property>
+  </sh:NodeShape>
+
+  <!-- Deliverable -->
+  <sh:NodeShape rdf:about="sro:DeliverableShape">
+    <sh:targetClass rdf:resource="sro:Deliverable"/>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path rdf:resource="sro:materializes"/>
+        <sh:class rdf:resource="sro:UserStory"/>
+        <sh:minCount rdf:datatype="xsd:integer">1</sh:minCount>
+      </sh:PropertyShape>
+    </sh:property>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path rdf:resource="sro:produced_by"/>
+        <sh:class rdf:resource="sro:PerformedScrumDevelopmentTask"/>
+        <sh:minCount rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+  </sh:NodeShape>
+
+  <!-- Accepted/NotAccepted Deliverable -->
+  <sh:NodeShape rdf:about="sro:AcceptedDeliverableShape">
+    <sh:targetClass rdf:resource="sro:AcceptedDeliverable"/>
+  </sh:NodeShape>
+  <sh:NodeShape rdf:about="sro:NotAcceptedDeliverableShape">
+    <sh:targetClass rdf:resource="sro:NotAcceptedDeliverable"/>
+  </sh:NodeShape>
+
+  <!-- Success/Failure Performed Task -->
+  <sh:NodeShape rdf:about="sro:SuccessfullyPerformedScrumDevelopmentTaskShape">
+    <sh:targetClass rdf:resource="sro:SuccessfullyPerformedScrumDevelopmentTask"/>
+  </sh:NodeShape>
+  <sh:NodeShape rdf:about="sro:NonSuccessfullyPerformedScrumDevelopmentTaskShape">
+    <sh:targetClass rdf:resource="sro:NonSuccessfullyPerformedScrumDevelopmentTask"/>
+  </sh:NodeShape>
+
+  <!-- SprintDeliverable -->
+  <sh:NodeShape rdf:about="sro:SprintDeliverableShape">
+    <sh:targetClass rdf:resource="sro:SprintDeliverable"/>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path rdf:resource="sro:accepted_deliverables"/>
+        <sh:class rdf:resource="sro:AcceptedDeliverable"/>
+        <sh:minCount rdf:datatype="xsd:integer">1</sh:minCount>
+      </sh:PropertyShape>
+    </sh:property>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path rdf:resource="sro:produced_in_sprint"/>
+        <sh:class rdf:resource="sro:Sprint"/>
+        <sh:minCount rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+  </sh:NodeShape>
+
+  <!-- ScrumProjectDeliverable -->
+  <sh:NodeShape rdf:about="sro:ScrumProjectDeliverableShape">
+    <sh:targetClass rdf:resource="sro:ScrumProjectDeliverable"/>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path rdf:resource="sro:sprint_deliverables"/>
+        <sh:class rdf:resource="sro:SprintDeliverable"/>
+        <sh:minCount rdf:datatype="xsd:integer">1</sh:minCount>
+      </sh:PropertyShape>
+    </sh:property>
+    <sh:property>
+      <sh:PropertyShape>
+        <sh:path rdf:resource="sro:for_project"/>
+        <sh:class rdf:resource="sro:ScrumProject"/>
+        <sh:minCount rdf:datatype="xsd:integer">1</sh:minCount>
+        <sh:maxCount rdf:datatype="xsd:integer">1</sh:maxCount>
+      </sh:PropertyShape>
+    </sh:property>
+  </sh:NodeShape>
+
+</rdf:RDF>

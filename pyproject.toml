@@ -65,6 +65,7 @@ dependencies = [
   "pyshacl>=0.25.0",
   "lxml>=5.0.0",
   "owlready2>=0.47",
+  "faker>=37.4.2",
 ]
 
 [project.optional-dependencies]

@@ -815,6 +815,164 @@ def jinja(
 
 @app.command()
 @otel_command
+def otel(
+    process: bool = typer.Option(False, "--process", "-p", help="Process OpenTelemetry data"),
+    file: Optional[Path] = typer.Option(None, "--file", "-f", help="OTEL data file (JSON)"),
+    data: Optional[str] = typer.Option(None, "--data", "-d", help="OTEL data as JSON string"),
+    analyze: bool = typer.Option(False, "--analyze", "-a", help="Analyze OTEL trace data"),
+    convert: bool = typer.Option(False, "--convert", "-c", help="Convert to AutoTel telemetry format"),
+    output_file: Optional[Path] = typer.Option(None, "--output", "-o", help="Output file for results"),
+    show_spans: bool = typer.Option(False, "--spans", help="Show span analysis"),
+    show_metrics: bool = typer.Option(False, "--metrics", help="Show metric analysis"),
+    show_logs: bool = typer.Option(False, "--logs", help="Show log analysis"),
+    show_performance: bool = typer.Option(False, "--performance", help="Show performance analysis"),
+    show_errors: bool = typer.Option(False, "--errors", help="Show error analysis"),
+    show_dependencies: bool = typer.Option(False, "--dependencies", help="Show dependency analysis"),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress verbose output")
+):
+    """Process and analyze OpenTelemetry data"""
+    
+    if not process and not analyze and not convert:
+        console.print("[red]❌ Please specify an action: --process, --analyze, or --convert[/red]")
+        raise typer.Exit(1)
+    
+    # Load OTEL data
+    otel_data = None
+    if file:
+        if not file.exists():
+            console.print(f"[red]❌ OTEL file not found: {file}[/red]")
+            raise typer.Exit(1)
+        try:
+            with open(file, 'r') as f:
+                otel_data = json.load(f)
+        except Exception as e:
+            console.print(f"[red]❌ Failed to read OTEL file: {e}[/red]")
+            raise typer.Exit(1)
+    elif data:
+        try:
+            otel_data = json.loads(data)
+        except json.JSONDecodeError as e:
+            console.print(f"[red]❌ Invalid JSON data: {e}[/red]")
+            raise typer.Exit(1)
+    else:
+        console.print("[red]❌ Please provide OTEL data via --file or --data[/red]")
+        raise typer.Exit(1)
+    
+    try:
+        from .factory.pipeline import PipelineOrchestrator
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            
+            task = progress.add_task("Processing OTEL data...", total=1)
+            
+            # Process OTEL data
+            pipeline = PipelineOrchestrator()
+            result = pipeline.process_otel_data(otel_data)
+            
+            progress.advance(task)
+        
+        # Display results based on options
+        if not quiet:
+            console.print(f"[green]✅ OTEL processing completed![/green]")
+            console.print(f"📊 Trace ID: {result['trace_id']}")
+            console.print(f"📈 Spans: {result['metadata']['spans_count']}")
+            console.print(f"📊 Metrics: {result['metadata']['metrics_count']}")
+            console.print(f"📝 Logs: {result['metadata']['logs_count']}")
+        
+        # Show specific analyses
+        analysis = result['analysis']
+        
+        if show_spans or not any([show_spans, show_metrics, show_logs, show_performance, show_errors, show_dependencies]):
+            span_analysis = analysis['span_analysis']
+            table = Table(title="Span Analysis")
+            table.add_column("Metric", style="cyan")
+            table.add_column("Value", style="green")
+            table.add_row("Total Spans", str(span_analysis['total_spans']))
+            if span_analysis['total_spans'] > 0:
+                table.add_row("Avg Duration (ms)", f"{span_analysis['avg_duration_ms']:.2f}")
+                table.add_row("Min Duration (ms)", f"{span_analysis['min_duration_ms']:.2f}")
+                table.add_row("Max Duration (ms)", f"{span_analysis['max_duration_ms']:.2f}")
+                table.add_row("Error Rate", f"{span_analysis['error_rate']:.2%}")
+            else:
+                table.add_row("Avg Duration (ms)", "N/A")
+                table.add_row("Min Duration (ms)", "N/A")
+                table.add_row("Max Duration (ms)", "N/A")
+                table.add_row("Error Rate", "N/A")
+            console.print(table)
+        
+        if show_metrics:
+            metric_analysis = analysis['metric_analysis']
+            table = Table(title="Metric Analysis")
+            table.add_column("Metric", style="cyan")
+            table.add_column("Value", style="green")
+            table.add_row("Total Metrics", str(metric_analysis['total_metrics']))
+            table.add_row("Unique Metric Names", str(metric_analysis['unique_metric_names']))
+            console.print(table)
+        
+        if show_logs:
+            log_analysis = analysis['log_analysis']
+            table = Table(title="Log Analysis")
+            table.add_column("Metric", style="cyan")
+            table.add_column("Value", style="green")
+            table.add_row("Total Logs", str(log_analysis['total_logs']))
+            table.add_row("Error Count", str(log_analysis['error_count']))
+            table.add_row("Warning Count", str(log_analysis['warning_count']))
+            table.add_row("Error Rate", f"{log_analysis['error_rate']:.2%}")
+            console.print(table)
+        
+        if show_performance:
+            perf_analysis = analysis['performance_analysis']
+            table = Table(title="Performance Analysis")
+            table.add_column("Metric", style="cyan")
+            table.add_column("Value", style="green")
+            table.add_row("Total Duration (ms)", f"{perf_analysis['total_duration_ms']:.2f}")
+            if perf_analysis['span_count'] > 0:
+                table.add_row("Avg Span Duration (ms)", f"{perf_analysis['avg_span_duration_ms']:.2f}")
+                table.add_row("Min Span Duration (ms)", f"{perf_analysis['min_span_duration_ms']:.2f}")
+                table.add_row("Max Span Duration (ms)", f"{perf_analysis['max_span_duration_ms']:.2f}")
+            else:
+                table.add_row("Avg Span Duration (ms)", "N/A")
+                table.add_row("Min Span Duration (ms)", "N/A")
+                table.add_row("Max Span Duration (ms)", "N/A")
+            table.add_row("Span Count", str(perf_analysis['span_count']))
+            console.print(table)
+        
+        if show_errors:
+            error_analysis = analysis['error_analysis']
+            table = Table(title="Error Analysis")
+            table.add_column("Metric", style="cyan")
+            table.add_column("Value", style="green")
+            table.add_row("Error Span Count", str(error_analysis['error_span_count']))
+            table.add_row("Error Log Count", str(error_analysis['error_log_count']))
+            table.add_row("Error Rate", f"{error_analysis['error_rate']:.2%}")
+            console.print(table)
+        
+        if show_dependencies:
+            dep_analysis = analysis['dependency_analysis']
+            table = Table(title="Dependency Analysis")
+            table.add_column("Metric", style="cyan")
+            table.add_column("Value", style="green")
+            table.add_row("Service Count", str(dep_analysis['service_count']))
+            table.add_row("Parent-Child Relationships", str(dep_analysis['parent_child_relationships']))
+            table.add_row("Max Depth", str(dep_analysis['max_depth']))
+            console.print(table)
+        
+        # Save results to file if requested
+        if output_file:
+            with open(output_file, 'w') as f:
+                json.dump(result, f, indent=2)
+            console.print(f"💾 Results saved to {output_file}")
+        
+    except Exception as e:
+        console.print(f"[red]❌ OTEL processing failed: {e}[/red]")
+        raise typer.Exit(1)
+
+@app.command()
+@otel_command
 def config(
     show: bool = typer.Option(False, "--show", help="Show current configuration"),
     validate: Optional[Path] = typer.Option(None, "--validate", help="Validate configuration file"),

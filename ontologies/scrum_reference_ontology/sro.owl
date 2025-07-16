@@ -1,0 +1,301 @@
+<?xml version="1.0"?>
+<rdf:RDF
+    xmlns="http://example.com/sro#"
+    xml:base="http://example.com/sro"
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:owl="http://www.w3.org/2002/07/owl#"
+    xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+    xmlns:seon="http://example.com/seon#"
+    xmlns:rsro="http://example.com/rsro#"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema#">
+
+  <!-- Ontology header -->
+  <owl:Ontology rdf:about="http://example.com/sro"/>
+
+  <!-- ======== Classes ======== -->
+  <owl:Class rdf:about="#ScrumProject">
+    <rdfs:subClassOf rdf:resource="http://example.com/seon#SoftwareProject"/>
+  </owl:Class>
+  <owl:Class rdf:about="#ScrumProcess">
+    <rdfs:subClassOf rdf:resource="http://example.com/seon#GeneralPerformedProjectProcess"/>
+  </owl:Class>
+  <owl:Class rdf:about="#ProductBacklogDefinition">
+    <rdfs:subClassOf rdf:resource="http://example.com/seon#SpecificPerformedProjectProcess"/>
+  </owl:Class>
+  <owl:Class rdf:about="#Sprint">
+    <rdfs:subClassOf rdf:resource="http://example.com/seon#SpecificPerformedProjectProcess"/>
+  </owl:Class>
+  <owl:Class rdf:about="#Ceremony">
+    <rdfs:subClassOf rdf:resource="http://example.com/seon#PerformedProjectActivity"/>
+  </owl:Class>
+  <owl:Class rdf:about="#PlanningMeeting">
+    <rdfs:subClassOf rdf:resource="#Ceremony"/>
+  </owl:Class>
+  <owl:Class rdf:about="#DailyStandupMeeting">
+    <rdfs:subClassOf rdf:resource="#Ceremony"/>
+  </owl:Class>
+  <owl:Class rdf:about="#ReviewMeeting">
+    <rdfs:subClassOf rdf:resource="#Ceremony"/>
+  </owl:Class>
+  <owl:Class rdf:about="#RetrospectiveMeeting">
+    <rdfs:subClassOf rdf:resource="#Ceremony"/>
+  </owl:Class>
+  <owl:Class rdf:about="#PerformedScrumDevelopmentTask">
+    <rdfs:subClassOf rdf:resource="http://example.com/seon#PerformedProjectActivity"/>
+  </owl:Class>
+
+  <owl:Class rdf:about="#ScrumTeamMember">
+    <rdfs:subClassOf rdf:resource="http://example.com/seon#ProjectPersonStakeholder"/>
+  </owl:Class>
+  <owl:Class rdf:about="#ScrumTeam">
+    <rdfs:subClassOf rdf:resource="http://example.com/seon#ProjectTeamStakeholder"/>
+  </owl:Class>
+  <owl:Class rdf:about="#ProductOwnerMembership">
+    <rdfs:subClassOf rdf:resource="http://example.com/seon#TeamMembership"/>
+  </owl:Class>
+  <owl:Class rdf:about="#ScrumMasterMembership">
+    <rdfs:subClassOf rdf:resource="http://example.com/seon#TeamMembership"/>
+  </owl:Class>
+  <owl:Class rdf:about="#DeveloperMembership">
+    <rdfs:subClassOf rdf:resource="http://example.com/seon#TeamMembership"/>
+  </owl:Class>
+  <owl:Class rdf:about="#ProductOwner">
+    <rdfs:subClassOf rdf:resource="#ScrumTeamMember"/>
+  </owl:Class>
+  <owl:Class rdf:about="#ScrumMaster">
+    <rdfs:subClassOf rdf:resource="#ScrumTeamMember"/>
+  </owl:Class>
+  <owl:Class rdf:about="#Developer">
+    <rdfs:subClassOf rdf:resource="#ScrumTeamMember"/>
+  </owl:Class>
+  <owl:Class rdf:about="#ProductOwnerClient">
+    <rdfs:subClassOf rdf:resource="#ProductOwner"/>
+  </owl:Class>
+  <owl:Class rdf:about="#ProductOwnerProjectStakeholder">
+    <rdfs:subClassOf rdf:resource="#ProductOwner"/>
+  </owl:Class>
+  <owl:Class rdf:about="#DevelopmentTeam">
+    <rdfs:subClassOf rdf:resource="http://example.com/seon#ProjectTeamStakeholder"/>
+  </owl:Class>
+
+  <owl:Class rdf:about="#ProductBacklog">
+    <rdfs:subClassOf rdf:resource="http://example.com/seon#Document"/>
+  </owl:Class>
+  <owl:Class rdf:about="#UserStory">
+    <rdfs:subClassOf rdf:resource="http://example.com/rsro#RequirementArtifact"/>
+  </owl:Class>
+  <owl:Class rdf:about="#AtomicUserStory">
+    <rdfs:subClassOf rdf:resource="#UserStory"/>
+  </owl:Class>
+  <owl:Class rdf:about="#Epic">
+    <rdfs:subClassOf rdf:resource="#UserStory"/>
+  </owl:Class>
+  <owl:Class rdf:about="#AcceptanceCriterion">
+    <rdfs:subClassOf rdf:resource="http://example.com/seon#Requirement"/>
+  </owl:Class>
+  <owl:Class rdf:about="#FunctionalAcceptanceCriterion">
+    <rdfs:subClassOf rdf:resource="#AcceptanceCriterion"/>
+  </owl:Class>
+  <owl:Class rdf:about="#NonFunctionalAcceptanceCriterion">
+    <rdfs:subClassOf rdf:resource="#AcceptanceCriterion"/>
+  </owl:Class>
+  <owl:Class rdf:about="#SprintBacklog">
+    <rdfs:subClassOf rdf:resource="http://example.com/seon#Document"/>
+  </owl:Class>
+  <owl:Class rdf:about="#IntendedScrumDevelopmentTask">
+    <rdfs:subClassOf rdf:resource="http://example.com/seon#IntendedProjectActivity"/>
+  </owl:Class>
+
+  <owl:Class rdf:about="#Deliverable">
+    <rdfs:subClassOf rdf:resource="http://example.com/seon#SoftwareItem"/>
+  </owl:Class>
+  <owl:Class rdf:about="#AcceptedDeliverable">
+    <rdfs:subClassOf rdf:resource="#Deliverable"/>
+  </owl:Class>
+  <owl:Class rdf:about="#NotAcceptedDeliverable">
+    <rdfs:subClassOf rdf:resource="#Deliverable"/>
+  </owl:Class>
+  <owl:Class rdf:about="#SuccessfullyPerformedScrumDevelopmentTask">
+    <rdfs:subClassOf rdf:resource="#PerformedScrumDevelopmentTask"/>
+  </owl:Class>
+  <owl:Class rdf:about="#NonSuccessfullyPerformedScrumDevelopmentTask">
+    <rdfs:subClassOf rdf:resource="#PerformedScrumDevelopmentTask"/>
+  </owl:Class>
+  <owl:Class rdf:about="#SprintDeliverable">
+    <rdfs:subClassOf rdf:resource="http://example.com/seon#SoftwareItem"/>
+  </owl:Class>
+  <owl:Class rdf:about="#ScrumProjectDeliverable">
+    <rdfs:subClassOf rdf:resource="http://example.com/seon#SoftwareProduct"/>
+  </owl:Class>
+
+  <!-- ======== Object Properties ======== -->
+  <owl:ObjectProperty rdf:about="#scrum_process">
+    <rdfs:domain rdf:resource="#ScrumProject"/>
+    <rdfs:range  rdf:resource="#ScrumProcess"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#product_backlog_definition">
+    <rdfs:domain rdf:resource="#ScrumProcess"/>
+    <rdfs:range  rdf:resource="#ProductBacklogDefinition"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#sprints">
+    <rdfs:domain rdf:resource="#ScrumProcess"/>
+    <rdfs:range  rdf:resource="#Sprint"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#product_backlog">
+    <rdfs:domain rdf:resource="#ProductBacklogDefinition"/>
+    <rdfs:range  rdf:resource="#ProductBacklog"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#sprint_backlog">
+    <rdfs:domain rdf:resource="#Sprint"/>
+    <rdfs:range  rdf:resource="#SprintBacklog"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#planning_meeting">
+    <rdfs:domain rdf:resource="#Sprint"/>
+    <rdfs:range  rdf:resource="#PlanningMeeting"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#daily_standup_meetings">
+    <rdfs:domain rdf:resource="#Sprint"/>
+    <rdfs:range  rdf:resource="#DailyStandupMeeting"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#review_meeting">
+    <rdfs:domain rdf:resource="#Sprint"/>
+    <rdfs:range  rdf:resource="#ReviewMeeting"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#retrospective_meeting">
+    <rdfs:domain rdf:resource="#Sprint"/>
+    <rdfs:range  rdf:resource="#RetrospectiveMeeting"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#performed_scrum_development_tasks">
+    <rdfs:domain rdf:resource="#Sprint"/>
+    <rdfs:range  rdf:resource="#PerformedScrumDevelopmentTask"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#performed_in_sprint">
+    <rdfs:domain rdf:resource="#Ceremony"/>
+    <rdfs:domain rdf:resource="#PerformedScrumDevelopmentTask"/>
+    <rdfs:range  rdf:resource="#Sprint"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#caused_by">
+    <rdfs:domain rdf:resource="#PerformedScrumDevelopmentTask"/>
+    <rdfs:range  rdf:resource="#IntendedScrumDevelopmentTask"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#performed_to_meet">
+    <rdfs:domain rdf:resource="#PerformedScrumDevelopmentTask"/>
+    <rdfs:range  rdf:resource="#UserStory"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#interested_in">
+    <rdfs:domain rdf:resource="#ScrumTeamMember"/>
+    <rdfs:domain rdf:resource="#ScrumTeam"/>
+    <rdfs:domain rdf:resource="#DevelopmentTeam"/>
+    <rdfs:range  rdf:resource="#ScrumProject"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#allocated_to">
+    <rdfs:domain rdf:resource="#ScrumTeamMember"/>
+    <rdfs:range  rdf:resource="#ScrumTeam"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#team">
+    <rdfs:domain rdf:resource="#ProductOwnerMembership"/>
+    <rdfs:domain rdf:resource="#ScrumMasterMembership"/>
+    <rdfs:domain rdf:resource="#DeveloperMembership"/>
+    <rdfs:range  rdf:resource="#ScrumTeam"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#member">
+    <rdfs:domain rdf:resource="#ProductOwnerMembership"/>
+    <rdfs:range  rdf:resource="#ProductOwner"/>
+    <rdfs:domain rdf:resource="#ScrumMasterMembership"/>
+    <rdfs:range  rdf:resource="#ScrumMaster"/>
+    <rdfs:domain rdf:resource="#DeveloperMembership"/>
+    <rdfs:range  rdf:resource="#Developer"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#part_of_scrum_team">
+    <rdfs:domain rdf:resource="#DevelopmentTeam"/>
+    <rdfs:range  rdf:resource="#ScrumTeam"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#user_stories">
+    <rdfs:domain rdf:resource="#ProductBacklog"/>
+    <rdfs:range  rdf:resource="#UserStory"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#intended_scrum_development_tasks">
+    <rdfs:domain rdf:resource="#SprintBacklog"/>
+    <rdfs:range  rdf:resource="#IntendedScrumDevelopmentTask"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#planned_to_meet">
+    <rdfs:domain rdf:resource="#IntendedScrumDevelopmentTask"/>
+    <rdfs:range  rdf:resource="#UserStory"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#specified_in_sprint_backlog">
+    <rdfs:domain rdf:resource="#IntendedScrumDevelopmentTask"/>
+    <rdfs:range  rdf:resource="#SprintBacklog"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#materializes">
+    <rdfs:domain rdf:resource="#Deliverable"/>
+    <rdfs:range  rdf:resource="#UserStory"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#produced_by">
+    <rdfs:domain rdf:resource="#Deliverable"/>
+    <rdfs:range  rdf:resource="#PerformedScrumDevelopmentTask"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#accepted_deliverables">
+    <rdfs:domain rdf:resource="#SprintDeliverable"/>
+    <rdfs:range  rdf:resource="#AcceptedDeliverable"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#produced_in_sprint">
+    <rdfs:domain rdf:resource="#SprintDeliverable"/>
+    <rdfs:range  rdf:resource="#Sprint"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#sprint_deliverables">
+    <rdfs:domain rdf:resource="#ScrumProjectDeliverable"/>
+    <rdfs:range  rdf:resource="#SprintDeliverable"/>
+  </owl:ObjectProperty>
+
+  <owl:ObjectProperty rdf:about="#for_project">
+    <rdfs:domain rdf:resource="#ScrumProjectDeliverable"/>
+    <rdfs:range  rdf:resource="#ScrumProject"/>
+  </owl:ObjectProperty>
+
+  <!-- ======== Added Object Properties ======== -->
+  <owl:ObjectProperty rdf:about="#acceptanceCriteria">
+    <rdfs:domain rdf:resource="#UserStory"/>
+    <rdfs:range  rdf:resource="#AcceptanceCriterion"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="#decomposedInto">
+    <rdfs:domain rdf:resource="#Epic"/>
+    <rdfs:range  rdf:resource="#UserStory"/>
+  </owl:ObjectProperty>
+
+  <!-- ======== Datatype Properties ======== -->
+  <owl:DatatypeProperty rdf:about="#importance">
+    <rdfs:domain rdf:resource="#UserStory"/>
+    <rdfs:range  rdf:resource="xsd:decimal"/>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="#effort">
+    <rdfs:domain rdf:resource="#UserStory"/>
+    <rdfs:range  rdf:resource="xsd:decimal"/>
+  </owl:DatatypeProperty>
+
+</rdf:RDF>

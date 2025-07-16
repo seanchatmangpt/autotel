@@ -12,6 +12,9 @@ from dataclasses import dataclass
 from rdflib import Graph, URIRef, Literal, Namespace
 from rdflib.namespace import RDF, XSD
 import pyshacl
+from functools import wraps
+import time
+import uuid
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -19,6 +22,16 @@ logger = logging.getLogger(__name__)
 # Configure DSPy globally
 ollama_lm = dspy.LM('ollama/qwen3:latest', temperature=0.7)
 dspy.configure(lm=ollama_lm)
+
+def no_cache(func):
+    """Decorator to prevent caching of DSPy calls"""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        # Add timestamp and random seed to prevent caching
+        kwargs['_timestamp'] = time.time()
+        kwargs['_random_seed'] = uuid.uuid4().hex[:8]
+        return func(*args, **kwargs)
+    return wrapper
 
 @dataclass
 class AdvancedDSPySignature:
@@ -30,6 +43,7 @@ class AdvancedDSPySignature:
     shacl_input_shapes: Dict[str, str] = None  # field_name -> shape_uri
     shacl_output_shapes: Dict[str, str] = None  # output_name -> shape_uri
     validation_enabled: bool = True
+    cache_disabled: bool = False  # New field to disable caching
 
 class AdvancedDSPyServiceRegistry:
     """Advanced registry for DSPy signatures with SHACL validation"""
@@ -39,7 +53,63 @@ class AdvancedDSPyServiceRegistry:
         self._predict_modules: Dict[str, dspy.Predict] = {}
         self._parser_signatures: Dict[str, Type[dspy.Signature]] = {}
         self._shacl_graph = Graph()
+        self._cache_stats = {
+            "hits": 0,
+            "misses": 0,
+            "disabled": True  # Default to disabled
+        }
     
+    @property
+    def cache(self):
+        """Return cache object for CLI compatibility"""
+        return self._cache_stats
+    
+    def disable_caching(self, signature_name: str = None):
+        """Disable caching for a specific signature or globally"""
+        if signature_name:
+            if signature_name in self._signatures:
+                self._signatures[signature_name].cache_disabled = True
+                logger.info(f"Caching disabled for signature: {signature_name}")
+        else:
+            self._cache_stats["disabled"] = True
+            logger.info("Global caching disabled")
+    
+    def enable_caching(self, signature_name: str = None):
+        """Enable caching for a specific signature or globally"""
+        if signature_name:
+            if signature_name in self._signatures:
+                self._signatures[signature_name].cache_disabled = False
+                logger.info(f"Caching enabled for signature: {signature_name}")
+        else:
+            self._cache_stats["disabled"] = False
+            logger.info("Global caching enabled")
+    
+    def clear_cache(self):
+        """Clear cache statistics"""
+        self._cache_stats = {
+            "hits": 0,
+            "misses": 0,
+            "disabled": self._cache_stats["disabled"]
+        }
+        logger.info("Cache statistics cleared")
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """Get cache and performance statistics"""
+        total_requests = self._cache_stats["hits"] + self._cache_stats["misses"]
+        hit_rate = self._cache_stats["hits"] / total_requests if total_requests > 0 else 0
+        
+        return {
+            "cache_stats": {
+                "hits": self._cache_stats["hits"],
+                "misses": self._cache_stats["misses"],
+                "hit_rate": hit_rate,
+                "disabled": self._cache_stats["disabled"],
+                "total_requests": total_requests
+            },
+            "signature_count": len(self._signatures),
+            "parser_signature_count": len(self._parser_signatures)
+        }
+
     def create_dynamic_signature(self, name: str, input_fields: Dict[str, str], 
                                 output_fields: Dict[str, str], description: str = "") -> Type[dspy.Signature]:
         """Create a DSPy signature dynamically from field definitions"""
@@ -70,7 +140,8 @@ class AdvancedDSPyServiceRegistry:
     def register_dynamic_signature(self, name: str, input_fields: Dict[str, str], 
                                   output_fields: Dict[str, str], description: str = "",
                                   shacl_input_shapes: Dict[str, str] = None,
-                                  shacl_output_shapes: Dict[str, str] = None):
+                                  shacl_output_shapes: Dict[str, str] = None,
+                                  disable_cache: bool = False):
         """Register a dynamically created DSPy signature with SHACL validation"""
         signature_class = self.create_dynamic_signature(name, input_fields, output_fields, description)
         
@@ -82,7 +153,8 @@ class AdvancedDSPyServiceRegistry:
             output_fields=output_fields,
             shacl_input_shapes=shacl_input_shapes,
             shacl_output_shapes=shacl_output_shapes,
-            validation_enabled=True
+            validation_enabled=True,
+            cache_disabled=disable_cache
         )
         self._signatures[name] = signature_info
         self._predict_modules[name] = dspy.Predict(signature_class)
@@ -103,6 +175,20 @@ class AdvancedDSPyServiceRegistry:
     
     def call_signature(self, signature_name: str, **kwargs) -> Dict[str, Any]:
         """Call a registered DSPy signature with SHACL validation"""
+        # Check if caching is disabled
+        cache_disabled = self._cache_stats["disabled"]
+        if signature_name in self._signatures:
+            sig_info = self._signatures[signature_name]
+            cache_disabled = cache_disabled or sig_info.cache_disabled
+        
+        # Add anti-caching parameters if caching is disabled
+        if cache_disabled:
+            kwargs['_timestamp'] = time.time()
+            kwargs['_random_seed'] = uuid.uuid4().hex[:8]
+            self._cache_stats["misses"] += 1
+        else:
+            self._cache_stats["hits"] += 1
+        
         # Validate inputs if SHACL shapes are available
         if signature_name in self._signatures:
             sig_info = self._signatures[signature_name]
