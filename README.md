@@ -1,14 +1,21 @@
-# AutoTel - Automated Telemetry and Semantic Execution Pipeline
+# AutoTel - Enterprise BPMN 2.0 Orchestration Framework
 
-AutoTel is an enterprise-grade BPMN 2.0 orchestration framework with AI-powered decision making, featuring comprehensive telemetry and semantic execution capabilities.
+AutoTel is an enterprise-grade **BPMN 2.0 orchestration framework** that combines workflow automation with AI-powered decision making, semantic validation, and comprehensive telemetry. It integrates five key pillars:
+
+- **BPMN 2.0** - Business process modeling and execution
+- **DMN** - Decision Model and Notation for business rules
+- **DSPy** - AI-powered intelligent services
+- **SHACL** - Data validation and constraints
+- **OWL** - Semantic ontology processing
 
 ## Features
 
-- **BPMN 2.0 Workflow Engine**: Full support for BPMN workflows with SpiffWorkflow
-- **AI-Powered Decision Making**: Integration with DSPy for intelligent decision points
+- **BPMN 2.0 Orchestration**: Complete workflow automation with SpiffWorkflow engine
+- **DMN Integration**: Business rule execution with decision tables
+- **AI-Powered Services**: DSPy integration for intelligent task execution
+- **Semantic Validation**: SHACL constraint validation and OWL ontology processing
 - **Comprehensive Telemetry**: OpenTelemetry integration with LinkML schema validation
-- **Semantic Execution**: OWL/RDF ontology processing and compilation
-- **Robust Fallback**: Graceful degradation when telemetry is unavailable
+- **XML-First Configuration**: All definitions in XML with no embedded code
 - **Enterprise Ready**: Production-grade error handling and validation
 
 ## Quick Start
@@ -37,81 +44,53 @@ autotel version
 autotel init
 
 # Run a BPMN workflow
-autotel run workflow.bpmn --input data.json
+autotel run bpmn/simple_process.bpmn --input '{"data": "test"}'
 
-# Parse an OWL ontology
-autotel ontology parse --file ontology.owl --export compiled.json
-```
+# List available workflows
+autotel list --workflows
 
-## Telemetry and Fallback
+# Validate BPMN workflow
+autotel validate bpmn/simple_process.bpmn
 
-AutoTel includes a robust telemetry system with automatic fallback to no-op operations when telemetry is unavailable or disabled.
-
-### Telemetry Modes
-
-1. **Full Telemetry** (default): Complete OpenTelemetry integration with LinkML schema validation
-2. **No-Telemetry Mode**: Disabled via `--no-telemetry` flag for environments where telemetry is not needed
-3. **Automatic Fallback**: Graceful degradation to no-op operations if telemetry initialization fails
-
-### Using No-Telemetry Mode
-
-```bash
-# Disable telemetry for all operations
-autotel --no-telemetry ontology parse --file ontology.owl
-
-# Run workflow without telemetry
-autotel --no-telemetry run workflow.bpmn
-
-# Initialize without telemetry
-autotel --no-telemetry init
-```
-
-### Telemetry Validation
-
-The system validates telemetry against LinkML schemas to ensure data quality:
-
-```bash
-# Show telemetry statistics
-autotel telemetry --stats
-
-# Export telemetry data
-autotel telemetry --export traces.json --format json
+# Execute semantic pipeline
+autotel pipeline execute --owl ontology.owl --shacl shapes.shacl --dspy signatures.dspy --input data.json
 ```
 
 ## Architecture
 
+### Five Pillars Integration
+
+AutoTel integrates five key technologies into a unified orchestration framework:
+
+1. **BPMN 2.0** - Business process modeling and execution using SpiffWorkflow
+2. **DMN** - Decision Model and Notation for business rule execution
+3. **DSPy** - AI-powered intelligent services with dynamic signatures
+4. **SHACL** - Data validation and constraint checking
+5. **OWL** - Semantic ontology processing and reasoning
+
+### Workflow Execution Pipeline
+
+```
+BPMN XML → Parser → Workflow Engine → Task Execution → Results + Telemetry
+    ↓
+DMN XML → Decision Engine → Rule Evaluation
+    ↓
+DSPy XML → Signature Registry → AI Service Execution
+    ↓
+SHACL XML → Validation Engine → Data Validation
+    ↓
+OWL XML → Ontology Engine → Semantic Processing
+```
+
 ### Core Components
 
-- **Orchestrator**: Main workflow orchestration engine
+- **Workflow Engine**: SpiffWorkflow-based BPMN execution engine
+- **DMN Engine**: Decision table execution and business rule processing
+- **DSPy Integration**: AI service execution with dynamic signatures
 - **Telemetry Manager**: OpenTelemetry integration with fallback support
 - **Schema Validator**: LinkML-based validation system
 - **OWL Processor**: Semantic ontology processing
-- **Ontology Compiler**: Compilation of ontologies into executable schemas
-
-### Pipeline Flow
-
-1. **Input Processing**: BPMN/DMN/OWL files are parsed and validated
-2. **Semantic Analysis**: Ontologies are processed and compiled
-3. **Workflow Execution**: BPMN workflows are executed with telemetry
-4. **Decision Making**: AI-powered decisions using DSPy integration
-5. **Output Generation**: Results with comprehensive telemetry
-
-### Telemetry Integration
-
-```python
-from autotel.core.telemetry import get_telemetry_manager_or_noop
-
-# Always works, falls back to no-op if telemetry fails
-telemetry = get_telemetry_manager_or_noop(
-    service_name="my-service",
-    require_linkml_validation=False
-)
-
-# Use telemetry with automatic fallback
-with telemetry.start_span("operation", "processing") as span:
-    span.set_attribute("input_size", len(data))
-    # ... processing logic ...
-```
+- **SHACL Processor**: Constraint validation processing
 
 ## CLI Commands
 
@@ -119,8 +98,10 @@ with telemetry.start_span("operation", "processing") as span:
 
 - `autotel version` - Show version and system information
 - `autotel init` - Initialize AutoTel with configuration
-- `autotel run <workflow>` - Execute a BPMN workflow
-- `autotel validate <file>` - Validate BPMN/DMN/YAML files
+- `autotel run <workflow.bpmn>` - Run a BPMN workflow
+- `autotel list --workflows` - List available workflows
+- `autotel validate <file>` - Validate BPMN/DMN/OWL/SHACL/DSPy files
+- `autotel workflow --validate <file>` - Validate workflow structure
 
 ### Telemetry Commands
 
@@ -128,10 +109,14 @@ with telemetry.start_span("operation", "processing") as span:
 - `autotel telemetry --export <file>` - Export telemetry data
 - `autotel --no-telemetry <command>` - Run any command without telemetry
 
-### Ontology Commands
+### Workflow Commands
 
-- `autotel ontology parse --file <owl>` - Parse OWL ontology
-- `autotel ontology parse --export <json>` - Export compiled ontology
+- `autotel run <workflow.bpmn> --input <json>` - Run workflow with input data
+- `autotel run <workflow.bpmn> --input-file <file.json>` - Run workflow with input file
+- `autotel run <workflow.bpmn> --dmn <decision.dmn>` - Run workflow with DMN decisions
+- `autotel list --processes` - List processes in workflow files
+- `autotel list --dmn` - List DMN decisions
+- `autotel workflow --info <file>` - Show workflow information
 
 ### DSPy Commands
 
@@ -172,8 +157,8 @@ uv run pytest
 uv run pytest tests/test_telemetry.py
 uv run pytest tests/test_owl_processor.py
 
-# Run 80/20 validation tests
-uv run python test_80_20_telemetry_validation.py
+# Run pipeline tests
+uv run python test_pipeline.py
 ```
 
 ### Adding New Processors

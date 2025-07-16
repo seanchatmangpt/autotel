@@ -4,8 +4,9 @@ AutoTel Telemetry Manager - OpenTelemetry integration with LinkML schema support
 
 import json
 import time
+import logging
 from datetime import datetime
-from typing import Dict, List, Any, Optional, Union
+from typing import Dict, List, Any, Optional, Union, Callable
 from pathlib import Path
 from dataclasses import dataclass, field
 from contextlib import contextmanager
@@ -24,6 +25,9 @@ from linkml_runtime.utils.schemaview import SchemaView
 from linkml_runtime.dumpers import yaml_dumper
 from linkml_runtime.loaders import yaml_loader
 
+# Configure logging
+logger = logging.getLogger(__name__)
+
 @dataclass
 class TelemetryConfig:
     """Configuration for telemetry operations"""
@@ -33,6 +37,8 @@ class TelemetryConfig:
     enable_metrics: bool = True
     schema_path: Optional[str] = None
     require_linkml_validation: bool = True  # New: enforce LinkML validation
+    fallback_to_noop: bool = True  # New: enable automatic fallback to no-op
+    log_telemetry_failures: bool = True  # New: log telemetry failures for debugging
 
 class NoOpTelemetryManager:
     """No-op telemetry manager that provides safe fallback when telemetry fails."""
@@ -44,28 +50,48 @@ class NoOpTelemetryManager:
         self.schema_view = None
         self.tracer = None
         self.meter = None
+        self._fallback_reason = "No-op telemetry manager"
+        self._operation_count = 0
+        self._span_count = 0
+        self._metric_count = 0
     
     @contextmanager
     def start_span(self, name: str, operation_type: str, **kwargs):
-        """No-op span context manager."""
+        """No-op span context manager with operation tracking."""
+        self._span_count += 1
+        self._operation_count += 1
+        
         class NoOpSpan:
+            def __init__(self, name: str, operation_type: str, **kwargs):
+                self.name = name
+                self.operation_type = operation_type
+                self.attributes = kwargs
+                self.status = StatusCode.OK
+            
             def set_attribute(self, key, value):
-                pass
+                self.attributes[key] = value
+            
             def set_status(self, status):
-                pass
+                self.status = status
+            
             def __enter__(self):
                 return self
+            
             def __exit__(self, exc_type, exc_val, exc_tb):
+                if exc_type:
+                    self.status = StatusCode.ERROR
                 pass
         
-        span = NoOpSpan()
+        span = NoOpSpan(name, operation_type, **kwargs)
         try:
             yield span
         finally:
             pass
     
     def record_metric(self, metric_name: str, value, **attributes):
-        """No-op metric recording."""
+        """No-op metric recording with tracking."""
+        self._metric_count += 1
+        self._operation_count += 1
         pass
     
     def get_operation_type_enum(self) -> List[str]:
@@ -105,7 +131,7 @@ class NoOpTelemetryManager:
         return False
     
     def get_stats(self) -> dict:
-        """Return no-op stats."""
+        """Return no-op stats with operation counts."""
         return {
             "schema_connected": False,
             "tracer_enabled": False,
@@ -113,7 +139,15 @@ class NoOpTelemetryManager:
             "schema_classes": [],
             "schema_enums": [],
             "schema_slots": [],
+            "fallback_reason": self._fallback_reason,
+            "operation_count": self._operation_count,
+            "span_count": self._span_count,
+            "metric_count": self._metric_count,
         }
+    
+    def set_fallback_reason(self, reason: str):
+        """Set the reason for falling back to no-op."""
+        self._fallback_reason = reason
 
 class TelemetryManager:
     """
@@ -130,6 +164,9 @@ class TelemetryManager:
         self.linkml_connected: bool = False
         self._external_tracer_provider = tracer_provider
         self._external_span_exporter = span_exporter
+        self._operation_count = 0
+        self._span_count = 0
+        self._metric_count = 0
         
         # Load LinkML schema for telemetry
         self._load_telemetry_schema()
@@ -153,8 +190,12 @@ class TelemetryManager:
         
         if not schema_path.exists():
             if self.config.require_linkml_validation:
-                raise RuntimeError(f"LinkML telemetry schema not found: {schema_path}. OpenTelemetry must be connected to LinkML schema validation.")
-            print(f"Warning: Telemetry schema not found: {schema_path}")
+                error_msg = f"LinkML telemetry schema not found: {schema_path}. OpenTelemetry must be connected to LinkML schema validation."
+                if self.config.log_telemetry_failures:
+                    logger.error(error_msg)
+                raise RuntimeError(error_msg)
+            if self.config.log_telemetry_failures:
+                logger.warning(f"Telemetry schema not found: {schema_path}")
             return
         
         try:
@@ -168,16 +209,24 @@ class TelemetryManager:
                     missing_classes.append(class_name)
             
             if missing_classes and self.config.require_linkml_validation:
-                raise RuntimeError(f"LinkML schema missing required classes: {missing_classes}. OpenTelemetry must be connected to complete LinkML schema validation.")
+                error_msg = f"LinkML schema missing required classes: {missing_classes}. OpenTelemetry must be connected to complete LinkML schema validation."
+                if self.config.log_telemetry_failures:
+                    logger.error(error_msg)
+                raise RuntimeError(error_msg)
             elif missing_classes:
-                print(f"Warning: Required classes not found in telemetry schema: {missing_classes}")
+                if self.config.log_telemetry_failures:
+                    logger.warning(f"Required classes not found in telemetry schema: {missing_classes}")
             
             self.linkml_connected = True
             
         except Exception as e:
             if self.config.require_linkml_validation:
-                raise RuntimeError(f"Failed to load LinkML telemetry schema: {e}. OpenTelemetry must be connected to LinkML schema validation.")
-            print(f"Warning: Could not load telemetry schema: {e}")
+                error_msg = f"Failed to load LinkML telemetry schema: {e}. OpenTelemetry must be connected to LinkML schema validation."
+                if self.config.log_telemetry_failures:
+                    logger.error(error_msg)
+                raise RuntimeError(error_msg)
+            if self.config.log_telemetry_failures:
+                logger.warning(f"Could not load telemetry schema: {e}")
     
     def _validate_linkml_connection(self) -> None:
         """Validate that OpenTelemetry is properly connected to LinkML schema validation"""
@@ -185,23 +234,38 @@ class TelemetryManager:
             return
             
         if not self.linkml_connected:
-            raise RuntimeError("OpenTelemetry is not connected to LinkML schema validation. All telemetry operations require schema validation.")
+            error_msg = "OpenTelemetry is not connected to LinkML schema validation. All telemetry operations require schema validation."
+            if self.config.log_telemetry_failures:
+                logger.error(error_msg)
+            raise RuntimeError(error_msg)
         
         if not self.schema_view:
-            raise RuntimeError("LinkML schema view not available. OpenTelemetry must be connected to LinkML schema validation.")
+            error_msg = "LinkML schema view not available. OpenTelemetry must be connected to LinkML schema validation."
+            if self.config.log_telemetry_failures:
+                logger.error(error_msg)
+            raise RuntimeError(error_msg)
         
         # Test schema validation
         try:
             test_span_class = self.schema_view.get_class("Span")
             if not test_span_class:
-                raise RuntimeError("LinkML schema validation failed: 'Span' class not found in schema.")
+                error_msg = "LinkML schema validation failed: 'Span' class not found in schema."
+                if self.config.log_telemetry_failures:
+                    logger.error(error_msg)
+                raise RuntimeError(error_msg)
             
             test_operation_enum = self.schema_view.get_enum("LinkMLOperationType")
             if not test_operation_enum:
-                raise RuntimeError("LinkML schema validation failed: 'LinkMLOperationType' enum not found in schema.")
+                error_msg = "LinkML schema validation failed: 'LinkMLOperationType' enum not found in schema."
+                if self.config.log_telemetry_failures:
+                    logger.error(error_msg)
+                raise RuntimeError(error_msg)
                 
         except Exception as e:
-            raise RuntimeError(f"LinkML schema validation test failed: {e}. OpenTelemetry must be connected to LinkML schema validation.")
+            error_msg = f"LinkML schema validation test failed: {e}. OpenTelemetry must be connected to LinkML schema validation."
+            if self.config.log_telemetry_failures:
+                logger.error(error_msg)
+            raise RuntimeError(error_msg)
     
     def _initialize_otel(self) -> None:
         """Initialize OpenTelemetry with resource information"""
@@ -257,7 +321,10 @@ class TelemetryManager:
         """Get valid operation types from the LinkML schema"""
         if not self.schema_view:
             if self.config.require_linkml_validation:
-                raise RuntimeError("LinkML schema not available. OpenTelemetry must be connected to LinkML schema validation.")
+                error_msg = "LinkML schema not available. OpenTelemetry must be connected to LinkML schema validation."
+                if self.config.log_telemetry_failures:
+                    logger.error(error_msg)
+                raise RuntimeError(error_msg)
             return []
         
         operation_enum = self.schema_view.get_enum("LinkMLOperationType")
@@ -269,7 +336,10 @@ class TelemetryManager:
         """Get valid validation types from the LinkML schema"""
         if not self.schema_view:
             if self.config.require_linkml_validation:
-                raise RuntimeError("LinkML schema not available. OpenTelemetry must be connected to LinkML schema validation.")
+                error_msg = "LinkML schema not available. OpenTelemetry must be connected to LinkML schema validation."
+                if self.config.log_telemetry_failures:
+                    logger.error(error_msg)
+                raise RuntimeError(error_msg)
             return []
         
         validation_enum = self.schema_view.get_enum("ValidationType")
@@ -281,13 +351,19 @@ class TelemetryManager:
         """Create span attributes using LinkML schema validation"""
         if not self.schema_view:
             if self.config.require_linkml_validation:
-                raise RuntimeError("LinkML schema not available. OpenTelemetry must be connected to LinkML schema validation.")
+                error_msg = "LinkML schema not available. OpenTelemetry must be connected to LinkML schema validation."
+                if self.config.log_telemetry_failures:
+                    logger.error(error_msg)
+                raise RuntimeError(error_msg)
             return {"operation_type": operation_type, **kwargs}
         
         span_class = self.schema_view.get_class("Span")
         if not span_class:
             if self.config.require_linkml_validation:
-                raise RuntimeError("LinkML schema validation failed: 'Span' class not found.")
+                error_msg = "LinkML schema validation failed: 'Span' class not found."
+                if self.config.log_telemetry_failures:
+                    logger.error(error_msg)
+                raise RuntimeError(error_msg)
             return kwargs
         
         # Create validated attributes
@@ -304,11 +380,20 @@ class TelemetryManager:
     def start_span(self, name: str, operation_type: str, **kwargs) -> trace.Span:
         """Start a span with schema-validated attributes"""
         if not self.tracer:
-            raise RuntimeError("Tracing not enabled")
+            error_msg = "Tracing not enabled"
+            if self.config.log_telemetry_failures:
+                logger.error(error_msg)
+            raise RuntimeError(error_msg)
         
         # Enforce LinkML validation for span creation
         if self.config.require_linkml_validation and not self.linkml_connected:
-            raise RuntimeError("OpenTelemetry is not connected to LinkML schema validation. Cannot create spans without schema validation.")
+            error_msg = "OpenTelemetry is not connected to LinkML schema validation. Cannot create spans without schema validation."
+            if self.config.log_telemetry_failures:
+                logger.error(error_msg)
+            raise RuntimeError(error_msg)
+        
+        self._span_count += 1
+        self._operation_count += 1
         
         attributes = self.create_span_attributes(operation_type, **kwargs)
         return self.tracer.start_as_current_span(name, attributes=attributes)
@@ -316,11 +401,20 @@ class TelemetryManager:
     def record_metric(self, metric_name: str, value: Union[int, float], **attributes) -> None:
         """Record a metric with schema validation"""
         if not self.meter:
-            raise RuntimeError("Metrics not enabled")
+            error_msg = "Metrics not enabled"
+            if self.config.log_telemetry_failures:
+                logger.error(error_msg)
+            raise RuntimeError(error_msg)
         
         # Enforce LinkML validation for metric recording
         if self.config.require_linkml_validation and not self.linkml_connected:
-            raise RuntimeError("OpenTelemetry is not connected to LinkML schema validation. Cannot record metrics without schema validation.")
+            error_msg = "OpenTelemetry is not connected to LinkML schema validation. Cannot record metrics without schema validation."
+            if self.config.log_telemetry_failures:
+                logger.error(error_msg)
+            raise RuntimeError(error_msg)
+        
+        self._metric_count += 1
+        self._operation_count += 1
         
         # Validate metric attributes against schema
         validated_attributes = {}
@@ -342,13 +436,19 @@ class TelemetryManager:
         """Validate span data against LinkML schema"""
         if not self.schema_view:
             if self.config.require_linkml_validation:
-                raise RuntimeError("LinkML schema not available. OpenTelemetry must be connected to LinkML schema validation.")
+                error_msg = "LinkML schema not available. OpenTelemetry must be connected to LinkML schema validation."
+                if self.config.log_telemetry_failures:
+                    logger.error(error_msg)
+                raise RuntimeError(error_msg)
             return span_data
         
         span_class = self.schema_view.get_class("Span")
         if not span_class:
             if self.config.require_linkml_validation:
-                raise RuntimeError("LinkML schema validation failed: 'Span' class not found.")
+                error_msg = "LinkML schema validation failed: 'Span' class not found."
+                if self.config.log_telemetry_failures:
+                    logger.error(error_msg)
+                raise RuntimeError(error_msg)
             return span_data
         
         validated_data = {}
@@ -362,19 +462,28 @@ class TelemetryManager:
         """Create a LinkML operation record with schema validation"""
         if not self.schema_view:
             if self.config.require_linkml_validation:
-                raise RuntimeError("LinkML schema not available. OpenTelemetry must be connected to LinkML schema validation.")
+                error_msg = "LinkML schema not available. OpenTelemetry must be connected to LinkML schema validation."
+                if self.config.log_telemetry_failures:
+                    logger.error(error_msg)
+                raise RuntimeError(error_msg)
             return {"operation_type": operation_type, **kwargs}
         
         operation_class = self.schema_view.get_class("LinkMLOperation")
         if not operation_class:
             if self.config.require_linkml_validation:
-                raise RuntimeError("LinkML schema validation failed: 'LinkMLOperation' class not found.")
+                error_msg = "LinkML schema validation failed: 'LinkMLOperation' class not found."
+                if self.config.log_telemetry_failures:
+                    logger.error(error_msg)
+                raise RuntimeError(error_msg)
             return {"operation_type": operation_type, **kwargs}
         
         # Validate operation type
         valid_operations = self.get_operation_type_enum()
         if valid_operations and operation_type not in valid_operations:
-            raise ValueError(f"Invalid operation type: {operation_type}")
+            error_msg = f"Invalid operation type: {operation_type}"
+            if self.config.log_telemetry_failures:
+                logger.error(error_msg)
+            raise ValueError(error_msg)
         
         # Create operation record
         operation_data = {
@@ -396,19 +505,28 @@ class TelemetryManager:
         """Create a validation result with schema validation"""
         if not self.schema_view:
             if self.config.require_linkml_validation:
-                raise RuntimeError("LinkML schema not available. OpenTelemetry must be connected to LinkML schema validation.")
+                error_msg = "LinkML schema not available. OpenTelemetry must be connected to LinkML schema validation."
+                if self.config.log_telemetry_failures:
+                    logger.error(error_msg)
+                raise RuntimeError(error_msg)
             return {"validation_type": validation_type, "passed": passed, **kwargs}
         
         validation_class = self.schema_view.get_class("ValidationResult")
         if not validation_class:
             if self.config.require_linkml_validation:
-                raise RuntimeError("LinkML schema validation failed: 'ValidationResult' class not found.")
+                error_msg = "LinkML schema validation failed: 'ValidationResult' class not found."
+                if self.config.log_telemetry_failures:
+                    logger.error(error_msg)
+                raise RuntimeError(error_msg)
             return {"validation_type": validation_type, "passed": passed, **kwargs}
         
         # Validate validation type
         valid_types = self.get_validation_type_enum()
         if valid_types and validation_type not in valid_types:
-            raise ValueError(f"Invalid validation type: {validation_type}")
+            error_msg = f"Invalid validation type: {validation_type}"
+            if self.config.log_telemetry_failures:
+                logger.error(error_msg)
+            raise ValueError(error_msg)
         
         # Create validation result
         validation_data = {
@@ -431,7 +549,10 @@ class TelemetryManager:
         """Export schema metadata for validation"""
         if not self.schema_view:
             if self.config.require_linkml_validation:
-                raise RuntimeError("LinkML schema not available. OpenTelemetry must be connected to LinkML schema validation.")
+                error_msg = "LinkML schema not available. OpenTelemetry must be connected to LinkML schema validation."
+                if self.config.log_telemetry_failures:
+                    logger.error(error_msg)
+                raise RuntimeError(error_msg)
             return {}
         
         return {
@@ -465,6 +586,9 @@ class TelemetryManager:
             "schema_classes": list(self.schema_view.all_classes().keys()) if self.schema_view else [],
             "schema_enums": list(self.schema_view.all_enums().keys()) if self.schema_view else [],
             "schema_slots": list(self.schema_view.all_slots().keys()) if self.schema_view else [],
+            "operation_count": self._operation_count,
+            "span_count": self._span_count,
+            "metric_count": self._metric_count,
         }
 
 def get_telemetry_manager_or_noop(
@@ -476,35 +600,49 @@ def get_telemetry_manager_or_noop(
     require_linkml_validation: bool = True,
     tracer_provider: Optional[TracerProvider] = None,
     span_exporter: Optional[Any] = None,
-    force_noop: bool = False
+    force_noop: bool = False,
+    fallback_to_noop: bool = True,
+    log_telemetry_failures: bool = True
 ) -> Union[TelemetryManager, NoOpTelemetryManager]:
     """
     Get a telemetry manager or fall back to no-op if telemetry fails.
     
     Args:
         force_noop: If True, always return NoOpTelemetryManager
+        fallback_to_noop: If True, automatically fall back to no-op on failure
+        log_telemetry_failures: If True, log telemetry failures for debugging
         ...: Other args passed to create_telemetry_manager
     
     Returns:
         TelemetryManager or NoOpTelemetryManager
     """
     if force_noop:
-        return NoOpTelemetryManager(service_name)
+        noop_manager = NoOpTelemetryManager(service_name)
+        noop_manager.set_fallback_reason("Explicitly requested no-op mode")
+        return noop_manager
     
     try:
-        return create_telemetry_manager(
+        config = TelemetryConfig(
             service_name=service_name,
             service_version=service_version,
-            schema_path=schema_path,
             enable_tracing=enable_tracing,
             enable_metrics=enable_metrics,
+            schema_path=schema_path,
             require_linkml_validation=require_linkml_validation,
-            tracer_provider=tracer_provider,
-            span_exporter=span_exporter
+            fallback_to_noop=fallback_to_noop,
+            log_telemetry_failures=log_telemetry_failures
         )
+        return TelemetryManager(config, tracer_provider=tracer_provider, span_exporter=span_exporter)
     except Exception as e:
-        print(f"Warning: Telemetry initialization failed: {e}. Using no-op telemetry.")
-        return NoOpTelemetryManager(service_name)
+        if fallback_to_noop:
+            if log_telemetry_failures:
+                logger.warning(f"Telemetry initialization failed: {e}. Using no-op telemetry.")
+            noop_manager = NoOpTelemetryManager(service_name)
+            noop_manager.set_fallback_reason(f"Telemetry initialization failed: {e}")
+            return noop_manager
+        else:
+            # Re-raise if fallback is disabled
+            raise
 
 def create_telemetry_manager(
     service_name: str = "autotel-service",
@@ -514,7 +652,9 @@ def create_telemetry_manager(
     enable_metrics: bool = True,
     require_linkml_validation: bool = True,
     tracer_provider: Optional[TracerProvider] = None,
-    span_exporter: Optional[Any] = None
+    span_exporter: Optional[Any] = None,
+    fallback_to_noop: bool = True,
+    log_telemetry_failures: bool = True
 ) -> TelemetryManager:
     """Factory for TelemetryManager with optional dependency injection for testing."""
     config = TelemetryConfig(
@@ -523,6 +663,8 @@ def create_telemetry_manager(
         enable_tracing=enable_tracing,
         enable_metrics=enable_metrics,
         schema_path=schema_path,
-        require_linkml_validation=require_linkml_validation
+        require_linkml_validation=require_linkml_validation,
+        fallback_to_noop=fallback_to_noop,
+        log_telemetry_failures=log_telemetry_failures
     )
     return TelemetryManager(config, tracer_provider=tracer_provider, span_exporter=span_exporter) 

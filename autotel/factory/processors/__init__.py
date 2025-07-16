@@ -1,7 +1,7 @@
 """
 AutoTel Factory Processors
 
-Isolated processors for each DSL (BPMN, DMN, DSPy, SHACL, OWL) that parse
+Isolated processors for each DSL (BPMN, DMN, DSPy, SHACL, OWL, Jinja) that parse
 their respective XML elements into trusted, executable objects.
 """
 
@@ -10,6 +10,7 @@ from .dmn_processor import DMNProcessor
 from .dspy_processor import DSPyProcessor, DSPySignatureDefinition, DSPyModuleDefinition, DSPyModelConfiguration
 from .shacl_processor import SHACLProcessor
 from .owl_processor import OWLProcessor
+from .jinja_processor import JinjaProcessor
 
 __all__ = [
     'BPMNProcessor',
@@ -19,5 +20,6 @@ __all__ = [
     'DSPyModuleDefinition',
     'DSPyModelConfiguration',
     'SHACLProcessor',
-    'OWLProcessor'
+    'OWLProcessor',
+    'JinjaProcessor'
 ] 

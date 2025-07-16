@@ -5,19 +5,31 @@ from typing import Dict, Any, List, Optional
 import re
 
 from ...schemas.ontology_types import OWLOntologyDefinition
-from ...core.telemetry import get_telemetry_manager_or_noop
+from ...core.telemetry import get_telemetry_manager_or_noop, TelemetryManager, NoOpTelemetryManager
 from opentelemetry import trace
 
 
 class OWLProcessor:
     """Processes OWL/RDF XML into structured ontology definitions."""
 
-    def __init__(self, telemetry=None):
-        """Initialize OWL processor with telemetry."""
-        self.telemetry = telemetry or get_telemetry_manager_or_noop(
-            service_name="autotel-owl-processor",
-            require_linkml_validation=False  # Allow basic telemetry without schema validation
-        )
+    def __init__(self, telemetry: Optional[TelemetryManager] = None, force_noop: bool = False):
+        """Initialize OWL processor with telemetry.
+        
+        Args:
+            telemetry: Optional telemetry manager. If None, creates one with fallback.
+            force_noop: If True, forces no-op telemetry mode.
+        """
+        if telemetry is not None:
+            self.telemetry = telemetry
+        else:
+            self.telemetry = get_telemetry_manager_or_noop(
+                service_name="autotel-owl-processor",
+                require_linkml_validation=False,  # Allow basic telemetry without schema validation
+                force_noop=force_noop,
+                fallback_to_noop=True,
+                log_telemetry_failures=True
+            )
+        
         # Define OWL namespaces
         self.namespaces = {
             'owl': 'http://www.w3.org/2002/07/owl#',

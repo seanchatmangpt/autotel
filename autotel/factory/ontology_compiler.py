@@ -1,22 +1,33 @@
 """Ontology compiler for AutoTel semantic execution pipeline."""
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import re
 
 from ..schemas.ontology_types import OWLOntologyDefinition, OntologySchema, ClassSchema, PropertySchema
-from ..core.telemetry import get_telemetry_manager_or_noop
+from ..core.telemetry import get_telemetry_manager_or_noop, TelemetryManager, NoOpTelemetryManager
 from opentelemetry import trace
 
 
 class OntologyCompiler:
     """Compiles OWL ontology definitions into executable ontology schemas."""
 
-    def __init__(self, telemetry=None):
-        """Initialize ontology compiler with telemetry."""
-        self.telemetry = telemetry or get_telemetry_manager_or_noop(
-            service_name="autotel-ontology-compiler",
-            require_linkml_validation=False
-        )
+    def __init__(self, telemetry: Optional[TelemetryManager] = None, force_noop: bool = False):
+        """Initialize ontology compiler with telemetry.
+        
+        Args:
+            telemetry: Optional telemetry manager. If None, creates one with fallback.
+            force_noop: If True, forces no-op telemetry mode.
+        """
+        if telemetry is not None:
+            self.telemetry = telemetry
+        else:
+            self.telemetry = get_telemetry_manager_or_noop(
+                service_name="autotel-ontology-compiler",
+                require_linkml_validation=False,
+                force_noop=force_noop,
+                fallback_to_noop=True,
+                log_telemetry_failures=True
+            )
 
     def compile(self, ontology_def: OWLOntologyDefinition) -> OntologySchema:
         """Compile ontology definition into schema."""
@@ -45,6 +56,12 @@ class OntologyCompiler:
                 span.set_attribute("output_classes_count", len(class_dict))
                 span.set_attribute("output_properties_count", len(properties))
                 
+                # Record success metric
+                try:
+                    self.telemetry.record_metric("ontology_compilation_success", 1)
+                except Exception:
+                    pass  # Ignore metric recording failures
+                
                 return OntologySchema(
                     ontology_uri=ontology_def.ontology_uri,
                     namespace=ontology_def.namespace,
@@ -58,6 +75,13 @@ class OntologyCompiler:
                 span.set_attribute("compilation_success", False)
                 span.set_attribute("error_type", type(e).__name__)
                 span.set_attribute("error_message", str(e))
+                
+                # Record failure metric
+                try:
+                    self.telemetry.record_metric("ontology_compilation_failure", 1)
+                except Exception:
+                    pass  # Ignore metric recording failures
+                
                 raise
 
     def _extract_classes(self, ontology_def: OWLOntologyDefinition) -> List[ClassSchema]:

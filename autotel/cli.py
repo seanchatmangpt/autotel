@@ -8,6 +8,8 @@ import json
 import yaml
 from pathlib import Path
 from typing import Optional, List, Dict, Any
+from datetime import datetime
+from dataclasses import dataclass, field
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -22,8 +24,13 @@ from .utils.dspy_services import dspy_registry
 from .utils.advanced_dspy_services import advanced_dspy_registry, initialize_advanced_dspy_services
 from .workflows.task_span_integration import initialize_task_span_manager
 from .utils.helpers import otel_command
-from autotel.factory.processors.owl_processor import OWLProcessor
-from .factory.ontology_compiler import OntologyCompiler
+
+@dataclass
+class ValidationResult:
+    """Result of validation operation"""
+    valid: bool
+    errors: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
 
 app = typer.Typer(
     name="autotel",
@@ -32,23 +39,6 @@ app = typer.Typer(
 )
 
 console = Console()
-
-# Global telemetry flag
-NO_TELEMETRY = False
-
-def set_no_telemetry(value: bool):
-    """Set the global no-telemetry flag."""
-    global NO_TELEMETRY
-    NO_TELEMETRY = value
-
-@app.callback()
-def main(
-    no_telemetry: bool = typer.Option(False, "--no-telemetry", help="Disable telemetry for all operations")
-):
-    """AutoTel - Automated Telemetry and Semantic Execution Pipeline"""
-    set_no_telemetry(no_telemetry)
-    if no_telemetry:
-        console.print("[yellow]⚠️  Telemetry disabled[/yellow]")
 
 @app.command()
 @otel_command
@@ -136,11 +126,257 @@ def init(
 
 @app.command()
 @otel_command
+def run(
+    workflow: Path = typer.Argument(..., help="BPMN workflow file to execute"),
+    input_data: Optional[str] = typer.Option(None, "--input", "-i", help="Input data as JSON string"),
+    input_file: Optional[Path] = typer.Option(None, "--input-file", help="Input data file (JSON)"),
+    process_id: Optional[str] = typer.Option(None, "--process-id", help="Process ID to execute"),
+    dmn_files: Optional[List[Path]] = typer.Option(None, "--dmn", help="DMN decision files"),
+    output_file: Optional[Path] = typer.Option(None, "--output", "-o", help="Output file for results"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output")
+):
+    """Run a BPMN workflow with input data"""
+    
+    if not workflow.exists():
+        console.print(f"[red]❌ Workflow file not found: {workflow}[/red]")
+        raise typer.Exit(1)
+    
+    # Parse input data
+    context = {}
+    if input_data:
+        try:
+            context = json.loads(input_data)
+        except json.JSONDecodeError as e:
+            console.print(f"[red]❌ Invalid JSON input: {e}[/red]")
+            raise typer.Exit(1)
+    elif input_file:
+        if not input_file.exists():
+            console.print(f"[red]❌ Input file not found: {input_file}[/red]")
+            raise typer.Exit(1)
+        try:
+            with open(input_file, 'r') as f:
+                context = json.load(f)
+        except Exception as e:
+            console.print(f"[red]❌ Failed to read input file: {e}[/red]")
+            raise typer.Exit(1)
+    
+    # Convert DMN files to strings
+    dmn_file_paths = [str(dmn) for dmn in dmn_files] if dmn_files else None
+    
+    try:
+        from .workflows.spiff import run_dspy_bpmn_process
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            
+            task = progress.add_task(f"Executing workflow {workflow.name}...", total=1)
+            
+            # Execute workflow
+            result = run_dspy_bpmn_process(
+                bpmn_path=str(workflow),
+                process_id=process_id or "default",
+                context=context,
+                dmn_files=dmn_file_paths
+            )
+            
+            progress.advance(task)
+        
+        # Display results
+        if verbose:
+            console.print(f"[green]✅ Workflow completed successfully![/green]")
+            console.print(f"📊 Results: {json.dumps(result, indent=2)}")
+        else:
+            console.print(f"[green]✅ Workflow completed successfully![/green]")
+            console.print(f"📊 Output keys: {list(result.keys())}")
+        
+        # Save results to file if requested
+        if output_file:
+            with open(output_file, 'w') as f:
+                json.dump(result, f, indent=2)
+            console.print(f"💾 Results saved to {output_file}")
+        
+        # Return results for programmatic use
+        return result
+        
+    except Exception as e:
+        console.print(f"[red]❌ Workflow execution failed: {e}[/red]")
+        raise typer.Exit(1)
+
+@app.command()
+@otel_command
+def list(
+    workflows: bool = typer.Option(False, "--workflows", help="List available workflows"),
+    processes: bool = typer.Option(False, "--processes", help="List processes in workflow files"),
+    dmn: bool = typer.Option(False, "--dmn", help="List DMN decisions"),
+    all: bool = typer.Option(False, "--all", help="List all available components")
+):
+    """List available workflows, processes, and DMN decisions"""
+    
+    if not any([workflows, processes, dmn, all]):
+        console.print("[yellow]⚠️  Use --workflows, --processes, --dmn, or --all to specify what to list[/yellow]")
+        return
+    
+    try:
+        from .workflows.autotel_camunda import AutoTelCamundaEngine
+        
+        engine = AutoTelCamundaEngine()
+        
+        if workflows or all:
+            # List BPMN files in bpmn directory
+            bpmn_dir = Path("bpmn")
+            if bpmn_dir.exists():
+                bpmn_files = list(bpmn_dir.glob("*.bpmn"))
+                
+                table = Table(title="Available BPMN Workflows")
+                table.add_column("File", style="cyan")
+                table.add_column("Size", style="green")
+                table.add_column("Modified", style="yellow")
+                
+                for bpmn_file in bpmn_files:
+                    stat = bpmn_file.stat()
+                    table.add_row(
+                        bpmn_file.name,
+                        f"{stat.st_size:,} bytes",
+                        datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M")
+                    )
+                
+                console.print(table)
+            else:
+                console.print("[yellow]⚠️  No bpmn directory found[/yellow]")
+        
+        if processes or all:
+            # List processes in workflow files
+            bpmn_dir = Path("bpmn")
+            if bpmn_dir.exists():
+                bpmn_files = list(bpmn_dir.glob("*.bpmn"))
+                
+                table = Table(title="Available Processes")
+                table.add_column("Workflow", style="cyan")
+                table.add_column("Process ID", style="green")
+                table.add_column("Process Name", style="yellow")
+                
+                for bpmn_file in bpmn_files:
+                    try:
+                        engine.parser.add_bpmn_file(str(bpmn_file))
+                        processes = engine.list_processes()
+                        for process_id, process_name in processes.items():
+                            table.add_row(bpmn_file.name, process_id, process_name)
+                    except Exception as e:
+                        table.add_row(bpmn_file.name, "Error", str(e))
+                
+                console.print(table)
+        
+        if dmn or all:
+            # List DMN files and decisions
+            bpmn_dir = Path("bpmn")
+            if bpmn_dir.exists():
+                dmn_files = list(bpmn_dir.glob("*.dmn"))
+                
+                table = Table(title="Available DMN Decisions")
+                table.add_column("File", style="cyan")
+                table.add_column("Decision ID", style="green")
+                table.add_column("Decision Name", style="yellow")
+                
+                for dmn_file in dmn_files:
+                    try:
+                        engine.parser.add_dmn_file(str(dmn_file))
+                        decisions = engine.list_dmn_decisions()
+                        for decision_id, decision_name in decisions.items():
+                            table.add_row(dmn_file.name, decision_id, decision_name)
+                    except Exception as e:
+                        table.add_row(dmn_file.name, "Error", str(e))
+                
+                console.print(table)
+    
+    except Exception as e:
+        console.print(f"[red]❌ Failed to list components: {e}[/red]")
+        return
+
+@app.command()
+@otel_command
+def workflow(
+    validate: Optional[Path] = typer.Option(None, "--validate", help="Validate BPMN workflow file"),
+    info: Optional[Path] = typer.Option(None, "--info", help="Show workflow information"),
+    export: Optional[Path] = typer.Option(None, "--export", help="Export workflow to different format")
+):
+    """Workflow management commands"""
+    
+    if not any([validate, info, export]):
+        console.print("[yellow]⚠️  Use --validate, --info, or --export to specify action[/yellow]")
+        return
+    
+    if validate:
+        if not validate.exists():
+            console.print(f"[red]❌ Workflow file not found: {validate}[/red]")
+            raise typer.Exit(1)
+        
+        try:
+            from .workflows.dspy_bpmn_parser import DspyBpmnParser
+            
+            parser = DspyBpmnParser()
+            parser.add_bpmn_file(str(validate))
+            
+            specs = parser.find_all_specs()
+            
+            console.print(f"[green]✅ Workflow {validate.name} is valid[/green]")
+            console.print(f"📊 Found {len(specs)} process(es):")
+            
+            for process_id, spec in specs.items():
+                console.print(f"  • {process_id}: {spec.name}")
+            
+            # Check for DSPy signatures
+            if parser.dynamic_signatures:
+                console.print(f"🤖 Found {len(parser.dynamic_signatures)} DSPy signatures")
+            
+            # Check for DMN dependencies
+            if parser.dmn_dependencies:
+                console.print(f"📋 Found {len(parser.dmn_dependencies)} DMN dependencies")
+        
+        except Exception as e:
+            console.print(f"[red]❌ Workflow validation failed: {e}[/red]")
+            raise typer.Exit(1)
+    
+    if info:
+        if not info.exists():
+            console.print(f"[red]❌ Workflow file not found: {info}[/red]")
+            raise typer.Exit(1)
+        
+        try:
+            import xml.etree.ElementTree as ET
+            
+            tree = ET.parse(info)
+            root = tree.getroot()
+            
+            # Extract basic information
+            processes = root.findall(".//{http://www.omg.org/spec/BPMN/20100524/MODEL}process")
+            
+            table = Table(title=f"Workflow Information: {info.name}")
+            table.add_column("Property", style="cyan")
+            table.add_column("Value", style="green")
+            
+            table.add_row("Processes", str(len(processes)))
+            
+            for process in processes:
+                process_id = process.get('id', 'Unknown')
+                process_name = process.get('name', 'Unnamed')
+                table.add_row(f"Process: {process_id}", process_name)
+            
+            console.print(table)
+        
+        except Exception as e:
+            console.print(f"[red]❌ Failed to get workflow info: {e}[/red]")
+            raise typer.Exit(1)
+
+@app.command()
+@otel_command
 def validate(
-    file_path: Path = typer.Argument(..., help="File to validate (BPMN, DMN, or YAML)"),
+    file_path: Path = typer.Argument(..., help="File to validate (OWL, SHACL, DSPy, BPMN, DMN, or YAML)"),
     strict: bool = typer.Option(False, "--strict", help="Enable strict validation")
 ):
-    """Validate BPMN, DMN, or configuration files"""
+    """Validate OWL, SHACL, DSPy, BPMN, DMN, or configuration files"""
     
     if not file_path.exists():
         console.print(f"[red]❌ File not found: {file_path}[/red]")
@@ -159,10 +395,25 @@ def validate(
         task = progress.add_task(f"Validating {file_path.name}...", total=1)
         
         try:
-            if file_path.suffix.lower() == '.bpmn':
-                result = schema_validator.validate_bpmn_file(str(file_path))
+            if file_path.suffix.lower() == '.owl':
+                result = schema_validator.validate_owl_file(str(file_path))
+            elif file_path.suffix.lower() == '.shacl':
+                result = schema_validator.validate_shacl_file(str(file_path))
+            elif file_path.suffix.lower() == '.dspy':
+                result = schema_validator.validate_dspy_file(str(file_path))
+            elif file_path.suffix.lower() == '.bpmn':
+                # Validate BPMN using DspyBpmnParser
+                from .workflows.dspy_bpmn_parser import DspyBpmnParser
+                parser = DspyBpmnParser()
+                parser.add_bpmn_file(str(file_path))
+                specs = parser.find_all_specs()
+                result = ValidationResult(valid=True, warnings=[f"Found {len(specs)} process(es)"])
             elif file_path.suffix.lower() == '.dmn':
-                result = schema_validator.validate_dmn_file(str(file_path))
+                # Validate DMN using parser
+                from .workflows.dspy_bpmn_parser import DspyBpmnParser
+                parser = DspyBpmnParser()
+                parser.add_dmn_file(str(file_path))
+                result = ValidationResult(valid=True, warnings=[f"Found {len(parser.dmn_parsers)} decision(s)"])
             elif file_path.suffix.lower() in ['.yaml', '.yml']:
                 with open(file_path, 'r') as f:
                     data = yaml.safe_load(f)
@@ -303,77 +554,28 @@ def dspy(
 
 @app.command()
 @otel_command
-def workflow(
-    file_path: Path = typer.Argument(..., help="BPMN workflow file"),
-    validate_only: bool = typer.Option(False, "--validate-only", help="Only validate, don't execute"),
-    export_telemetry: Optional[Path] = typer.Option(None, "--export-telemetry", help="Export workflow telemetry")
-):
-    """Execute or validate a BPMN workflow"""
-    
-    if not file_path.exists():
-        console.print(f"[red]❌ File not found: {file_path}[/red]")
-        raise typer.Exit(1)
-    
-    if validate_only:
-        schema_validator = SchemaValidator()
-        result = schema_validator.validate_bpmn_file(str(file_path))
-        
-        if result.valid:
-            console.print(f"✅ Workflow {file_path.name} is valid")
-        else:
-            console.print(f"❌ Workflow {file_path.name} is invalid")
-            for error in result.errors:
-                console.print(f"  • {error}")
-            raise typer.Exit(1)
-    else:
-        orchestrator = Orchestrator(
-            specific_bpmn_file=str(file_path),
-            enable_telemetry=True
-        )
-        
-        try:
-            # Parse the BPMN file to get the process definition ID
-            import xml.etree.ElementTree as ET
-            tree = ET.parse(str(file_path))
-            root = tree.getroot()
-            # Find the first process element
-            process_elem = root.find('.//{http://www.omg.org/spec/BPMN/20100524/MODEL}process')
-            if process_elem is not None and 'id' in process_elem.attrib:
-                process_id = process_elem.attrib['id']
-            else:
-                raise ValueError("Could not find process definition ID in BPMN file")
-            instance = orchestrator.start_process(process_id, {})
-            
-            console.print(f"🚀 Started workflow: {process_id}")
-            console.print(f"📋 Instance ID: {instance.instance_id}")
-            
-            result = orchestrator.execute_process(instance.instance_id)
-            
-            console.print(f"✅ Workflow completed with status: {result.status.value}")
-            
-            if export_telemetry:
-                telemetry_data = orchestrator.export_telemetry()
-                with open(export_telemetry, 'w') as f:
-                    json.dump(telemetry_data, f, indent=2)
-                console.print(f"📊 Telemetry exported to {export_telemetry}")
-                
-        except Exception as e:
-            console.print(f"[red]❌ Workflow execution failed: {e}[/red]")
-            raise typer.Exit(1)
-
-@app.command()
-def run(
-    workflow_file: Path = typer.Argument(..., help="BPMN workflow file to execute"),
+def pipeline(
+    execute: bool = typer.Option(False, "--execute", "-e", help="Execute semantic pipeline"),
+    owl_file: Optional[Path] = typer.Option(None, "--owl", help="OWL ontology file"),
+    shacl_file: Optional[Path] = typer.Option(None, "--shacl", help="SHACL shapes file"),
+    dspy_file: Optional[Path] = typer.Option(None, "--dspy", help="DSPy signatures file"),
     input_data: Optional[Path] = typer.Option(None, "--input", "-i", help="JSON input data file"),
     input_json: Optional[str] = typer.Option(None, "--data", "-d", help="JSON input data (inline)"),
     export_telemetry: Optional[Path] = typer.Option(None, "--export-telemetry", help="Export telemetry to file"),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress verbose output")
 ):
-    """Execute a BPMN workflow with input data"""
+    """Execute the semantic execution pipeline"""
     
-    if not workflow_file.exists():
-        console.print(f"[red]❌ Workflow file not found: {workflow_file}[/red]")
-        raise typer.Exit(1)
+    if not execute:
+        console.print("[yellow]⚠️  Use --execute to run the pipeline[/yellow]")
+        return
+    
+    # Validate required files
+    required_files = [owl_file, shacl_file, dspy_file]
+    for file_path in required_files:
+        if file_path and not file_path.exists():
+            console.print(f"[red]❌ File not found: {file_path}[/red]")
+            raise typer.Exit(1)
     
     # Parse input data
     input_variables = {}
@@ -394,117 +596,222 @@ def run(
             console.print(f"[red]❌ Failed to parse input JSON: {e}[/red]")
             raise typer.Exit(1)
     
-    orchestrator = Orchestrator(
-        specific_bpmn_file=str(workflow_file),
-        enable_telemetry=True
-    )
-    
     try:
-        # Parse the BPMN file to get the process definition ID
-        import xml.etree.ElementTree as ET
-        tree = ET.parse(str(workflow_file))
-        root = tree.getroot()
-        # Find the first process element
-        process_elem = root.find('.//{http://www.omg.org/spec/BPMN/20100524/MODEL}process')
-        if process_elem is not None and 'id' in process_elem.attrib:
-            process_id = process_elem.attrib['id']
-        else:
-            raise ValueError("Could not find process definition ID in BPMN file")
+        from autotel.factory.pipeline import PipelineOrchestrator
+        
+        # Initialize pipeline orchestrator
+        orchestrator = PipelineOrchestrator()
         
         if not quiet:
-            console.print(f"🚀 Starting workflow: {process_id}")
-            if input_variables:
-                console.print(f"📥 Input data: {json.dumps(input_variables, indent=2)}")
+            console.print("🚀 Starting semantic execution pipeline...")
+            console.print(f"📥 Input data: {json.dumps(input_variables, indent=2)}")
         
-        instance = orchestrator.start_process(process_id, input_variables)
+        # Execute pipeline
+        result = orchestrator.execute_from_files(
+            owl_file=str(owl_file),
+            shacl_file=str(shacl_file),
+            dspy_file=str(dspy_file),
+            inputs=input_variables
+        )
         
         if not quiet:
-            console.print(f"📋 Instance ID: {instance.instance_id}")
-        
-        result = orchestrator.execute_process(instance.instance_id)
-        
-        if not quiet:
-            console.print(f"✅ Workflow completed with status: {result.status.value}")
+            console.print(f"✅ Pipeline completed successfully!")
+            console.print(f"📊 Outputs: {list(result.outputs.keys())}")
         else:
             # Quiet mode: just output the result
             console.print(json.dumps({
-                "status": result.status.value,
-                "instance_id": instance.instance_id,
-                "result": result.data if hasattr(result, 'data') else {}
+                "status": "completed",
+                "outputs": result.outputs,
+                "execution_metadata": result.execution_metadata
             }, indent=2))
         
         if export_telemetry:
-            telemetry_data = orchestrator.export_telemetry()
+            telemetry_data = orchestrator.telemetry.export_telemetry()
             with open(export_telemetry, 'w') as f:
                 json.dump(telemetry_data, f, indent=2)
             if not quiet:
                 console.print(f"📊 Telemetry exported to {export_telemetry}")
                 
     except Exception as e:
-        console.print(f"[red]❌ Workflow execution failed: {e}[/red]")
+        console.print(f"[red]❌ Pipeline execution failed: {e}[/red]")
         raise typer.Exit(1)
 
 @app.command()
-def list(
-    directory: Optional[Path] = typer.Option(Path("."), "--directory", "-d", help="Directory to scan for workflows"),
-    show_details: bool = typer.Option(False, "--details", help="Show detailed workflow information")
+@otel_command
+def jinja(
+    process: bool = typer.Option(False, "--process", "-p", help="Process Jinja templates"),
+    template_file: Optional[Path] = typer.Option(None, "--template", "-t", help="Jinja template XML file"),
+    variables_file: Optional[Path] = typer.Option(None, "--variables", "-v", help="Variables JSON file"),
+    variables_json: Optional[str] = typer.Option(None, "--data", "-d", help="Variables JSON (inline)"),
+    output_file: Optional[Path] = typer.Option(None, "--output", "-o", help="Output file for rendered templates"),
+    validate_only: bool = typer.Option(False, "--validate", help="Only validate templates without rendering"),
+    list_templates: bool = typer.Option(False, "--list", "-l", help="List available templates"),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress verbose output")
 ):
-    """List available BPMN workflows"""
+    """Process Jinja templates from XML definitions"""
     
-    if not directory.exists():
-        console.print(f"[red]❌ Directory not found: {directory}[/red]")
-        raise typer.Exit(1)
-    
-    # Find BPMN files
-    bpmn_files = list(directory.glob("**/*.bpmn"))
-    
-    if not bpmn_files:
-        console.print(f"[yellow]⚠️  No BPMN files found in {directory}[/yellow]")
+    if not process and not list_templates:
+        console.print("[yellow]⚠️  Use --process to render templates or --list to see available templates[/yellow]")
         return
     
-    if show_details:
-        table = Table(title=f"Available Workflows in {directory}")
-        table.add_column("File", style="cyan")
-        table.add_column("Process ID", style="green")
-        table.add_column("Name", style="yellow")
-        table.add_column("Status", style="blue")
+    # Validate template file
+    if template_file and not template_file.exists():
+        console.print(f"[red]❌ Template file not found: {template_file}[/red]")
+        raise typer.Exit(1)
+    
+    # Parse variables
+    variables = {}
+    if variables_file:
+        if not variables_file.exists():
+            console.print(f"[red]❌ Variables file not found: {variables_file}[/red]")
+            raise typer.Exit(1)
+        try:
+            with open(variables_file, 'r') as f:
+                variables = json.load(f)
+        except Exception as e:
+            console.print(f"[red]❌ Failed to parse variables file: {e}[/red]")
+            raise typer.Exit(1)
+    elif variables_json:
+        try:
+            variables = json.loads(variables_json)
+        except Exception as e:
+            console.print(f"[red]❌ Failed to parse variables JSON: {e}[/red]")
+            raise typer.Exit(1)
+    
+    try:
+        from .factory.processors.jinja_processor import JinjaProcessor
         
-        for bpmn_file in bpmn_files:
-            try:
-                import xml.etree.ElementTree as ET
-                tree = ET.parse(str(bpmn_file))
-                root = tree.getroot()
-                
-                # Find process element
-                process_elem = root.find('.//{http://www.omg.org/spec/BPMN/20100524/MODEL}process')
-                if process_elem is not None:
-                    process_id = process_elem.attrib.get('id', 'Unknown')
-                    process_name = process_elem.attrib.get('name', 'Unnamed')
-                    status = "✅ Valid"
-                else:
-                    process_id = "Unknown"
-                    process_name = "Invalid BPMN"
-                    status = "❌ Invalid"
-                
-                table.add_row(
-                    str(bpmn_file.relative_to(directory)),
-                    process_id,
-                    process_name,
-                    status
-                )
-            except Exception as e:
-                table.add_row(
-                    str(bpmn_file.relative_to(directory)),
-                    "Error",
-                    "Parse failed",
-                    f"❌ {str(e)[:30]}..."
-                )
+        # Initialize Jinja processor
+        processor = JinjaProcessor()
         
-        console.print(table)
-    else:
-        console.print(f"📋 Found {len(bpmn_files)} BPMN workflow(s) in {directory}:")
-        for bpmn_file in bpmn_files:
-            console.print(f"  • {bpmn_file.relative_to(directory)}")
+        if list_templates:
+            if not template_file:
+                console.print("[red]❌ Template file required for --list[/red]")
+                raise typer.Exit(1)
+            
+            # Read template file
+            with open(template_file, 'r') as f:
+                xml_content = f.read()
+            
+            # Parse template definitions
+            template_definitions = processor.parse_template_definitions(xml_content)
+            
+            # Display templates
+            templates_table = Table(title="Available Jinja Templates")
+            templates_table.add_column("Template", style="cyan")
+            templates_table.add_column("Type", style="green")
+            templates_table.add_column("Variables", style="yellow")
+            templates_table.add_column("Description", style="white")
+            
+            for template in template_definitions.templates:
+                var_count = len(template.variables)
+                templates_table.add_row(
+                    template.name,
+                    template.template_type.value,
+                    str(var_count),
+                    template.description[:50] + "..." if len(template.description) > 50 else template.description
+                )
+            
+            console.print(templates_table)
+            return
+        
+        if process:
+            if not template_file:
+                console.print("[red]❌ Template file required for processing[/red]")
+                raise typer.Exit(1)
+            
+            # Read template file
+            with open(template_file, 'r') as f:
+                xml_content = f.read()
+            
+            if not quiet:
+                console.print("🚀 Processing Jinja templates...")
+                console.print(f"📄 Template file: {template_file}")
+                console.print(f"📊 Variables: {json.dumps(variables, indent=2)}")
+            
+            # Process templates
+            result = processor.process_templates(xml_content, variables)
+            
+            if not quiet:
+                console.print(f"✅ Template processing completed!")
+                console.print(f"📊 Templates processed: {len(result.template_definitions.templates)}")
+                console.print(f"📊 Templates rendered: {len([r for r in result.rendering_results if r.success])}")
+                console.print(f"⏱️  Processing time: {result.processing_time_ms:.2f}ms")
+            
+            # Display validation results
+            if result.validation_results:
+                validation_table = Table(title="Template Validation Results")
+                validation_table.add_column("Template", style="cyan")
+                validation_table.add_column("Status", style="green")
+                validation_table.add_column("Issues", style="yellow")
+                
+                for validation in result.validation_results:
+                    status = "✅ Valid" if validation.valid else "❌ Invalid"
+                    issues = []
+                    if validation.missing_variables:
+                        issues.append(f"Missing: {', '.join(validation.missing_variables)}")
+                    if validation.invalid_variables:
+                        issues.append(f"Invalid: {', '.join(validation.invalid_variables)}")
+                    if validation.type_errors:
+                        issues.append(f"Type errors: {len(validation.type_errors)}")
+                    
+                    issues_text = "; ".join(issues) if issues else "None"
+                    validation_table.add_row(validation.template_name, status, issues_text)
+                
+                console.print(validation_table)
+            
+            # Display rendering results
+            if result.rendering_results:
+                rendering_table = Table(title="Template Rendering Results")
+                rendering_table.add_column("Template", style="cyan")
+                rendering_table.add_column("Status", style="green")
+                rendering_table.add_column("Output Size", style="yellow")
+                rendering_table.add_column("Time (ms)", style="blue")
+                
+                for rendering in result.rendering_results:
+                    status = "✅ Success" if rendering.success else "❌ Failed"
+                    output_size = len(rendering.rendered_content)
+                    rendering_table.add_row(
+                        rendering.template_name,
+                        status,
+                        str(output_size),
+                        f"{rendering.rendering_time_ms:.2f}"
+                    )
+                
+                console.print(rendering_table)
+            
+            # Output rendered content
+            if output_file:
+                # Combine all successful renders
+                combined_output = ""
+                for rendering in result.rendering_results:
+                    if rendering.success:
+                        combined_output += f"<!-- Template: {rendering.template_name} -->\n"
+                        combined_output += rendering.rendered_content
+                        combined_output += "\n\n"
+                
+                with open(output_file, 'w') as f:
+                    f.write(combined_output)
+                
+                if not quiet:
+                    console.print(f"📄 Output written to: {output_file}")
+            else:
+                # Display rendered content in console
+                for rendering in result.rendering_results:
+                    if rendering.success:
+                        console.print(f"\n[bold cyan]Template: {rendering.template_name}[/bold cyan]")
+                        console.print(Panel(rendering.rendered_content, title="Rendered Output"))
+            
+            # Handle errors
+            if not result.success:
+                console.print("[red]❌ Template processing failed[/red]")
+                for error in result.errors:
+                    console.print(f"  • {error}")
+                raise typer.Exit(1)
+                
+    except Exception as e:
+        console.print(f"[red]❌ Jinja processing failed: {e}[/red]")
+        raise typer.Exit(1)
 
 @app.command()
 @otel_command
@@ -569,135 +876,6 @@ def config(
             yaml.dump(sample_config, f, default_flow_style=False)
         
         console.print(f"[green]✅ Sample configuration generated: {generate}[/green]")
-
-ontology_app = typer.Typer(help="Ontology processing commands")
-
-@ontology_app.command("parse")
-def parse_ontology(
-    file: Path = typer.Option(..., "--file", "-f", help="OWL file to parse"),
-    export: Optional[Path] = typer.Option(None, "--export", "-e", help="Export parsed ontology as JSON")
-):
-    """Parse an OWL ontology file and print a summary."""
-    if not file.exists():
-        console.print(f"[red]❌ OWL file not found: {file}[/red]")
-        raise typer.Exit(1)
-    
-    try:
-        with open(file, 'r') as f:
-            xml_content = f.read()
-        
-        console.print(f"[green]📁 Loading OWL file: {file}[/green]")
-        console.print(f"[blue]📄 Loaded {len(xml_content)} characters[/blue]")
-        
-        # Create processor with telemetry based on global flag
-        processor = OWLProcessor()
-        if NO_TELEMETRY:
-            from .core.telemetry import NoOpTelemetryManager
-            processor.telemetry = NoOpTelemetryManager("autotel-owl-processor")
-        
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console
-        ) as progress:
-            task = progress.add_task("Parsing OWL...", total=None)
-            ontology_def = processor.parse_ontology_definition(xml_content, prefix='cli')
-            progress.update(task, description="✅ OWL parsed successfully")
-        
-        console.print(f"\n[green]✅ OWL parsed successfully:[/green]")
-        console.print(f"  - Classes: {len(ontology_def.classes)}")
-        console.print(f"  - Object Properties: {len(ontology_def.object_properties)}")
-        console.print(f"  - Data Properties: {len(ontology_def.data_properties)}")
-        console.print(f"  - Individuals: {len(ontology_def.individuals)}")
-        console.print(f"  - Axioms: {len(ontology_def.axioms)}")
-        
-        # Compile with OntologyCompiler
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console
-        ) as progress:
-            task = progress.add_task("Compiling ontology...", total=None)
-            
-            # Create compiler with telemetry based on global flag
-            compiler = OntologyCompiler()
-            if NO_TELEMETRY:
-                from .core.telemetry import NoOpTelemetryManager
-                compiler.telemetry = NoOpTelemetryManager("autotel-ontology-compiler")
-            
-            ontology_schema = compiler.compile(ontology_def)
-            progress.update(task, description="✅ Ontology compiled successfully")
-        
-        console.print(f"\n[green]✅ Ontology compiled successfully:[/green]")
-        console.print(f"  - Compiled Classes: {len(ontology_schema.classes)}")
-        console.print(f"  - Semantic Context: {len(ontology_schema.semantic_context)} keys")
-        console.print(f"  - Examples: {len(ontology_schema.examples)}")
-        
-        # Show semantic types breakdown
-        console.print(f"\n[cyan]📊 Semantic Types Breakdown:[/cyan]")
-        for semantic_type, classes in ontology_schema.semantic_context['semantic_types'].items():
-            console.print(f"  - {semantic_type}: {len(classes)} classes")
-            if classes:
-                console.print(f"    Examples: {', '.join(classes[:3])}")
-        
-        # Show property types breakdown
-        console.print(f"\n[cyan]🔗 Property Types Breakdown:[/cyan]")
-        for prop_type, properties in ontology_schema.semantic_context['property_types'].items():
-            console.print(f"  - {prop_type}: {len(properties)} properties")
-            if properties:
-                console.print(f"    Examples: {', '.join(properties[:3])}")
-        
-        # Show sample class details
-        console.print(f"\n[cyan]🏗️ Sample Class Details:[/cyan]")
-        for i, (class_name, class_schema) in enumerate(list(ontology_schema.classes.items())[:3]):
-            console.print(f"  {i+1}. {class_name} ({class_schema.semantic_type})")
-            console.print(f"     URI: {class_schema.uri}")
-            console.print(f"     Properties: {len(class_schema.properties)}")
-            console.print(f"     Superclasses: {len(class_schema.superclasses)}")
-            console.print(f"     Description: {class_schema.description[:100]}...")
-        
-        # Export if requested
-        if export:
-            console.print(f"\n[green]💾 Exporting compiled ontology to {export}...[/green]")
-            
-            # Convert to dict for JSON serialization
-            ontology_dict = {
-                'ontology_uri': ontology_schema.ontology_uri,
-                'namespace': ontology_schema.namespace,
-                'prefix': ontology_schema.prefix,
-                'classes': {
-                    name: {
-                        'name': cls.name,
-                        'uri': cls.uri,
-                        'semantic_type': cls.semantic_type,
-                        'properties': {
-                            prop_name: {
-                                'name': prop.name,
-                                'uri': prop.uri,
-                                'data_type': prop.data_type,
-                                'domain': prop.domain,
-                                'range': prop.range,
-                                'cardinality': prop.cardinality
-                            } for prop_name, prop in cls.properties.items()
-                        },
-                        'superclasses': cls.superclasses,
-                        'description': cls.description
-                    } for name, cls in ontology_schema.classes.items()
-                },
-                'semantic_context': ontology_schema.semantic_context,
-                'examples': ontology_schema.examples
-            }
-            
-            with open(export, 'w') as f:
-                json.dump(ontology_dict, f, indent=2)
-            
-            console.print(f"[green]✅ Compiled ontology exported to {export}[/green]")
-        
-    except Exception as e:
-        console.print(f"[red]❌ Error during parsing: {e}[/red]")
-        raise typer.Exit(1)
-
-app.add_typer(ontology_app, name="ontology")
 
 if __name__ == "__main__":
     app() 
