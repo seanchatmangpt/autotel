@@ -181,7 +181,7 @@ class JinjaProcessor:
         try:
             template_type = JinjaTemplateType(template_type_str)
         except ValueError:
-            template_type = JinjaTemplateType.TEXT
+            template_type = JinjaTemplateType.XML
         
         # Parse tags
         tags = []
@@ -206,12 +206,11 @@ class JinjaProcessor:
             name=name,
             description=description,
             template_type=template_type,
+            template_content=content,
+            variables=variables,
             version=version,
             author=author,
-            category=category,
-            tags=tags,
-            variables=variables,
-            content=content
+            tags=tags
         )
     
     def _extract_full_content(self, elem: Optional[ET.Element]) -> str:
@@ -247,8 +246,8 @@ class JinjaProcessor:
             description=description,
             type=var_type,
             required=required,
-            default=default,
-            example=example
+            default_value=default,
+            example_value=example
         )
     
     def _validate_template(self, template: JinjaTemplate, variables: Dict[str, Any]) -> JinjaValidationResult:
@@ -271,7 +270,7 @@ class JinjaProcessor:
         
         # Validate template syntax
         try:
-            self.jinja_env.from_string(template.content)
+            self.jinja_env.from_string(template.template_content)
         except TemplateError as e:
             type_errors.append(f"Template syntax error: {e}")
         
@@ -306,7 +305,7 @@ class JinjaProcessor:
         
         try:
             # Create Jinja2 template
-            jinja_template = self.jinja_env.from_string(template.content)
+            jinja_template = self.jinja_env.from_string(template.template_content)
             
             # Render template
             rendered_content = jinja_template.render(**variables)
@@ -315,11 +314,10 @@ class JinjaProcessor:
             
             return JinjaRenderingResult(
                 template_name=template.name,
-                success=True,
                 rendered_content=rendered_content,
-                rendering_time_ms=rendering_time_ms,
                 variables_used=list(variables.keys()),
-                error_message=None
+                rendering_time_ms=rendering_time_ms,
+                success=True
             )
             
         except (TemplateError, UndefinedError) as e:
@@ -327,11 +325,11 @@ class JinjaProcessor:
             
             return JinjaRenderingResult(
                 template_name=template.name,
-                success=False,
                 rendered_content="",
-                rendering_time_ms=rendering_time_ms,
                 variables_used=[],
-                error_message=str(e)
+                rendering_time_ms=rendering_time_ms,
+                success=False,
+                errors=[str(e)]
             )
     
     def render_single_template(self, template_content: str, variables: Dict[str, Any]) -> str:

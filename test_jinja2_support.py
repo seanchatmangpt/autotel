@@ -8,11 +8,15 @@ Demonstrates Jinja2 templating with {{ }} syntax in XML files.
 import json
 import sys
 from pathlib import Path
+import tempfile
+import typer
+import subprocess
 
 # Add the project root to the path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from autotel.factory.processors.jinja_processor import JinjaProcessor
+from autotel.factory.processors.dspy_processor import DSPyProcessor
 
 
 def test_jinja2_templating():
@@ -344,6 +348,266 @@ def test_cdata_and_nested_content():
         print("-" * 40)
 
 
+def test_dspy_output_with_jinja_template():
+    """Test combining DSPy output with a Jinja2 template."""
+    print("🧪 Testing DSPy output with Jinja2 template integration")
+    print("=" * 60)
+
+    # Example DSPy XML with a signature and output
+    dspy_xml = '''<?xml version="1.0" encoding="UTF-8"?>
+<dspy:signatures xmlns:dspy="http://autotel.ai/dspy">
+    <dspy:signature name="get_user_greeting" description="Generate a greeting for a user">
+        <dspy:input name="user_name" type="string" description="Name of the user"/>
+        <dspy:output name="greeting" type="string" description="Greeting message"/>
+    </dspy:signature>
+</dspy:signatures>
+'''
+    # Simulate DSPyProcessor extracting the signature and output
+    dspy_processor = DSPyProcessor()
+    signatures = dspy_processor.parse(dspy_xml)
+    signature = signatures[0]
+    # Simulate a DSPy output value
+    dspy_output = {"greeting": f"Hello, {{ user_name }}! Welcome to AutoTel."}
+
+    # Now use this output as a Jinja2 template
+    jinja_template_xml = '''<?xml version="1.0" encoding="UTF-8"?>
+<jinja:definitions xmlns:jinja="http://autotel.ai/jinja">
+    <jinja:template name="greeting_email" description="Greeting email template">
+        <jinja:variables>
+            <jinja:variable name="user_name" type="string" required="true"/>
+            <jinja:variable name="greeting" type="string" required="true"/>
+        </jinja:variables>
+        <jinja:content><![CDATA[
+<email>
+  <to>{{ user_name }}@example.com</to>
+  <subject>Welcome!</subject>
+  <body>{{ greeting }}</body>
+</email>
+        ]]></jinja:content>
+    </jinja:template>
+</jinja:definitions>
+'''
+    # Prepare variables for Jinja template
+    variables = {"user_name": "Alice"}
+    # Render the greeting using the DSPy output as a Jinja template
+    from autotel.factory.processors.jinja_processor import JinjaProcessor
+    jinja_processor = JinjaProcessor()
+    # First, render the greeting string as a Jinja template
+    greeting_template = dspy_output["greeting"]
+    rendered_greeting = jinja_processor.render_single_template(greeting_template, variables)
+    # Now, use this as input to the main Jinja template
+    variables["greeting"] = rendered_greeting
+    result = jinja_processor.process_templates(jinja_template_xml, variables)
+    print("DSPy output (rendered greeting):", rendered_greeting)
+    for rendering in result.rendering_results:
+        print(f"Success: {rendering.success}")
+        print("Output:")
+        print(rendering.rendered_content)
+        print("-" * 40)
+
+
+def test_dspy_jinja_cli():
+    """Test DSPy-to-Jinja pipeline via a simple Typer CLI command."""
+    print("🧪 Testing DSPy-to-Jinja pipeline via Typer CLI")
+    print("=" * 60)
+
+    # Create a simple Typer CLI app
+    app = typer.Typer()
+
+    @app.command()
+    def dspy_to_jinja(
+        dspy_file: Path = typer.Argument(..., help="DSPy XML file"),
+        jinja_file: Path = typer.Argument(..., help="Jinja XML file"),
+        variables: str = typer.Option("{}", "--vars", "-v", help="Variables as JSON string"),
+        output_file: Path = typer.Option(None, "--output", "-o", help="Output file (default: stdout)")
+    ):
+        """Process DSPy XML output through Jinja2 template."""
+        import json
+        
+        # Parse variables
+        try:
+            vars_dict = json.loads(variables)
+        except json.JSONDecodeError as e:
+            typer.echo(f"Error parsing variables JSON: {e}", err=True)
+            raise typer.Exit(1)
+        
+        # Read DSPy XML
+        try:
+            with open(dspy_file, 'r') as f:
+                dspy_xml = f.read()
+        except FileNotFoundError:
+            typer.echo(f"DSPy file not found: {dspy_file}", err=True)
+            raise typer.Exit(1)
+        
+        # Read Jinja XML
+        try:
+            with open(jinja_file, 'r') as f:
+                jinja_xml = f.read()
+        except FileNotFoundError:
+            typer.echo(f"Jinja file not found: {jinja_file}", err=True)
+            raise typer.Exit(1)
+        
+        # Process DSPy
+        dspy_processor = DSPyProcessor()
+        signatures = dspy_processor.parse(dspy_xml)
+        
+        if not signatures:
+            typer.echo("No DSPy signatures found", err=True)
+            raise typer.Exit(1)
+        
+        # Simulate DSPy output (in real usage, this would come from DSPy execution)
+        signature = signatures[0]
+        dspy_output = {"greeting": f"Hello, {{ user_name }}! Welcome to AutoTel."}
+        
+        # Render DSPy output as Jinja template
+        jinja_processor = JinjaProcessor()
+        greeting_template = dspy_output["greeting"]
+        rendered_greeting = jinja_processor.render_single_template(greeting_template, vars_dict)
+        
+        # Add rendered greeting to variables for main Jinja template
+        vars_dict["greeting"] = rendered_greeting
+        
+        # Process main Jinja template
+        result = jinja_processor.process_templates(jinja_xml, vars_dict)
+        
+        if not result.success:
+            typer.echo("Jinja template processing failed", err=True)
+            for error in result.errors:
+                typer.echo(f"  - {error}", err=True)
+            raise typer.Exit(1)
+        
+        # Output result
+        output_content = ""
+        for rendering in result.rendering_results:
+            if rendering.success:
+                output_content += rendering.rendered_content + "\n"
+        
+        if output_file:
+            with open(output_file, 'w') as f:
+                f.write(output_content)
+            typer.echo(f"Output written to: {output_file}")
+        else:
+            typer.echo("Final output:")
+            typer.echo(output_content)
+
+    # Create temporary directory and files
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+        
+        # Create DSPy XML file
+        dspy_xml_content = '''<?xml version="1.0" encoding="UTF-8"?>
+<dspy:signatures xmlns:dspy="http://autotel.ai/dspy">
+    <dspy:signature name="get_user_greeting" description="Generate a greeting for a user">
+        <dspy:input name="user_name" type="string" description="Name of the user"/>
+        <dspy:output name="greeting" type="string" description="Greeting message"/>
+    </dspy:signature>
+</dspy:signatures>
+'''
+        dspy_file = temp_path / "test_dspy.xml"
+        with open(dspy_file, 'w') as f:
+            f.write(dspy_xml_content)
+        
+        # Create Jinja XML file
+        jinja_xml_content = '''<?xml version="1.0" encoding="UTF-8"?>
+<jinja:definitions xmlns:jinja="http://autotel.ai/jinja">
+    <jinja:template name="greeting_email" description="Greeting email template">
+        <jinja:variables>
+            <jinja:variable name="user_name" type="string" required="true"/>
+            <jinja:variable name="greeting" type="string" required="true"/>
+        </jinja:variables>
+        <jinja:content><![CDATA[
+<email>
+  <to>{{ user_name }}@example.com</to>
+  <subject>Welcome!</subject>
+  <body>{{ greeting }}</body>
+</email>
+        ]]></jinja:content>
+    </jinja:template>
+</jinja:definitions>
+'''
+        jinja_file = temp_path / "test_jinja.xml"
+        with open(jinja_file, 'w') as f:
+            f.write(jinja_xml_content)
+        
+        # Create output file
+        output_file = temp_path / "output.xml"
+        
+        # Test variables
+        variables = '{"user_name": "Bob"}'
+        
+        print(f"📁 Temporary directory: {temp_dir}")
+        print(f"📄 DSPy file: {dspy_file}")
+        print(f"📄 Jinja file: {jinja_file}")
+        print(f"📄 Output file: {output_file}")
+        print(f"📊 Variables: {variables}")
+        print()
+        
+        # Run the CLI command
+        try:
+            # Simulate CLI execution by calling the function directly
+            dspy_to_jinja(
+                dspy_file=dspy_file,
+                jinja_file=jinja_file,
+                variables=variables,
+                output_file=output_file
+            )
+            
+            # Read and display output
+            with open(output_file, 'r') as f:
+                final_output = f.read()
+            
+            print("✅ CLI execution successful!")
+            print("📄 Final output:")
+            print(final_output)
+            
+        except Exception as e:
+            print(f"❌ CLI execution failed: {e}")
+            import traceback
+            traceback.print_exc()
+
+
+def test_jinja_generates_and_runs_typer_cli():
+    """Test: Jinja2 template generates a Typer CLI script, which is then run."""
+    print("🧪 Testing Jinja2-generated Typer CLI script execution")
+    print("=" * 60)
+
+    # Jinja2 template for a Typer CLI script
+    cli_template = '''\
+import typer
+
+def main(name: str = typer.Argument(..., help="Your name")):
+    """{{ cli_help }}"""
+    typer.echo(f"Hello, {name}! This CLI was generated by Jinja2.")
+
+if __name__ == "__main__":
+    typer.run(main)
+'''
+    # Render the template
+    from autotel.factory.processors.jinja_processor import JinjaProcessor
+    jinja_processor = JinjaProcessor()
+    variables = {"cli_help": "A simple CLI generated by Jinja2 and executed via subprocess."}
+    rendered_cli = jinja_processor.render_single_template(cli_template, variables)
+
+    # Write to a temp file
+    import tempfile
+    import os
+    with tempfile.TemporaryDirectory() as temp_dir:
+        cli_path = os.path.join(temp_dir, "generated_cli.py")
+        with open(cli_path, "w") as f:
+            f.write(rendered_cli)
+        print(f"📄 Generated CLI script at: {cli_path}")
+        # Run the CLI with an argument
+        result = subprocess.run([
+            "python", cli_path, "Bob"
+        ], capture_output=True, text=True)
+        print("CLI stdout:")
+        print(result.stdout)
+        print("CLI stderr:")
+        print(result.stderr)
+        assert "Hello, Bob!" in result.stdout
+        print("✅ Jinja2-generated Typer CLI ran successfully!")
+
+
 def main():
     """Run all Jinja2 tests."""
     try:
@@ -352,6 +616,12 @@ def main():
         test_bpmn_jinja2_integration()
         print("\n" + "="*60 + "\n")
         test_cdata_and_nested_content()
+        print("\n" + "="*60 + "\n")
+        test_dspy_output_with_jinja_template()
+        print("\n" + "="*60 + "\n")
+        test_dspy_jinja_cli()
+        print("\n" + "="*60 + "\n")
+        test_jinja_generates_and_runs_typer_cli()
         
     except Exception as e:
         print(f"❌ Test failed: {e}")
