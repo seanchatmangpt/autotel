@@ -1,0 +1,326 @@
+{
+  "ontology_uri": "http://autotel.ai/ontology/workflow",
+  "namespace": "http://autotel.ai/ontology/default#",
+  "prefix": "mock_test",
+  "classes": {
+    "Workflow": {
+      "name": "Workflow",
+      "uri": "http://autotel.ai/ontology/workflow#Workflow",
+      "semantic_type": "general",
+      "properties": {},
+      "superclasses": [],
+      "description": ""
+    },
+    "WorkflowElement": {
+      "name": "WorkflowElement",
+      "uri": "http://autotel.ai/ontology/workflow#WorkflowElement",
+      "semantic_type": "general",
+      "properties": {},
+      "superclasses": [],
+      "description": "WorkflowElement"
+    },
+    "Task": {
+      "name": "Task",
+      "uri": "http://autotel.ai/ontology/workflow#Task",
+      "semantic_type": "general",
+      "properties": {},
+      "superclasses": [],
+      "description": ""
+    },
+    "ServiceTask": {
+      "name": "ServiceTask",
+      "uri": "http://autotel.ai/ontology/workflow#ServiceTask",
+      "semantic_type": "general",
+      "properties": {},
+      "superclasses": [
+        "http://autotel.ai/ontology/workflow#Task"
+      ],
+      "description": "ServiceTask"
+    },
+    "UserTask": {
+      "name": "UserTask",
+      "uri": "http://autotel.ai/ontology/workflow#UserTask",
+      "semantic_type": "user_input",
+      "properties": {},
+      "superclasses": [
+        "http://autotel.ai/ontology/workflow#Task"
+      ],
+      "description": "UserTask"
+    },
+    "DecisionTask": {
+      "name": "DecisionTask",
+      "uri": "http://autotel.ai/ontology/workflow#DecisionTask",
+      "semantic_type": "decision",
+      "properties": {},
+      "superclasses": [
+        "http://autotel.ai/ontology/workflow#Task"
+      ],
+      "description": "DecisionTask"
+    },
+    "DSPySignature": {
+      "name": "DSPySignature",
+      "uri": "http://autotel.ai/ontology/workflow#DSPySignature",
+      "semantic_type": "general",
+      "properties": {},
+      "superclasses": [
+        "http://autotel.ai/ontology/workflow#WorkflowElement"
+      ],
+      "description": "DSPySignature"
+    },
+    "DSPyServiceTask": {
+      "name": "DSPyServiceTask",
+      "uri": "http://autotel.ai/ontology/workflow#DSPyServiceTask",
+      "semantic_type": "general",
+      "properties": {},
+      "superclasses": [
+        "http://autotel.ai/ontology/workflow#ServiceTask"
+      ],
+      "description": "DSPyServiceTask"
+    },
+    "DMNDecisionTable": {
+      "name": "DMNDecisionTable",
+      "uri": "http://autotel.ai/ontology/workflow#DMNDecisionTable",
+      "semantic_type": "decision",
+      "properties": {},
+      "superclasses": [
+        "http://autotel.ai/ontology/workflow#WorkflowElement"
+      ],
+      "description": "DMNDecisionTable"
+    },
+    "DMNDecisionTask": {
+      "name": "DMNDecisionTask",
+      "uri": "http://autotel.ai/ontology/workflow#DMNDecisionTask",
+      "semantic_type": "decision",
+      "properties": {},
+      "superclasses": [
+        "http://autotel.ai/ontology/workflow#DecisionTask"
+      ],
+      "description": "DMNDecisionTask"
+    },
+    "SHACLShape": {
+      "name": "SHACLShape",
+      "uri": "http://autotel.ai/ontology/workflow#SHACLShape",
+      "semantic_type": "general",
+      "properties": {},
+      "superclasses": [
+        "http://autotel.ai/ontology/workflow#WorkflowElement"
+      ],
+      "description": "SHACLShape"
+    },
+    "ValidationTask": {
+      "name": "ValidationTask",
+      "uri": "http://autotel.ai/ontology/workflow#ValidationTask",
+      "semantic_type": "general",
+      "properties": {},
+      "superclasses": [
+        "http://autotel.ai/ontology/workflow#ServiceTask"
+      ],
+      "description": "ValidationTask"
+    },
+    "Customer": {
+      "name": "Customer",
+      "uri": "http://autotel.ai/ontology/workflow#Customer",
+      "semantic_type": "general",
+      "properties": {},
+      "superclasses": [],
+      "description": "Customer"
+    },
+    "Order": {
+      "name": "Order",
+      "uri": "http://autotel.ai/ontology/workflow#Order",
+      "semantic_type": "general",
+      "properties": {},
+      "superclasses": [],
+      "description": "Order"
+    },
+    "RiskAssessment": {
+      "name": "RiskAssessment",
+      "uri": "http://autotel.ai/ontology/workflow#RiskAssessment",
+      "semantic_type": "general",
+      "properties": {},
+      "superclasses": [],
+      "description": "RiskAssessment"
+    },
+    "Status": {
+      "name": "Status",
+      "uri": "http://autotel.ai/ontology/workflow#Status",
+      "semantic_type": "general",
+      "properties": {},
+      "superclasses": [],
+      "description": "Status"
+    },
+    "WorkflowStatus": {
+      "name": "WorkflowStatus",
+      "uri": "http://autotel.ai/ontology/workflow#WorkflowStatus",
+      "semantic_type": "general",
+      "properties": {},
+      "superclasses": [
+        "http://autotel.ai/ontology/workflow#Status"
+      ],
+      "description": "WorkflowStatus"
+    },
+    "TaskStatus": {
+      "name": "TaskStatus",
+      "uri": "http://autotel.ai/ontology/workflow#TaskStatus",
+      "semantic_type": "general",
+      "properties": {},
+      "superclasses": [
+        "http://autotel.ai/ontology/workflow#Status"
+      ],
+      "description": "TaskStatus"
+    }
+  },
+  "semantic_context": {
+    "domain": "workflow",
+    "semantic_types": {
+      "user_input": [
+        "UserTask"
+      ],
+      "recommendation": [],
+      "decision": [
+        "DecisionTask",
+        "DMNDecisionTable",
+        "DMNDecisionTask"
+      ],
+      "analysis": [],
+      "reasoning": [],
+      "general": [
+        "Workflow",
+        "WorkflowElement",
+        "Task",
+        "ServiceTask",
+        "DSPySignature",
+        "DSPyServiceTask",
+        "SHACLShape",
+        "ValidationTask",
+        "Customer",
+        "Order",
+        "RiskAssessment",
+        "Status",
+        "WorkflowStatus",
+        "TaskStatus"
+      ]
+    },
+    "property_types": {
+      "object": [
+        "hasTask",
+        "hasCustomer",
+        "hasDSPySignature",
+        "hasDMNDecisionTable",
+        "hasSHACLShape",
+        "hasStatus",
+        "hasRiskAssessment"
+      ],
+      "data": [
+        "hasCustomerId",
+        "hasCustomerName",
+        "hasOrderId",
+        "hasOrderAmount",
+        "hasRiskLevel",
+        "hasConfidence",
+        "hasStatusValue"
+      ]
+    }
+  },
+  "examples": [
+    {
+      "name": "PendingStatus",
+      "type": "http://autotel.ai/ontology/workflow#WorkflowStatus",
+      "properties": {
+        "}label": {
+          "uri": "{http://www.w3.org/2000/01/rdf-schema#}label",
+          "value": "Pending"
+        }
+      },
+      "description": "Pending"
+    },
+    {
+      "name": "RunningStatus",
+      "type": "http://autotel.ai/ontology/workflow#WorkflowStatus",
+      "properties": {
+        "}label": {
+          "uri": "{http://www.w3.org/2000/01/rdf-schema#}label",
+          "value": "Running"
+        }
+      },
+      "description": "Running"
+    },
+    {
+      "name": "CompletedStatus",
+      "type": "http://autotel.ai/ontology/workflow#WorkflowStatus",
+      "properties": {
+        "}label": {
+          "uri": "{http://www.w3.org/2000/01/rdf-schema#}label",
+          "value": "Completed"
+        }
+      },
+      "description": "Completed"
+    },
+    {
+      "name": "FailedStatus",
+      "type": "http://autotel.ai/ontology/workflow#WorkflowStatus",
+      "properties": {
+        "}label": {
+          "uri": "{http://www.w3.org/2000/01/rdf-schema#}label",
+          "value": "Failed"
+        }
+      },
+      "description": "Failed"
+    },
+    {
+      "name": "ApprovedStatus",
+      "type": "http://autotel.ai/ontology/workflow#WorkflowStatus",
+      "properties": {
+        "}label": {
+          "uri": "{http://www.w3.org/2000/01/rdf-schema#}label",
+          "value": "Approved"
+        }
+      },
+      "description": "Approved"
+    },
+    {
+      "name": "RejectedStatus",
+      "type": "http://autotel.ai/ontology/workflow#WorkflowStatus",
+      "properties": {
+        "}label": {
+          "uri": "{http://www.w3.org/2000/01/rdf-schema#}label",
+          "value": "Rejected"
+        }
+      },
+      "description": "Rejected"
+    },
+    {
+      "name": "LowRisk",
+      "type": "",
+      "properties": {
+        "}label": {
+          "uri": "{http://www.w3.org/2000/01/rdf-schema#}label",
+          "value": "Low Risk"
+        }
+      },
+      "description": "Low Risk"
+    },
+    {
+      "name": "MediumRisk",
+      "type": "",
+      "properties": {
+        "}label": {
+          "uri": "{http://www.w3.org/2000/01/rdf-schema#}label",
+          "value": "Medium Risk"
+        }
+      },
+      "description": "Medium Risk"
+    },
+    {
+      "name": "HighRisk",
+      "type": "",
+      "properties": {
+        "}label": {
+          "uri": "{http://www.w3.org/2000/01/rdf-schema#}label",
+          "value": "High Risk"
+        }
+      },
+      "description": "High Risk"
+    }
+  ]
+}

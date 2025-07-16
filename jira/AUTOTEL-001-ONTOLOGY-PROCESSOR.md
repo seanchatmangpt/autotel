@@ -344,4 +344,3 @@ The following `NotImplementedError` exceptions must be implemented in `autotel/f
 - Support both XML fragments and file paths
 - Return structured dataclasses, not raw XML
 - No try-catch blocks - fail fast on errors
-- Comprehensive error handling for malformed XML 

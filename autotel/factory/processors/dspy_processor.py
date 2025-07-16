@@ -1,7 +1,7 @@
 """DSPy processor for AutoTel semantic execution pipeline."""
 
 import xml.etree.ElementTree as ET
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 from ...schemas.dspy_types import DSPySignatureDefinition, DSPyModuleDefinition, DSPyModelConfiguration
 from ...core.telemetry import create_telemetry_manager
@@ -9,7 +9,13 @@ from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
 
 
-NAMESPACES = {'dspy': 'http://autotel.ai/dspy'}
+NAMESPACES = {
+    'dspy': 'http://autotel.ai/dspy',
+    'owl': 'http://www.w3.org/2002/07/owl#',
+    'rdf': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+    'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
+    'shacl': 'http://www.w3.org/ns/shacl#'
+}
 
 class DSPyProcessor:
     """Processes DSPy XML into structured definitions."""
@@ -169,6 +175,75 @@ class DSPyProcessor:
                 
                 raise
 
+    def parse_validation_rules(self, xml_content: str) -> List[Dict[str, Any]]:
+        """Parse validation rules from DSPy XML content."""
+        with self.telemetry.start_span("dspy_parse_validation_rules", "schema_loading") as span:
+            span.set_attribute("input_size_bytes", len(xml_content.encode('utf-8')))
+            
+            try:
+                root = ET.fromstring(xml_content)
+                validation_rules = []
+                
+                # Extract SHACL constraints from DSPy elements
+                for sig_elem in root.findall(".//dspy:signature", NAMESPACES):
+                    for input_elem in sig_elem.findall(".//dspy:input", NAMESPACES):
+                        rules = self._extract_input_validation_rules(input_elem)
+                        validation_rules.extend(rules)
+                    
+                    for output_elem in sig_elem.findall(".//dspy:output", NAMESPACES):
+                        rules = self._extract_output_validation_rules(output_elem)
+                        validation_rules.extend(rules)
+                
+                span.set_attribute("validation_rules_found", len(validation_rules))
+                span.set_attribute("parse_success", True)
+                
+                return validation_rules
+                
+            except Exception as e:
+                span.set_attribute("parse_success", False)
+                span.set_attribute("error_type", type(e).__name__)
+                span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
+                raise
+
+    def parse_semantic_context(self, xml_content: str) -> Dict[str, Any]:
+        """Parse semantic context from DSPy XML content."""
+        with self.telemetry.start_span("dspy_parse_semantic_context", "schema_loading") as span:
+            span.set_attribute("input_size_bytes", len(xml_content.encode('utf-8')))
+            
+            try:
+                root = ET.fromstring(xml_content)
+                semantic_context = {
+                    "ontology_classes": [],
+                    "semantic_types": {},
+                    "property_mappings": {},
+                    "class_hierarchies": {}
+                }
+                
+                # Extract OWL class references
+                for sig_elem in root.findall(".//dspy:signature", NAMESPACES):
+                    for input_elem in sig_elem.findall(".//dspy:input", NAMESPACES):
+                        owl_class = input_elem.get("owl:class")
+                        if owl_class:
+                            semantic_context["ontology_classes"].append(owl_class)
+                            semantic_context["semantic_types"][input_elem.get("name")] = "user_input"
+                    
+                    for output_elem in sig_elem.findall(".//dspy:output", NAMESPACES):
+                        owl_class = output_elem.get("owl:class")
+                        if owl_class:
+                            semantic_context["ontology_classes"].append(owl_class)
+                            semantic_context["semantic_types"][output_elem.get("name")] = "recommendation"
+                
+                span.set_attribute("ontology_classes_found", len(semantic_context["ontology_classes"]))
+                span.set_attribute("parse_success", True)
+                
+                return semantic_context
+                
+            except Exception as e:
+                span.set_attribute("parse_success", False)
+                span.set_attribute("error_type", type(e).__name__)
+                span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
+                raise
+
     def _extract_inputs(self, elem: ET.Element) -> Dict[str, Any]:
         """Extract inputs from signature element."""
         inputs = {}
@@ -176,7 +251,10 @@ class DSPyProcessor:
             name = input_elem.get("name", "")
             inputs[name] = {
                 "type": input_elem.get("type", "string"),
-                "description": input_elem.get("description", "")
+                "description": input_elem.get("description", ""),
+                "optional": input_elem.get("optional", "false").lower() == "true",
+                "owl_class": input_elem.get("owl:class"),
+                "shacl_shape": input_elem.get("shaclShape")
             }
         return inputs
 
@@ -187,7 +265,9 @@ class DSPyProcessor:
             name = output_elem.get("name", "")
             outputs[name] = {
                 "type": output_elem.get("type", "string"),
-                "description": output_elem.get("description", "")
+                "description": output_elem.get("description", ""),
+                "owl_class": output_elem.get("owl:class"),
+                "shacl_shape": output_elem.get("shaclShape")
             }
         return outputs
 
@@ -233,6 +313,79 @@ class DSPyProcessor:
             key = telemetry_elem.get("key", "")
             value = telemetry_elem.get("value", "")
             telemetry[key] = value
-        return telemetry 
+        return telemetry
+
+    def _extract_input_validation_rules(self, input_elem: ET.Element) -> List[Dict[str, Any]]:
+        """Extract validation rules from input element."""
+        rules = []
+        input_name = input_elem.get("name", "")
+        
+        # Extract SHACL constraints
+        for shacl_elem in input_elem.findall(".//shacl:PropertyShape", NAMESPACES):
+            rule = {
+                "target": input_name,
+                "rule_type": "shacl_constraint",
+                "constraint_type": "property_shape",
+                "severity": "Violation"
+            }
+            
+            # Extract datatype constraint
+            datatype_elem = shacl_elem.find(".//shacl:datatype", NAMESPACES)
+            if datatype_elem is not None:
+                rule["datatype"] = datatype_elem.text
+            
+            # Extract cardinality constraints
+            min_count_elem = shacl_elem.find(".//shacl:minCount", NAMESPACES)
+            if min_count_elem is not None:
+                rule["min_count"] = int(min_count_elem.text)
+            
+            max_count_elem = shacl_elem.find(".//shacl:maxCount", NAMESPACES)
+            if max_count_elem is not None:
+                rule["max_count"] = int(max_count_elem.text)
+            
+            # Extract length constraints
+            min_length_elem = shacl_elem.find(".//shacl:minLength", NAMESPACES)
+            if min_length_elem is not None:
+                rule["min_length"] = int(min_length_elem.text)
+            
+            max_length_elem = shacl_elem.find(".//shacl:maxLength", NAMESPACES)
+            if max_length_elem is not None:
+                rule["max_length"] = int(max_length_elem.text)
+            
+            rules.append(rule)
+        
+        return rules
+
+    def _extract_output_validation_rules(self, output_elem: ET.Element) -> List[Dict[str, Any]]:
+        """Extract validation rules from output element."""
+        rules = []
+        output_name = output_elem.get("name", "")
+        
+        # Extract SHACL constraints
+        for shacl_elem in output_elem.findall(".//shacl:PropertyShape", NAMESPACES):
+            rule = {
+                "target": output_name,
+                "rule_type": "shacl_constraint",
+                "constraint_type": "property_shape",
+                "severity": "Violation"
+            }
+            
+            # Extract datatype constraint
+            datatype_elem = shacl_elem.find(".//shacl:datatype", NAMESPACES)
+            if datatype_elem is not None:
+                rule["datatype"] = datatype_elem.text
+            
+            # Extract cardinality constraints
+            min_count_elem = shacl_elem.find(".//shacl:minCount", NAMESPACES)
+            if min_count_elem is not None:
+                rule["min_count"] = int(min_count_elem.text)
+            
+            max_count_elem = shacl_elem.find(".//shacl:maxCount", NAMESPACES)
+            if max_count_elem is not None:
+                rule["max_count"] = int(max_count_elem.text)
+            
+            rules.append(rule)
+        
+        return rules 
 
  

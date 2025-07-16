@@ -248,4 +248,3 @@ The processor should extract:
 - `autotel/factory/processors/shacl_processor.py` - Main SHACL processor implementation
 - `autotel/schemas/shacl_types.py` - SHACLShape and related dataclasses
 - `tests/test_factory_shacl_processor.py` - Unit tests for SHACL processing
-- `tests/test_shacl_integration.py` - Integration tests with validation 

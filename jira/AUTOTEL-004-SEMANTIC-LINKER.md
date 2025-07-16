@@ -389,4 +389,3 @@ The following `NotImplementedError` exceptions must be implemented in `autotel/f
 - Support multiple signature types
 - Handle complex semantic relationships
 - No try-catch blocks - fail fast on errors
-- Comprehensive error handling for malformed signatures 

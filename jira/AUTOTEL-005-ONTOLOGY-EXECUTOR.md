@@ -369,4 +369,3 @@ The following `NotImplementedError` exceptions must be implemented in `autotel/f
 - Support semantic context execution
 - Create detailed execution metadata
 - No try-catch blocks - fail fast on errors
-- Comprehensive error handling for execution failures 

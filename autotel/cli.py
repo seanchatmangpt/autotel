@@ -22,6 +22,8 @@ from .utils.dspy_services import dspy_registry
 from .utils.advanced_dspy_services import advanced_dspy_registry, initialize_advanced_dspy_services
 from .workflows.task_span_integration import initialize_task_span_manager
 from .utils.helpers import otel_command
+from autotel.factory.processors.owl_processor import OWLProcessor
+from .factory.ontology_compiler import OntologyCompiler
 
 app = typer.Typer(
     name="autotel",
@@ -30,6 +32,23 @@ app = typer.Typer(
 )
 
 console = Console()
+
+# Global telemetry flag
+NO_TELEMETRY = False
+
+def set_no_telemetry(value: bool):
+    """Set the global no-telemetry flag."""
+    global NO_TELEMETRY
+    NO_TELEMETRY = value
+
+@app.callback()
+def main(
+    no_telemetry: bool = typer.Option(False, "--no-telemetry", help="Disable telemetry for all operations")
+):
+    """AutoTel - Automated Telemetry and Semantic Execution Pipeline"""
+    set_no_telemetry(no_telemetry)
+    if no_telemetry:
+        console.print("[yellow]⚠️  Telemetry disabled[/yellow]")
 
 @app.command()
 @otel_command
@@ -343,6 +362,151 @@ def workflow(
             raise typer.Exit(1)
 
 @app.command()
+def run(
+    workflow_file: Path = typer.Argument(..., help="BPMN workflow file to execute"),
+    input_data: Optional[Path] = typer.Option(None, "--input", "-i", help="JSON input data file"),
+    input_json: Optional[str] = typer.Option(None, "--data", "-d", help="JSON input data (inline)"),
+    export_telemetry: Optional[Path] = typer.Option(None, "--export-telemetry", help="Export telemetry to file"),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress verbose output")
+):
+    """Execute a BPMN workflow with input data"""
+    
+    if not workflow_file.exists():
+        console.print(f"[red]❌ Workflow file not found: {workflow_file}[/red]")
+        raise typer.Exit(1)
+    
+    # Parse input data
+    input_variables = {}
+    if input_data:
+        if not input_data.exists():
+            console.print(f"[red]❌ Input data file not found: {input_data}[/red]")
+            raise typer.Exit(1)
+        try:
+            with open(input_data, 'r') as f:
+                input_variables = json.load(f)
+        except Exception as e:
+            console.print(f"[red]❌ Failed to parse input data file: {e}[/red]")
+            raise typer.Exit(1)
+    elif input_json:
+        try:
+            input_variables = json.loads(input_json)
+        except Exception as e:
+            console.print(f"[red]❌ Failed to parse input JSON: {e}[/red]")
+            raise typer.Exit(1)
+    
+    orchestrator = Orchestrator(
+        specific_bpmn_file=str(workflow_file),
+        enable_telemetry=True
+    )
+    
+    try:
+        # Parse the BPMN file to get the process definition ID
+        import xml.etree.ElementTree as ET
+        tree = ET.parse(str(workflow_file))
+        root = tree.getroot()
+        # Find the first process element
+        process_elem = root.find('.//{http://www.omg.org/spec/BPMN/20100524/MODEL}process')
+        if process_elem is not None and 'id' in process_elem.attrib:
+            process_id = process_elem.attrib['id']
+        else:
+            raise ValueError("Could not find process definition ID in BPMN file")
+        
+        if not quiet:
+            console.print(f"🚀 Starting workflow: {process_id}")
+            if input_variables:
+                console.print(f"📥 Input data: {json.dumps(input_variables, indent=2)}")
+        
+        instance = orchestrator.start_process(process_id, input_variables)
+        
+        if not quiet:
+            console.print(f"📋 Instance ID: {instance.instance_id}")
+        
+        result = orchestrator.execute_process(instance.instance_id)
+        
+        if not quiet:
+            console.print(f"✅ Workflow completed with status: {result.status.value}")
+        else:
+            # Quiet mode: just output the result
+            console.print(json.dumps({
+                "status": result.status.value,
+                "instance_id": instance.instance_id,
+                "result": result.data if hasattr(result, 'data') else {}
+            }, indent=2))
+        
+        if export_telemetry:
+            telemetry_data = orchestrator.export_telemetry()
+            with open(export_telemetry, 'w') as f:
+                json.dump(telemetry_data, f, indent=2)
+            if not quiet:
+                console.print(f"📊 Telemetry exported to {export_telemetry}")
+                
+    except Exception as e:
+        console.print(f"[red]❌ Workflow execution failed: {e}[/red]")
+        raise typer.Exit(1)
+
+@app.command()
+def list(
+    directory: Optional[Path] = typer.Option(Path("."), "--directory", "-d", help="Directory to scan for workflows"),
+    show_details: bool = typer.Option(False, "--details", help="Show detailed workflow information")
+):
+    """List available BPMN workflows"""
+    
+    if not directory.exists():
+        console.print(f"[red]❌ Directory not found: {directory}[/red]")
+        raise typer.Exit(1)
+    
+    # Find BPMN files
+    bpmn_files = list(directory.glob("**/*.bpmn"))
+    
+    if not bpmn_files:
+        console.print(f"[yellow]⚠️  No BPMN files found in {directory}[/yellow]")
+        return
+    
+    if show_details:
+        table = Table(title=f"Available Workflows in {directory}")
+        table.add_column("File", style="cyan")
+        table.add_column("Process ID", style="green")
+        table.add_column("Name", style="yellow")
+        table.add_column("Status", style="blue")
+        
+        for bpmn_file in bpmn_files:
+            try:
+                import xml.etree.ElementTree as ET
+                tree = ET.parse(str(bpmn_file))
+                root = tree.getroot()
+                
+                # Find process element
+                process_elem = root.find('.//{http://www.omg.org/spec/BPMN/20100524/MODEL}process')
+                if process_elem is not None:
+                    process_id = process_elem.attrib.get('id', 'Unknown')
+                    process_name = process_elem.attrib.get('name', 'Unnamed')
+                    status = "✅ Valid"
+                else:
+                    process_id = "Unknown"
+                    process_name = "Invalid BPMN"
+                    status = "❌ Invalid"
+                
+                table.add_row(
+                    str(bpmn_file.relative_to(directory)),
+                    process_id,
+                    process_name,
+                    status
+                )
+            except Exception as e:
+                table.add_row(
+                    str(bpmn_file.relative_to(directory)),
+                    "Error",
+                    "Parse failed",
+                    f"❌ {str(e)[:30]}..."
+                )
+        
+        console.print(table)
+    else:
+        console.print(f"📋 Found {len(bpmn_files)} BPMN workflow(s) in {directory}:")
+        for bpmn_file in bpmn_files:
+            console.print(f"  • {bpmn_file.relative_to(directory)}")
+
+@app.command()
 @otel_command
 def config(
     show: bool = typer.Option(False, "--show", help="Show current configuration"),
@@ -405,6 +569,135 @@ def config(
             yaml.dump(sample_config, f, default_flow_style=False)
         
         console.print(f"[green]✅ Sample configuration generated: {generate}[/green]")
+
+ontology_app = typer.Typer(help="Ontology processing commands")
+
+@ontology_app.command("parse")
+def parse_ontology(
+    file: Path = typer.Option(..., "--file", "-f", help="OWL file to parse"),
+    export: Optional[Path] = typer.Option(None, "--export", "-e", help="Export parsed ontology as JSON")
+):
+    """Parse an OWL ontology file and print a summary."""
+    if not file.exists():
+        console.print(f"[red]❌ OWL file not found: {file}[/red]")
+        raise typer.Exit(1)
+    
+    try:
+        with open(file, 'r') as f:
+            xml_content = f.read()
+        
+        console.print(f"[green]📁 Loading OWL file: {file}[/green]")
+        console.print(f"[blue]📄 Loaded {len(xml_content)} characters[/blue]")
+        
+        # Create processor with telemetry based on global flag
+        processor = OWLProcessor()
+        if NO_TELEMETRY:
+            from .core.telemetry import NoOpTelemetryManager
+            processor.telemetry = NoOpTelemetryManager("autotel-owl-processor")
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Parsing OWL...", total=None)
+            ontology_def = processor.parse_ontology_definition(xml_content, prefix='cli')
+            progress.update(task, description="✅ OWL parsed successfully")
+        
+        console.print(f"\n[green]✅ OWL parsed successfully:[/green]")
+        console.print(f"  - Classes: {len(ontology_def.classes)}")
+        console.print(f"  - Object Properties: {len(ontology_def.object_properties)}")
+        console.print(f"  - Data Properties: {len(ontology_def.data_properties)}")
+        console.print(f"  - Individuals: {len(ontology_def.individuals)}")
+        console.print(f"  - Axioms: {len(ontology_def.axioms)}")
+        
+        # Compile with OntologyCompiler
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Compiling ontology...", total=None)
+            
+            # Create compiler with telemetry based on global flag
+            compiler = OntologyCompiler()
+            if NO_TELEMETRY:
+                from .core.telemetry import NoOpTelemetryManager
+                compiler.telemetry = NoOpTelemetryManager("autotel-ontology-compiler")
+            
+            ontology_schema = compiler.compile(ontology_def)
+            progress.update(task, description="✅ Ontology compiled successfully")
+        
+        console.print(f"\n[green]✅ Ontology compiled successfully:[/green]")
+        console.print(f"  - Compiled Classes: {len(ontology_schema.classes)}")
+        console.print(f"  - Semantic Context: {len(ontology_schema.semantic_context)} keys")
+        console.print(f"  - Examples: {len(ontology_schema.examples)}")
+        
+        # Show semantic types breakdown
+        console.print(f"\n[cyan]📊 Semantic Types Breakdown:[/cyan]")
+        for semantic_type, classes in ontology_schema.semantic_context['semantic_types'].items():
+            console.print(f"  - {semantic_type}: {len(classes)} classes")
+            if classes:
+                console.print(f"    Examples: {', '.join(classes[:3])}")
+        
+        # Show property types breakdown
+        console.print(f"\n[cyan]🔗 Property Types Breakdown:[/cyan]")
+        for prop_type, properties in ontology_schema.semantic_context['property_types'].items():
+            console.print(f"  - {prop_type}: {len(properties)} properties")
+            if properties:
+                console.print(f"    Examples: {', '.join(properties[:3])}")
+        
+        # Show sample class details
+        console.print(f"\n[cyan]🏗️ Sample Class Details:[/cyan]")
+        for i, (class_name, class_schema) in enumerate(list(ontology_schema.classes.items())[:3]):
+            console.print(f"  {i+1}. {class_name} ({class_schema.semantic_type})")
+            console.print(f"     URI: {class_schema.uri}")
+            console.print(f"     Properties: {len(class_schema.properties)}")
+            console.print(f"     Superclasses: {len(class_schema.superclasses)}")
+            console.print(f"     Description: {class_schema.description[:100]}...")
+        
+        # Export if requested
+        if export:
+            console.print(f"\n[green]💾 Exporting compiled ontology to {export}...[/green]")
+            
+            # Convert to dict for JSON serialization
+            ontology_dict = {
+                'ontology_uri': ontology_schema.ontology_uri,
+                'namespace': ontology_schema.namespace,
+                'prefix': ontology_schema.prefix,
+                'classes': {
+                    name: {
+                        'name': cls.name,
+                        'uri': cls.uri,
+                        'semantic_type': cls.semantic_type,
+                        'properties': {
+                            prop_name: {
+                                'name': prop.name,
+                                'uri': prop.uri,
+                                'data_type': prop.data_type,
+                                'domain': prop.domain,
+                                'range': prop.range,
+                                'cardinality': prop.cardinality
+                            } for prop_name, prop in cls.properties.items()
+                        },
+                        'superclasses': cls.superclasses,
+                        'description': cls.description
+                    } for name, cls in ontology_schema.classes.items()
+                },
+                'semantic_context': ontology_schema.semantic_context,
+                'examples': ontology_schema.examples
+            }
+            
+            with open(export, 'w') as f:
+                json.dump(ontology_dict, f, indent=2)
+            
+            console.print(f"[green]✅ Compiled ontology exported to {export}[/green]")
+        
+    except Exception as e:
+        console.print(f"[red]❌ Error during parsing: {e}[/red]")
+        raise typer.Exit(1)
+
+app.add_typer(ontology_app, name="ontology")
 
 if __name__ == "__main__":
     app() 

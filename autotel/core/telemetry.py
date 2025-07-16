@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional, Union
 from pathlib import Path
 from dataclasses import dataclass, field
+from contextlib import contextmanager
 
 # OpenTelemetry imports
 from opentelemetry import trace, metrics
@@ -32,6 +33,87 @@ class TelemetryConfig:
     enable_metrics: bool = True
     schema_path: Optional[str] = None
     require_linkml_validation: bool = True  # New: enforce LinkML validation
+
+class NoOpTelemetryManager:
+    """No-op telemetry manager that provides safe fallback when telemetry fails."""
+    
+    def __init__(self, service_name: str = "autotel-noop"):
+        self.service_name = service_name
+        self.config = TelemetryConfig(service_name=service_name, enable_tracing=False, enable_metrics=False)
+        self.linkml_connected = False
+        self.schema_view = None
+        self.tracer = None
+        self.meter = None
+    
+    @contextmanager
+    def start_span(self, name: str, operation_type: str, **kwargs):
+        """No-op span context manager."""
+        class NoOpSpan:
+            def set_attribute(self, key, value):
+                pass
+            def set_status(self, status):
+                pass
+            def __enter__(self):
+                return self
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                pass
+        
+        span = NoOpSpan()
+        try:
+            yield span
+        finally:
+            pass
+    
+    def record_metric(self, metric_name: str, value, **attributes):
+        """No-op metric recording."""
+        pass
+    
+    def get_operation_type_enum(self) -> List[str]:
+        """Return empty list for no-op."""
+        return []
+    
+    def get_validation_type_enum(self) -> List[str]:
+        """Return empty list for no-op."""
+        return []
+    
+    def create_span_attributes(self, operation_type: str, **kwargs) -> Dict[str, Any]:
+        """Return basic attributes for no-op."""
+        return {"operation_type": operation_type}
+    
+    def validate_span_data(self, span_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Return data as-is for no-op."""
+        return span_data
+    
+    def create_linkml_operation(self, operation_type: str, **kwargs) -> Dict[str, Any]:
+        """Return basic operation for no-op."""
+        return {"operation_type": operation_type, **kwargs}
+    
+    def create_validation_result(self, validation_type: str, passed: bool, **kwargs) -> Dict[str, Any]:
+        """Return basic validation result for no-op."""
+        return {"validation_type": validation_type, "passed": passed, **kwargs}
+    
+    def export_schema_metadata(self) -> Dict[str, Any]:
+        """Return empty metadata for no-op."""
+        return {}
+    
+    def force_flush(self) -> None:
+        """No-op flush."""
+        pass
+    
+    def is_configured(self) -> bool:
+        """Always return False for no-op."""
+        return False
+    
+    def get_stats(self) -> dict:
+        """Return no-op stats."""
+        return {
+            "schema_connected": False,
+            "tracer_enabled": False,
+            "meter_enabled": False,
+            "schema_classes": [],
+            "schema_enums": [],
+            "schema_slots": [],
+        }
 
 class TelemetryManager:
     """
@@ -200,14 +282,8 @@ class TelemetryManager:
         if not self.schema_view:
             if self.config.require_linkml_validation:
                 raise RuntimeError("LinkML schema not available. OpenTelemetry must be connected to LinkML schema validation.")
-            return kwargs
+            return {"operation_type": operation_type, **kwargs}
         
-        # Validate operation type against schema
-        valid_operations = self.get_operation_type_enum()
-        if valid_operations and operation_type not in valid_operations:
-            raise ValueError(f"Invalid operation type '{operation_type}'. Valid types: {valid_operations}")
-        
-        # Get span attributes from schema
         span_class = self.schema_view.get_class("Span")
         if not span_class:
             if self.config.require_linkml_validation:
@@ -390,6 +466,45 @@ class TelemetryManager:
             "schema_enums": list(self.schema_view.all_enums().keys()) if self.schema_view else [],
             "schema_slots": list(self.schema_view.all_slots().keys()) if self.schema_view else [],
         }
+
+def get_telemetry_manager_or_noop(
+    service_name: str = "autotel-service",
+    service_version: str = "1.0.0",
+    schema_path: Optional[str] = None,
+    enable_tracing: bool = True,
+    enable_metrics: bool = True,
+    require_linkml_validation: bool = True,
+    tracer_provider: Optional[TracerProvider] = None,
+    span_exporter: Optional[Any] = None,
+    force_noop: bool = False
+) -> Union[TelemetryManager, NoOpTelemetryManager]:
+    """
+    Get a telemetry manager or fall back to no-op if telemetry fails.
+    
+    Args:
+        force_noop: If True, always return NoOpTelemetryManager
+        ...: Other args passed to create_telemetry_manager
+    
+    Returns:
+        TelemetryManager or NoOpTelemetryManager
+    """
+    if force_noop:
+        return NoOpTelemetryManager(service_name)
+    
+    try:
+        return create_telemetry_manager(
+            service_name=service_name,
+            service_version=service_version,
+            schema_path=schema_path,
+            enable_tracing=enable_tracing,
+            enable_metrics=enable_metrics,
+            require_linkml_validation=require_linkml_validation,
+            tracer_provider=tracer_provider,
+            span_exporter=span_exporter
+        )
+    except Exception as e:
+        print(f"Warning: Telemetry initialization failed: {e}. Using no-op telemetry.")
+        return NoOpTelemetryManager(service_name)
 
 def create_telemetry_manager(
     service_name: str = "autotel-service",

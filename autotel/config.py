@@ -90,7 +90,7 @@ class EnvironmentConfig(BaseConfig):
 
 
 class AutoTelConfig(BaseConfig):
-    """Main AutoTel configuration class"""
+    """Main AutoTel configuration class with ConfZ v2"""
     
     # Core configuration sections
     dspy: DSPyConfig = Field(default_factory=DSPyConfig, description="DSPy configuration")
@@ -110,24 +110,6 @@ class AutoTelConfig(BaseConfig):
 
 
 # Main AutoTel configuration with ConfZ v2
-class AutoTelConfig(BaseConfig):
-    """Main AutoTel configuration class with ConfZ v2"""
-    
-    # Core configuration sections
-    dspy: DSPyConfig = Field(default_factory=DSPyConfig, description="DSPy configuration")
-    workflow: WorkflowConfig = Field(default_factory=WorkflowConfig, description="Workflow configuration")
-    logging: LoggingConfig = Field(default_factory=LoggingConfig, description="Logging configuration")
-    output: OutputConfig = Field(default_factory=OutputConfig, description="Output configuration")
-    environments: EnvironmentConfig = Field(default_factory=EnvironmentConfig, description="Environment-specific settings")
-    
-    # CLI overrides (highest priority)
-    cli_model: Optional[str] = Field(None, description="CLI model override")
-    cli_temperature: Optional[float] = Field(None, description="CLI temperature override")
-    cli_max_tokens: Optional[int] = Field(None, description="CLI max tokens override")
-    cli_timeout: Optional[int] = Field(None, description="CLI timeout override")
-    
-    # XML embedded settings (medium priority)
-    xml_settings: Dict[str, Any] = Field(default_factory=dict, description="Settings from XML")
 
 
 def create_config(
@@ -300,8 +282,28 @@ def load_config(
     )
 
 
+# Global configuration instance for singleton pattern
+_global_config: Optional[AutoTelConfig] = None
+
+
 def get_config() -> AutoTelConfig:
     """Get the current configuration (singleton pattern)"""
-    # This would need to be implemented with a global instance
-    # For now, we'll use explicit configuration creation
-    raise NotImplementedError("Use create_config() instead for explicit configuration management") 
+    global _global_config
+    
+    if _global_config is None:
+        # Create default configuration if none exists
+        _global_config = create_config()
+    
+    return _global_config
+
+
+def set_global_config(config: AutoTelConfig) -> None:
+    """Set the global configuration instance"""
+    global _global_config
+    _global_config = config
+
+
+def reset_global_config() -> None:
+    """Reset the global configuration instance (useful for testing)"""
+    global _global_config
+    _global_config = None 

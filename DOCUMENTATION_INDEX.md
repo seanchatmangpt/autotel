@@ -277,5 +277,3 @@ XML Inputs → Processors → Compilers → Linker → Executor → Results + Te
 - **AutoTel Validation**: SHACL/OWL validation framework
 
 ## License
-
-This documentation is part of the AutoTel project and follows the project's licensing terms. 
