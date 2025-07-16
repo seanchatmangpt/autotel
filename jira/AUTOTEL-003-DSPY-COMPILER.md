@@ -1,7 +1,175 @@
 # AUTOTEL-003: Ontology Compiler Implementation
 
+## 🎯 **TELEMETRY IMPLEMENTATION REQUIREMENTS**
+
+### **Required Spans and Events**
+The following telemetry must be implemented to validate real functionality:
+
+#### **Main Compilation Span**
+```yaml
+span_name: "ontology.compiler.compile"
+required_attributes:
+  - component: "ontology_compiler"
+  - operation: "compile"
+  - input_format: "OWLOntologyDefinition"
+  - output_format: "OntologySchema"
+  - success: boolean
+  - classes_compiled: integer
+  - properties_compiled: integer
+  - semantic_context_generated: boolean
+  - examples_generated: integer
+  - compilation_duration_ms: integer
+  - input_classes_count: integer
+  - output_schemas_count: integer
+
+required_events:
+  - "compilation_started"
+  - "classes_compiled"
+  - "properties_compiled"
+  - "semantic_context_generated"
+  - "examples_generated"
+```
+
+#### **Compilation Method Spans**
+```yaml
+span_name: "ontology.compiler.extract_classes"
+required_attributes:
+  - classes_processed: integer
+  - semantic_types_mapped: dict
+  - hierarchies_detected: integer
+  - restrictions_processed: integer
+  - class_schemas_created: integer
+
+span_name: "ontology.compiler.extract_properties"
+required_attributes:
+  - object_properties_processed: integer
+  - data_properties_processed: integer
+  - domains_mapped: integer
+  - ranges_mapped: integer
+  - property_schemas_created: integer
+
+span_name: "ontology.compiler.create_ontology_class"
+required_attributes:
+  - class_name: string
+  - semantic_type: string
+  - properties_count: integer
+  - superclasses_count: integer
+  - restrictions_count: integer
+```
+
+### **Dynamic Data Validation**
+The following dynamic data must be generated from real OWL compilation:
+
+#### **Expected Dynamic Data from Sample OWL Input**
+```yaml
+# Input: OWLOntologyDefinition
+input:
+  ontology_uri: "http://example.org/ontology"
+  prefix: "test"
+  namespace: "http://example.org/"
+  classes:
+    UserInput:
+      uri: "#UserInput"
+      name: "UserInput"
+      label: "User Input"
+      comment: "Input data from user"
+      semantic_type: "user_input"
+      properties: []
+      superclasses: []
+      restrictions: []
+    Recommendation:
+      uri: "#Recommendation"
+      name: "Recommendation"
+      label: "Recommendation"
+      comment: "AI-generated recommendation"
+      semantic_type: "recommendation"
+      properties: []
+      superclasses: []
+      restrictions: []
+```
+
+#### **Expected Telemetry Data**
+```yaml
+# Span: ontology.compiler.compile
+attributes:
+  success: true
+  classes_compiled: 2
+  properties_compiled: 0
+  semantic_context_generated: true
+  examples_generated: 0
+  compilation_duration_ms: 45
+  input_classes_count: 2
+  output_schemas_count: 2
+
+# Span: ontology.compiler.extract_classes
+attributes:
+  classes_processed: 2
+  semantic_types_mapped:
+    UserInput: "user_input"
+    Recommendation: "recommendation"
+  hierarchies_detected: 0
+  restrictions_processed: 0
+  class_schemas_created: 2
+
+# Span: ontology.compiler.create_ontology_class (UserInput)
+attributes:
+  class_name: "UserInput"
+  semantic_type: "user_input"
+  properties_count: 0
+  superclasses_count: 0
+  restrictions_count: 0
+
+# Span: ontology.compiler.create_ontology_class (Recommendation)
+attributes:
+  class_name: "Recommendation"
+  semantic_type: "recommendation"
+  properties_count: 0
+  superclasses_count: 0
+  restrictions_count: 0
+
+# Expected OntologySchema output
+output:
+  ontology_uri: "http://example.org/ontology"
+  namespace: "http://example.org/"
+  prefix: "test"
+  classes:
+    UserInput:
+      name: "UserInput"
+      uri: "#UserInput"
+      semantic_type: "user_input"
+      properties: {}
+      superclasses: []
+      description: "Input data from user"
+    Recommendation:
+      name: "Recommendation"
+      uri: "#Recommendation"
+      semantic_type: "recommendation"
+      properties: {}
+      superclasses: []
+      description: "AI-generated recommendation"
+  semantic_context:
+    user_input_classes: ["UserInput"]
+    recommendation_classes: ["Recommendation"]
+    decision_classes: []
+    analysis_classes: []
+    reasoning_classes: []
+    general_classes: []
+  examples: []
+```
+
+### **Validation Criteria**
+- **NO HARDCODED VALUES**: All telemetry data must be generated from actual OWL compilation
+- **REAL COMPILATION**: OWL data must be transformed into semantic schemas
+- **DYNAMIC MAPPING**: All counts, types, and schemas must come from input data
+- **SEMANTIC CLASSIFICATION**: Semantic types must be preserved from OWL input
+- **ERROR HANDLING**: Failed compilation must generate error spans with context
+- **PERFORMANCE TRACKING**: Compilation duration must be measured and reported
+- **DATA INTEGRITY**: Input/output counts must match and be accurate
+
+---
+
 ## Summary
-Implement the Ontology compiler component that transforms OWL ontology definitions into structured schemas with semantic type classifications for DSPy signature generation.
+Implement the Ontology Compiler component of the AutoTel semantic execution pipeline to transform OWL ontology definitions into semantic schemas for DSPy signature generation.
 
 ## Description
 The Ontology Compiler is the first compiler stage in the AutoTel execution pipeline (`processor > compiler > linker > executor`). It takes structured OWL ontology definitions and compiles them into semantic schemas that will be used by the DSPy compiler to generate context-aware signatures.
@@ -130,68 +298,3 @@ schema = ontology_compiler.compile(ontology=ontology)
 - `semantic`
 - `prototype`
 - `schema`
-
-## Implementation Files
-- `autotel/factory/ontology_compiler.py` - Main ontology compiler implementation
-- `autotel/schemas/ontology_types.py` - OntologySchema and related dataclasses
-- `tests/test_factory_ontology_compiler.py` - Unit tests for ontology compilation
-- `tests/test_ontology_integration.py` - Integration tests with DSPy compiler
-
-## NotImplementedError Implementations
-
-The following `NotImplementedError` exceptions must be implemented in `autotel/factory/ontology_compiler.py`:
-
-### Core Compilation Methods
-1. **`compile()`** - "Ontology compilation must be implemented with real compilation logic"
-   - Transform `OWLOntologyDefinition` into `OntologySchema`
-   - Extract classes, properties, individuals, and axioms
-   - Generate semantic context and examples
-   - Return structured ontology schema
-
-### Data Extraction Methods
-2. **`_extract_classes()`** - "Class extraction must be implemented with real extraction logic"
-   - Convert raw class data to `ClassSchema` objects
-   - Apply semantic type classification
-   - Extract property relationships
-   - Handle class hierarchies and restrictions
-
-3. **`_extract_properties()`** - "Property extraction must be implemented with real extraction logic"
-   - Convert object and data properties to `PropertySchema` objects
-   - Extract domain, range, and cardinality constraints
-   - Handle property inheritance and restrictions
-   - Map to appropriate data types
-
-4. **`_extract_individuals()`** - "Individual extraction must be implemented with real extraction logic"
-   - Extract OWL individuals as example data
-   - Convert to DSPy signature examples
-   - Handle property values and type associations
-   - Generate structured example objects
-
-5. **`_extract_axioms()`** - "Axiom extraction must be implemented with real extraction logic"
-   - Extract OWL axioms and logical expressions
-   - Convert to validation rules
-   - Handle complex logical constructs
-   - Generate constraint metadata
-
-### Object Creation Methods
-6. **`_create_ontology_class()`** - "Ontology class creation must be implemented with real creation logic"
-   - Create `ClassSchema` from raw class data
-   - Apply semantic type classification
-   - Extract property relationships
-   - Handle inheritance and restrictions
-
-7. **`_create_ontology_property()`** - "Ontology property creation must be implemented with real creation logic"
-   - Create `PropertySchema` from raw property data
-   - Extract domain, range, and constraints
-   - Map to appropriate data types
-   - Handle property characteristics
-
-### Implementation Requirements
-- Transform raw OWL data into structured schemas
-- Implement semantic type classification logic
-- Generate semantic context for DSPy integration
-- Create example data from OWL individuals
-- Handle complex OWL constructs and axioms
-- Support validation rule generation
-- No try-catch blocks - fail fast on errors
-- Comprehensive error handling for malformed data 

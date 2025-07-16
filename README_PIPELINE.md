@@ -2,7 +2,9 @@
 
 ## Overview
 
-This is the **80/20 happy path implementation** of the AutoTel semantic execution pipeline, demonstrating the complete multi-compiler architecture: **processor > compiler > linker > executor**.
+This is the **architecture foundation** for the AutoTel semantic execution pipeline, demonstrating the complete multi-compiler architecture: **processor > compiler > linker > executor**.
+
+**⚠️ Current Status**: This is a **foundation implementation** with all core components defined as stubs. See [GAPS_AND_MISTAKES.md](./GAPS_AND_MISTAKES.md) for detailed implementation status.
 
 ## Architecture
 
@@ -30,6 +32,36 @@ XML Inputs → Processors → Compilers → Linker → Executor → Results + Te
 4. **Executor** (Executable System → Results + Telemetry)
    - `OntologyExecutor`: Runs systems with comprehensive telemetry
 
+## Implementation Status
+
+### ✅ **Completed**
+- **Architecture Design**: Complete C4 diagrams and component interfaces
+- **Data Structures**: All dataclasses and type definitions
+- **Component Interfaces**: All method signatures and contracts
+- **Documentation**: Comprehensive JIRA tickets and implementation guides
+- **Test Framework**: Test structure and validation framework
+
+### 🔄 **In Progress** (50+ NotImplementedError methods)
+- **OWL Processor**: 15+ methods need implementation
+- **SHACL Processor**: All parsing methods need implementation
+- **DSPy Processor**: All processing methods need implementation
+- **Ontology Compiler**: 7 methods need implementation
+- **Validation Compiler**: 5 methods need implementation
+- **DSPy Compiler**: 5 methods need implementation
+- **Semantic Linker**: 5 methods need implementation
+- **Ontology Executor**: 6 methods need implementation
+
+### 📋 **Implementation Priority**
+See [jira/PIPELINE-INDEX.md](./jira/PIPELINE-INDEX.md) for detailed implementation tickets.
+
+1. **AUTOTEL-001**: OWL Processor (Foundation)
+2. **AUTOTEL-002**: SHACL Processor (Validation)
+3. **AUTOTEL-003**: Ontology Compiler (Schema Generation)
+4. **AUTOTEL-006**: Validation Compiler (Constraint Rules)
+5. **AUTOTEL-007**: DSPy Compiler (Integration)
+6. **AUTOTEL-004**: Semantic Linker (System Integration)
+7. **AUTOTEL-005**: Ontology Executor (Runtime)
+
 ## Quick Start
 
 ### 1. Install Dependencies
@@ -39,23 +71,24 @@ XML Inputs → Processors → Compilers → Linker → Executor → Results + Te
 pip install rdflib lxml
 ```
 
-### 2. Run the Test
+### 2. Review Implementation Status
 
 ```bash
-# Test the complete pipeline
+# Check current gaps and implementation needs
+cat GAPS_AND_MISTAKES.md
+
+# Review JIRA tickets for implementation details
+ls jira/
+```
+
+### 3. Run Tests (Currently Stubs)
+
+```bash
+# Test the complete pipeline (currently NotImplementedError stubs)
 python test_pipeline.py
 ```
 
-### 3. Use the CLI
-
-```bash
-# Run with example files
-python autotel_cli.py \
-  --owl examples/sample_owl.xml \
-  --shacl examples/sample_shacl.xml \
-  --dspy examples/sample_dspy.xml \
-  --inputs examples/sample_inputs.json
-```
+**Note**: All tests currently raise `NotImplementedError` - they need implementation before the pipeline can function.
 
 ## File Structure
 
@@ -88,7 +121,7 @@ autotel/
 
 ## Usage Examples
 
-### Programmatic Usage
+### Programmatic Usage (When Implemented)
 
 ```python
 from autotel.factory.pipeline import PipelineOrchestrator
@@ -118,7 +151,9 @@ print(f"Outputs: {result.outputs}")
 print(f"Telemetry: {result.telemetry}")
 ```
 
-### CLI Usage
+**Note**: This code will currently raise `NotImplementedError` - all methods need implementation.
+
+### CLI Usage (When Implemented)
 
 ```bash
 # Basic usage
@@ -136,6 +171,8 @@ python autotel_cli.py \
   --inputs data.json \
   --output results.json
 ```
+
+**Note**: CLI currently calls non-functional pipeline - needs implementation.
 
 ## Input Formats
 
@@ -200,78 +237,50 @@ python autotel_cli.py \
 }
 ```
 
-## Output Format
+## Implementation Guide
 
-The pipeline returns a structured result with:
+### Getting Started
 
-```python
-@dataclass
-class ExecutionResult:
-    success: bool                    # Execution success status
-    outputs: Dict[str, Any]         # Generated outputs
-    telemetry: Dict[str, Any]       # Execution telemetry
-    validation_results: Dict[str, Any]  # Validation results
-    execution_time: float           # Execution time in seconds
-    metadata: Dict[str, Any]        # Execution metadata
-```
+1. **Review Gaps**: Read [GAPS_AND_MISTAKES.md](./GAPS_AND_MISTAKES.md) for current status
+2. **Choose Ticket**: Pick a JIRA ticket from [jira/PIPELINE-INDEX.md](./jira/PIPELINE-INDEX.md)
+3. **Implement**: Follow the detailed implementation guide in each ticket
+4. **Test**: Update tests to validate your implementation
+5. **Document**: Update documentation as needed
 
-## Key Features
+### Development Workflow
 
-### ✅ Implemented (80/20)
+1. **Start with Processors**: Implement OWL and SHACL processors first
+2. **Move to Compilers**: Implement ontology and validation compilers
+3. **Complete Integration**: Implement DSPy compiler and semantic linker
+4. **Add Execution**: Implement ontology executor
+5. **Test End-to-End**: Implement comprehensive tests
 
-- **Multi-Compiler Architecture**: Clean separation between processors, compilers, linker, and executor
-- **Semantic Type Classification**: Automatic classification of OWL classes (user_input, recommendation, decision, etc.)
-- **Validation Integration**: SHACL constraints integrated into execution
-- **Telemetry Generation**: Comprehensive execution telemetry
-- **Fail-Fast Error Handling**: No try-catch blocks, errors crash naturally
-- **Type-Safe Interfaces**: All components use structured dataclasses
-- **CLI Interface**: Command-line interface for easy usage
-- **File-Based Execution**: Support for XML files and JSON inputs
-- **Test Coverage**: Complete test script demonstrating functionality
+### Key Principles
 
-### 🔄 Future Enhancements
+- **Fail Fast**: No try-catch blocks - let errors crash naturally
+- **Type Safety**: Use strong typing with dataclasses throughout
+- **Telemetry First**: Generate comprehensive OpenTelemetry traces
+- **Semantic Context**: Preserve semantic context throughout pipeline
+- **Validation**: Apply SHACL constraints at runtime
 
-- **Real DSPy Integration**: Connect to actual DSPy library for execution
-- **Advanced SHACL Processing**: Full SHACL constraint extraction and validation
-- **OpenTelemetry Integration**: Real telemetry collection and export
-- **Model Provider Integration**: Connect to actual LLM providers
-- **Performance Optimization**: Parallel processing and caching
-- **Advanced Error Handling**: Detailed error reporting and recovery
-- **Configuration Management**: Hierarchical configuration system
+## Related Documents
 
-## Design Principles
-
-1. **Single Responsibility**: Each component has one clear purpose
-2. **Fail Fast**: No try-catch blocks, let errors crash naturally
-3. **Type Safety**: Use dataclasses for all data structures
-4. **Clean Dependencies**: Clear separation between components
-5. **Telemetry First**: Comprehensive observability throughout
-
-## Testing
-
-Run the complete test suite:
-
-```bash
-python test_pipeline.py
-```
-
-This will test:
-- In-memory pipeline execution
-- File-based pipeline execution
-- All component integrations
-- Error handling
-- Output validation
+- [GAPS_AND_MISTAKES.md](./GAPS_AND_MISTAKES.md) - Current implementation gaps
+- [jira/PIPELINE-INDEX.md](./jira/PIPELINE-INDEX.md) - Implementation tickets
+- [c4_validation_diagrams.md](./c4_validation_diagrams.md) - Architecture validation
+- [pipeline_sequence_diagrams.md](./pipeline_sequence_diagrams.md) - Sequence flows
 
 ## Contributing
 
-This is a prototype implementation demonstrating the multi-compiler architecture. For production use, consider:
+1. **Pick a Ticket**: Choose from the JIRA tickets in priority order
+2. **Follow Implementation Guide**: Each ticket has detailed implementation steps
+3. **Implement Tests**: Update tests to validate your implementation
+4. **Update Documentation**: Keep documentation current with implementation
+5. **Submit PR**: Create pull request with implementation and tests
 
-1. Adding comprehensive error handling
-2. Implementing real DSPy integration
-3. Adding OpenTelemetry support
-4. Enhancing SHACL processing
-5. Adding performance optimizations
+## Support
 
-## License
-
-This implementation is part of the AutoTel project and follows the project's licensing terms. 
+- **Architecture Questions**: Review C4 diagrams and sequence diagrams
+- **Implementation Questions**: Check JIRA tickets for detailed guides
+- **Gap Analysis**: See GAPS_AND_MISTAKES.md for current status
+- **Testing**: All tests need implementation - see test files for structure 

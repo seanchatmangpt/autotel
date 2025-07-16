@@ -1,0 +1,745 @@
+# AutoTel Semantic Execution Pipeline - OpenTelemetry Span Definitions
+# Weaver Configuration for Planning and Documentation
+
+apiVersion: v1
+kind: Telemetry
+metadata:
+  name: autotel-semantic-pipeline
+  namespace: autotel
+spec:
+  spans:
+    # Pipeline Orchestration Spans
+    - name: pipeline.processors
+      description: "Stage 1: Process XML inputs into structured data objects"
+      attributes:
+        - key: stage
+          value: "processors"
+        - key: operation_type
+          value: "PROCESSORS"
+        - key: input_types
+          value: "owl_xml,shacl_xml,dspy_xml"
+        - key: pipeline.stage
+          value: "1"
+        - key: pipeline.total_stages
+          value: "4"
+      events:
+        - name: "owl_processing_started"
+          description: "OWL processor started parsing ontology"
+        - name: "shacl_processing_started"
+          description: "SHACL processor started parsing constraints"
+        - name: "dspy_processing_started"
+          description: "DSPy processor started parsing signatures"
+        - name: "processors_completed"
+          description: "All processors completed successfully"
+
+    - name: pipeline.compilers
+      description: "Stage 2: Compile structured data into execution-ready objects"
+      attributes:
+        - key: stage
+          value: "compilers"
+        - key: operation_type
+          value: "COMPILERS"
+        - key: pipeline.stage
+          value: "2"
+        - key: pipeline.total_stages
+          value: "4"
+      events:
+        - name: "ontology_compilation_started"
+          description: "Ontology compiler started schema generation"
+        - name: "validation_compilation_started"
+          description: "Validation compiler started rule generation"
+        - name: "dspy_compilation_started"
+          description: "DSPy compiler started signature integration"
+        - name: "compilers_completed"
+          description: "All compilers completed successfully"
+
+    - name: pipeline.linker
+      description: "Stage 3: Link compiled objects into executable system"
+      attributes:
+        - key: stage
+          value: "linker"
+        - key: operation_type
+          value: "LINKER"
+        - key: pipeline.stage
+          value: "3"
+        - key: pipeline.total_stages
+          value: "4"
+      events:
+        - name: "signature_validation_started"
+          description: "Signature validation started"
+        - name: "semantic_context_generated"
+          description: "Semantic context generated"
+        - name: "validation_rules_prepared"
+          description: "Validation rules prepared"
+        - name: "executable_system_created"
+          description: "Executable system created"
+
+    - name: pipeline.executor
+      description: "Stage 4: Execute system with comprehensive telemetry"
+      attributes:
+        - key: stage
+          value: "executor"
+        - key: operation_type
+          value: "EXECUTOR"
+        - key: pipeline.stage
+          value: "4"
+        - key: pipeline.total_stages
+          value: "4"
+      events:
+        - name: "input_validation_started"
+          description: "Input validation started"
+        - name: "validation_rules_applied"
+          description: "Validation rules applied"
+        - name: "dspy_signature_executed"
+          description: "DSPy signature execution started"
+        - name: "model_provider_called"
+          description: "Model provider API called"
+        - name: "execution_completed"
+          description: "Execution completed successfully"
+
+    - name: pipeline.complete
+      description: "Pipeline execution completed"
+      attributes:
+        - key: stage
+          value: "complete"
+        - key: operation_type
+          value: "COMPLETE"
+        - key: pipeline.status
+          value: "success"
+      events:
+        - name: "pipeline_success"
+          description: "Pipeline executed successfully"
+        - name: "results_generated"
+          description: "Execution results generated"
+        - name: "telemetry_completed"
+          description: "Telemetry collection completed"
+
+    # OWL Processor Spans
+    - name: owl.processor.parse_ontology_definition
+      description: "Parse OWL XML content into structured ontology definition"
+      attributes:
+        - key: component
+          value: "owl_processor"
+        - key: operation
+          value: "parse_ontology_definition"
+        - key: input_format
+          value: "owl_xml"
+        - key: output_format
+          value: "OWLOntologyDefinition"
+      events:
+        - name: "xml_parsing_started"
+          description: "XML parsing started"
+        - name: "ontology_uri_extracted"
+          description: "Ontology URI extracted"
+        - name: "classes_extracted"
+          description: "OWL classes extracted"
+        - name: "properties_extracted"
+          description: "OWL properties extracted"
+        - name: "individuals_extracted"
+          description: "OWL individuals extracted"
+        - name: "axioms_extracted"
+          description: "OWL axioms extracted"
+
+    - name: owl.processor.extract_ontology_uri
+      description: "Extract ontology URI from root element"
+      attributes:
+        - key: component
+          value: "owl_processor"
+        - key: operation
+          value: "extract_ontology_uri"
+        - key: element_type
+          value: "owl:Ontology"
+
+    - name: owl.processor.extract_classes
+      description: "Extract OWL classes from XML"
+      attributes:
+        - key: component
+          value: "owl_processor"
+        - key: operation
+          value: "extract_classes"
+        - key: element_type
+          value: "owl:Class"
+      events:
+        - name: "class_found"
+          description: "OWL class found"
+        - name: "semantic_type_classified"
+          description: "Semantic type classified"
+        - name: "properties_extracted"
+          description: "Class properties extracted"
+
+    - name: owl.processor.extract_object_properties
+      description: "Extract OWL object properties from XML"
+      attributes:
+        - key: component
+          value: "owl_processor"
+        - key: operation
+          value: "extract_object_properties"
+        - key: element_type
+          value: "owl:ObjectProperty"
+
+    - name: owl.processor.extract_data_properties
+      description: "Extract OWL data properties from XML"
+      attributes:
+        - key: component
+          value: "owl_processor"
+        - key: operation
+          value: "extract_data_properties"
+        - key: element_type
+          value: "owl:DatatypeProperty"
+
+    # SHACL Processor Spans
+    - name: shacl.processor.parse
+      description: "Parse SHACL XML content into constraint graph"
+      attributes:
+        - key: component
+          value: "shacl_processor"
+        - key: operation
+          value: "parse"
+        - key: input_format
+          value: "shacl_xml"
+        - key: output_format
+          value: "Graph"
+      events:
+        - name: "xml_parsing_started"
+          description: "SHACL XML parsing started"
+        - name: "node_shapes_extracted"
+          description: "Node shapes extracted"
+        - name: "property_shapes_extracted"
+          description: "Property shapes extracted"
+        - name: "constraints_extracted"
+          description: "Validation constraints extracted"
+
+    # DSPy Processor Spans
+    - name: dspy.processor.parse
+      description: "Parse DSPy XML content into signature definitions"
+      attributes:
+        - key: component
+          value: "dspy_processor"
+        - key: operation
+          value: "parse"
+        - key: input_format
+          value: "dspy_xml"
+        - key: output_format
+          value: "DSPySignatureDefinition[]"
+      events:
+        - name: "xml_parsing_started"
+          description: "DSPy XML parsing started"
+        - name: "signatures_extracted"
+          description: "DSPy signatures extracted"
+        - name: "modules_extracted"
+          description: "DSPy modules extracted"
+        - name: "model_config_extracted"
+          description: "Model configuration extracted"
+
+    - name: dspy.processor.parse_modules
+      description: "Parse DSPy modules from XML"
+      attributes:
+        - key: component
+          value: "dspy_processor"
+        - key: operation
+          value: "parse_modules"
+        - key: output_format
+          value: "DSPyModuleDefinition[]"
+
+    - name: dspy.processor.parse_model_configuration
+      description: "Parse DSPy model configuration from XML"
+      attributes:
+        - key: component
+          value: "dspy_processor"
+        - key: operation
+          value: "parse_model_configuration"
+        - key: output_format
+          value: "DSPyModelConfiguration"
+
+    # Ontology Compiler Spans
+    - name: ontology.compiler.compile
+      description: "Compile OWL ontology definition into semantic schema"
+      attributes:
+        - key: component
+          value: "ontology_compiler"
+        - key: operation
+          value: "compile"
+        - key: input_format
+          value: "OWLOntologyDefinition"
+        - key: output_format
+          value: "OntologySchema"
+      events:
+        - name: "compilation_started"
+          description: "Ontology compilation started"
+        - name: "classes_compiled"
+          description: "Classes compiled to schemas"
+        - name: "properties_compiled"
+          description: "Properties compiled to schemas"
+        - name: "semantic_context_generated"
+          description: "Semantic context generated"
+        - name: "examples_generated"
+          description: "Example data generated"
+
+    - name: ontology.compiler.extract_classes
+      description: "Extract and compile OWL classes"
+      attributes:
+        - key: component
+          value: "ontology_compiler"
+        - key: operation
+          value: "extract_classes"
+
+    - name: ontology.compiler.extract_properties
+      description: "Extract and compile OWL properties"
+      attributes:
+        - key: component
+          value: "ontology_compiler"
+        - key: operation
+          value: "extract_properties"
+
+    - name: ontology.compiler.create_ontology_class
+      description: "Create ontology class schema"
+      attributes:
+        - key: component
+          value: "ontology_compiler"
+        - key: operation
+          value: "create_ontology_class"
+
+    - name: ontology.compiler.create_ontology_property
+      description: "Create ontology property schema"
+      attributes:
+        - key: component
+          value: "ontology_compiler"
+        - key: operation
+          value: "create_ontology_property"
+
+    # Validation Compiler Spans
+    - name: validation.compiler.compile
+      description: "Compile SHACL graph into validation rules"
+      attributes:
+        - key: component
+          value: "validation_compiler"
+        - key: operation
+          value: "compile"
+        - key: input_format
+          value: "Graph"
+        - key: output_format
+          value: "ValidationRules"
+      events:
+        - name: "compilation_started"
+          description: "Validation compilation started"
+        - name: "node_shapes_compiled"
+          description: "Node shapes compiled"
+        - name: "property_shapes_compiled"
+          description: "Property shapes compiled"
+        - name: "constraints_compiled"
+          description: "Constraints compiled"
+
+    - name: validation.compiler.extract_node_shapes
+      description: "Extract node shapes from SHACL graph"
+      attributes:
+        - key: component
+          value: "validation_compiler"
+        - key: operation
+          value: "extract_node_shapes"
+
+    - name: validation.compiler.extract_property_shapes
+      description: "Extract property shapes from SHACL graph"
+      attributes:
+        - key: component
+          value: "validation_compiler"
+        - key: operation
+          value: "extract_property_shapes"
+
+    - name: validation.compiler.create_validation_rule
+      description: "Create validation rule from shape data"
+      attributes:
+        - key: component
+          value: "validation_compiler"
+        - key: operation
+          value: "create_validation_rule"
+
+    # DSPy Compiler Spans
+    - name: dspy.compiler.compile
+      description: "Compile all inputs into execution-ready DSPy signature"
+      attributes:
+        - key: component
+          value: "dspy_compiler"
+        - key: operation
+          value: "compile"
+        - key: input_formats
+          value: "OntologySchema,ValidationRules,DSPySignatureDefinition[],DSPyModuleDefinition[],DSPyModelConfiguration"
+        - key: output_format
+          value: "DSPySignature"
+      events:
+        - name: "compilation_started"
+          description: "DSPy compilation started"
+        - name: "signatures_merged"
+          description: "Signatures merged"
+        - name: "ontology_context_integrated"
+          description: "Ontology context integrated"
+        - name: "validation_rules_integrated"
+          description: "Validation rules integrated"
+        - name: "dspy_signature_created"
+          description: "DSPy signature created"
+
+    - name: dspy.compiler.merge_signatures
+      description: "Merge multiple DSPy signatures"
+      attributes:
+        - key: component
+          value: "dspy_compiler"
+        - key: operation
+          value: "merge_signatures"
+
+    - name: dspy.compiler.integrate_ontology_context
+      description: "Integrate ontology context into signature"
+      attributes:
+        - key: component
+          value: "dspy_compiler"
+        - key: operation
+          value: "integrate_ontology_context"
+
+    - name: dspy.compiler.integrate_validation_rules
+      description: "Integrate validation rules into signature"
+      attributes:
+        - key: component
+          value: "dspy_compiler"
+        - key: operation
+          value: "integrate_validation_rules"
+
+    - name: dspy.compiler.create_dspy_signature
+      description: "Create final DSPy signature"
+      attributes:
+        - key: component
+          value: "dspy_compiler"
+        - key: operation
+          value: "create_dspy_signature"
+
+    # Semantic Linker Spans
+    - name: semantic.linker.link
+      description: "Link compiled DSPy signature into executable system"
+      attributes:
+        - key: component
+          value: "semantic_linker"
+        - key: operation
+          value: "link"
+        - key: input_format
+          value: "DSPySignature"
+        - key: output_format
+          value: "ExecutableSystem"
+      events:
+        - name: "linking_started"
+          description: "Semantic linking started"
+        - name: "signature_validated"
+          description: "Signature validated"
+        - key: "semantic_context_generated"
+          description: "Semantic context generated"
+        - name: "validation_rules_prepared"
+          description: "Validation rules prepared"
+        - name: "metadata_generated"
+          description: "Execution metadata generated"
+        - name: "executable_system_created"
+          description: "Executable system created"
+
+    - name: semantic.linker.validate_signature
+      description: "Validate DSPy signature"
+      attributes:
+        - key: component
+          value: "semantic_linker"
+        - key: operation
+          value: "validate_signature"
+
+    - name: semantic.linker.generate_semantic_context
+      description: "Generate semantic context for execution"
+      attributes:
+        - key: component
+          value: "semantic_linker"
+        - key: operation
+          value: "generate_semantic_context"
+
+    - name: semantic.linker.prepare_validation_rules
+      description: "Prepare validation rules for execution"
+      attributes:
+        - key: component
+          value: "semantic_linker"
+        - key: operation
+          value: "prepare_validation_rules"
+
+    - name: semantic.linker.generate_metadata
+      description: "Generate execution metadata"
+      attributes:
+        - key: component
+          value: "semantic_linker"
+        - key: operation
+          value: "generate_metadata"
+
+    # Ontology Executor Spans
+    - name: ontology.executor.execute
+      description: "Execute semantic system with comprehensive telemetry"
+      attributes:
+        - key: component
+          value: "ontology_executor"
+        - key: operation
+          value: "execute"
+        - key: input_format
+          value: "ExecutableSystem"
+        - key: output_format
+          value: "ExecutionResult"
+      events:
+        - name: "execution_started"
+          description: "Execution started"
+        - name: "inputs_validated"
+          description: "Inputs validated"
+        - name: "validation_rules_applied"
+          description: "Validation rules applied"
+        - name: "dspy_signature_executed"
+          description: "DSPy signature executed"
+        - name: "model_provider_called"
+          description: "Model provider called"
+        - name: "outputs_generated"
+          description: "Outputs generated"
+        - name: "telemetry_generated"
+          description: "Telemetry generated"
+        - name: "execution_completed"
+          description: "Execution completed"
+
+    - name: ontology.executor.validate_inputs
+      description: "Validate inputs against executable system"
+      attributes:
+        - key: component
+          value: "ontology_executor"
+        - key: operation
+          value: "validate_inputs"
+
+    - name: ontology.executor.apply_validation_rules
+      description: "Apply validation rules to inputs"
+      attributes:
+        - key: component
+          value: "ontology_executor"
+        - key: operation
+          value: "apply_validation_rules"
+
+    - name: ontology.executor.execute_signature
+      description: "Execute DSPy signature"
+      attributes:
+        - key: component
+          value: "ontology_executor"
+        - key: operation
+          value: "execute_signature"
+
+    - name: ontology.executor.generate_telemetry
+      description: "Generate execution telemetry"
+      attributes:
+        - key: component
+          value: "ontology_executor"
+        - key: operation
+          value: "generate_telemetry"
+
+    - name: ontology.executor.generate_execution_metadata
+      description: "Generate execution metadata"
+      attributes:
+        - key: component
+          value: "ontology_executor"
+        - key: operation
+          value: "generate_execution_metadata"
+
+    # Test Pipeline Spans
+    - name: test.pipeline.test_pipeline
+      description: "Test complete pipeline execution"
+      attributes:
+        - key: component
+          value: "test_pipeline"
+        - key: operation
+          value: "test_pipeline"
+        - key: test_type
+          value: "integration"
+      events:
+        - name: "test_started"
+          description: "Pipeline test started"
+        - name: "pipeline_executed"
+          description: "Pipeline executed successfully"
+        - name: "results_validated"
+          description: "Results validated"
+        - name: "test_completed"
+          description: "Test completed"
+
+    - name: test.pipeline.test_file_based_pipeline
+      description: "Test file-based pipeline execution"
+      attributes:
+        - key: component
+          value: "test_pipeline"
+        - key: operation
+          value: "test_file_based_pipeline"
+        - key: test_type
+          value: "file_integration"
+      events:
+        - name: "test_started"
+          description: "File-based test started"
+        - name: "files_loaded"
+          description: "Test files loaded"
+        - name: "pipeline_executed"
+          description: "Pipeline executed successfully"
+        - name: "results_validated"
+          description: "Results validated"
+        - name: "test_completed"
+          description: "Test completed"
+
+  # Span Relationships
+  relationships:
+    - parent: "pipeline.processors"
+      children:
+        - "owl.processor.parse_ontology_definition"
+        - "shacl.processor.parse"
+        - "dspy.processor.parse"
+        - "dspy.processor.parse_modules"
+        - "dspy.processor.parse_model_configuration"
+
+    - parent: "pipeline.compilers"
+      children:
+        - "ontology.compiler.compile"
+        - "validation.compiler.compile"
+        - "dspy.compiler.compile"
+
+    - parent: "pipeline.linker"
+      children:
+        - "semantic.linker.link"
+        - "semantic.linker.validate_signature"
+        - "semantic.linker.generate_semantic_context"
+        - "semantic.linker.prepare_validation_rules"
+        - "semantic.linker.generate_metadata"
+
+    - parent: "pipeline.executor"
+      children:
+        - "ontology.executor.execute"
+        - "ontology.executor.validate_inputs"
+        - "ontology.executor.apply_validation_rules"
+        - "ontology.executor.execute_signature"
+        - "ontology.executor.generate_telemetry"
+        - "ontology.executor.generate_execution_metadata"
+
+    - parent: "owl.processor.parse_ontology_definition"
+      children:
+        - "owl.processor.extract_ontology_uri"
+        - "owl.processor.extract_classes"
+        - "owl.processor.extract_object_properties"
+        - "owl.processor.extract_data_properties"
+        - "owl.processor.extract_individuals"
+        - "owl.processor.extract_axioms"
+
+    - parent: "ontology.compiler.compile"
+      children:
+        - "ontology.compiler.extract_classes"
+        - "ontology.compiler.extract_properties"
+        - "ontology.compiler.create_ontology_class"
+        - "ontology.compiler.create_ontology_property"
+
+    - parent: "validation.compiler.compile"
+      children:
+        - "validation.compiler.extract_node_shapes"
+        - "validation.compiler.extract_property_shapes"
+        - "validation.compiler.create_validation_rule"
+
+    - parent: "dspy.compiler.compile"
+      children:
+        - "dspy.compiler.merge_signatures"
+        - "dspy.compiler.integrate_ontology_context"
+        - "dspy.compiler.integrate_validation_rules"
+        - "dspy.compiler.create_dspy_signature"
+
+    - parent: "semantic.linker.link"
+      children:
+        - "semantic.linker.validate_signature"
+        - "semantic.linker.generate_semantic_context"
+        - "semantic.linker.prepare_validation_rules"
+        - "semantic.linker.generate_metadata"
+
+    - parent: "ontology.executor.execute"
+      children:
+        - "ontology.executor.validate_inputs"
+        - "ontology.executor.apply_validation_rules"
+        - "ontology.executor.execute_signature"
+        - "ontology.executor.generate_telemetry"
+        - "ontology.executor.generate_execution_metadata"
+
+  # Metrics
+  metrics:
+    - name: "pipeline.execution.duration"
+      description: "Total pipeline execution duration"
+      unit: "ms"
+      type: "histogram"
+      attributes:
+        - key: "stage"
+        - key: "success"
+        - key: "component"
+
+    - name: "pipeline.stage.duration"
+      description: "Individual stage execution duration"
+      unit: "ms"
+      type: "histogram"
+      attributes:
+        - key: "stage"
+        - key: "success"
+        - key: "component"
+
+    - name: "processor.input.size"
+      description: "Input size for processors"
+      unit: "bytes"
+      type: "histogram"
+      attributes:
+        - key: "processor_type"
+        - key: "input_format"
+
+    - name: "compiler.output.size"
+      description: "Output size for compilers"
+      unit: "bytes"
+      type: "histogram"
+      attributes:
+        - key: "compiler_type"
+        - key: "output_format"
+
+    - name: "executor.model.calls"
+      description: "Number of model provider calls"
+      unit: "count"
+      type: "counter"
+      attributes:
+        - key: "model_provider"
+        - key: "success"
+
+    - name: "validation.rules.applied"
+      description: "Number of validation rules applied"
+      unit: "count"
+      type: "counter"
+      attributes:
+        - key: "rule_type"
+        - key: "success"
+        - key: "violations"
+
+  # Logs
+  logs:
+    - name: "pipeline.execution"
+      description: "Pipeline execution logs"
+      attributes:
+        - key: "stage"
+        - key: "component"
+        - key: "operation"
+        - key: "success"
+        - key: "error_message"
+
+    - name: "processor.parsing"
+      description: "Processor parsing logs"
+      attributes:
+        - key: "processor_type"
+        - key: "input_format"
+        - key: "parsed_elements"
+        - key: "errors"
+
+    - name: "compiler.compilation"
+      description: "Compiler compilation logs"
+      attributes:
+        - key: "compiler_type"
+        - key: "input_objects"
+        - key: "output_objects"
+        - key: "errors"
+
+    - name: "executor.execution"
+      description: "Executor execution logs"
+      attributes:
+        - key: "executor_type"
+        - key: "inputs"
+        - key: "outputs"
+        - key: "validation_results"
+        - key: "errors" 

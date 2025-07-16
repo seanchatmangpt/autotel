@@ -1,7 +1,220 @@
 # AUTOTEL-004: Semantic Linker Implementation
 
+## 🎯 **TELEMETRY IMPLEMENTATION REQUIREMENTS**
+
+### **Required Spans and Events**
+The following telemetry must be implemented to validate real functionality:
+
+#### **Main Linking Span**
+```yaml
+span_name: "semantic.linker.link"
+required_attributes:
+  - component: "semantic_linker"
+  - operation: "link"
+  - input_format: "DSPySignature"
+  - output_format: "ExecutableSystem"
+  - success: boolean
+  - signature_validated: boolean
+  - semantic_context_generated: boolean
+  - validation_rules_prepared: boolean
+  - metadata_generated: boolean
+  - executable_system_created: boolean
+  - linking_duration_ms: integer
+  - input_signature_count: integer
+  - output_system_count: integer
+
+required_events:
+  - "linking_started"
+  - "signature_validated"
+  - "semantic_context_generated"
+  - "validation_rules_prepared"
+  - "metadata_generated"
+  - "executable_system_created"
+```
+
+#### **Linking Method Spans**
+```yaml
+span_name: "semantic.linker.validate_signature"
+required_attributes:
+  - signature_name: string
+  - inputs_validated: integer
+  - outputs_validated: integer
+  - validation_errors: list
+  - signature_valid: boolean
+
+span_name: "semantic.linker.generate_semantic_context"
+required_attributes:
+  - context_generated: boolean
+  - ontology_classes_used: list
+  - semantic_types_mapped: dict
+  - context_size_bytes: integer
+
+span_name: "semantic.linker.prepare_validation_rules"
+required_attributes:
+  - rules_prepared: integer
+  - rule_types: list
+  - validation_targets: list
+  - rules_active: boolean
+
+span_name: "semantic.linker.generate_metadata"
+required_attributes:
+  - metadata_generated: boolean
+  - execution_context: dict
+  - telemetry_config: dict
+  - metadata_size_bytes: integer
+```
+
+### **Dynamic Data Validation**
+The following dynamic data must be generated from real signature linking:
+
+#### **Expected Dynamic Data from Sample DSPy Signature Input**
+```yaml
+# Input: DSPySignature
+input:
+  name: "recommendation_signature"
+  description: "Generate recommendations from user input"
+  inputs:
+    user_input:
+      name: "user_input"
+      type: "string"
+      description: "User input text"
+      semantic_type: "user_input"
+  outputs:
+    recommendation:
+      name: "recommendation"
+      type: "string"
+      description: "AI-generated recommendation"
+      semantic_type: "recommendation"
+    confidence:
+      name: "confidence"
+      type: "float"
+      description: "Confidence score"
+      semantic_type: "recommendation"
+  ontology_context:
+    user_input_classes: ["UserInput"]
+    recommendation_classes: ["Recommendation"]
+  validation_rules:
+    - rule_type: "min_length"
+      target: "user_input"
+      value: 1
+    - rule_type: "range"
+      target: "confidence"
+      min: 0.0
+      max: 1.0
+```
+
+#### **Expected Telemetry Data**
+```yaml
+# Span: semantic.linker.link
+attributes:
+  success: true
+  signature_validated: true
+  semantic_context_generated: true
+  validation_rules_prepared: true
+  metadata_generated: true
+  executable_system_created: true
+  linking_duration_ms: 25
+  input_signature_count: 1
+  output_system_count: 1
+
+# Span: semantic.linker.validate_signature
+attributes:
+  signature_name: "recommendation_signature"
+  inputs_validated: 1
+  outputs_validated: 2
+  validation_errors: []
+  signature_valid: true
+
+# Span: semantic.linker.generate_semantic_context
+attributes:
+  context_generated: true
+  ontology_classes_used: ["UserInput", "Recommendation"]
+  semantic_types_mapped:
+    user_input: "user_input"
+    recommendation: "recommendation"
+    confidence: "recommendation"
+  context_size_bytes: 512
+
+# Span: semantic.linker.prepare_validation_rules
+attributes:
+  rules_prepared: 2
+  rule_types: ["min_length", "range"]
+  validation_targets: ["user_input", "confidence"]
+  rules_active: true
+
+# Span: semantic.linker.generate_metadata
+attributes:
+  metadata_generated: true
+  execution_context:
+    signature_name: "recommendation_signature"
+    model_provider: "openai"
+    temperature: 0.7
+  telemetry_config:
+    enabled: true
+    sampling_rate: 1.0
+  metadata_size_bytes: 256
+
+# Expected ExecutableSystem output
+output:
+  signature:
+    name: "recommendation_signature"
+    description: "Generate recommendations from user input"
+    inputs:
+      user_input:
+        name: "user_input"
+        type: "string"
+        description: "User input text"
+        semantic_type: "user_input"
+        validation_rules: ["min_length:1"]
+    outputs:
+      recommendation:
+        name: "recommendation"
+        type: "string"
+        description: "AI-generated recommendation"
+        semantic_type: "recommendation"
+      confidence:
+        name: "confidence"
+        type: "float"
+        description: "Confidence score"
+        semantic_type: "recommendation"
+        validation_rules: ["range:0.0:1.0"]
+  semantic_context:
+    ontology_classes: ["UserInput", "Recommendation"]
+    semantic_types:
+      user_input: "user_input"
+      recommendation: "recommendation"
+  validation_rules:
+    - rule_type: "min_length"
+      target: "user_input"
+      value: 1
+    - rule_type: "range"
+      target: "confidence"
+      min: 0.0
+      max: 1.0
+  metadata:
+    execution_context:
+      signature_name: "recommendation_signature"
+      model_provider: "openai"
+      temperature: 0.7
+    telemetry_config:
+      enabled: true
+      sampling_rate: 1.0
+```
+
+### **Validation Criteria**
+- **NO HARDCODED VALUES**: All telemetry data must be generated from actual signature linking
+- **REAL LINKING**: DSPy signatures must be transformed into executable systems
+- **DYNAMIC VALIDATION**: All validation results must come from actual signature analysis
+- **CONTEXT GENERATION**: Semantic context must be derived from signature data
+- **RULE PREPARATION**: Validation rules must be extracted and prepared from signature
+- **ERROR HANDLING**: Failed linking must generate error spans with context
+- **PERFORMANCE TRACKING**: Linking duration must be measured and reported
+- **DATA INTEGRITY**: Input/output counts must match and be accurate
+
+---
+
 ## Summary
-Implement the semantic linker component that creates executable systems from compiled DSPy signatures with ontology context and validation rules.
+Implement the Semantic Linker component of the AutoTel semantic execution pipeline to transform compiled DSPy signatures into executable systems with semantic context and validation rules.
 
 ## Description
 The Semantic Linker is the third stage in the AutoTel execution pipeline (`processor > compiler > linker > executor`). It takes compiled DSPy signatures and creates fully connected executable systems ready for runtime execution with semantic context and validation.

@@ -1,7 +1,197 @@
-# AUTOTEL-005: Ontology-Driven Executor Implementation
+# AUTOTEL-005: Ontology Executor Implementation
+
+## 🎯 **TELEMETRY IMPLEMENTATION REQUIREMENTS**
+
+### **Required Spans and Events**
+The following telemetry must be implemented to validate real functionality:
+
+#### **Main Execution Span**
+```yaml
+span_name: "ontology.executor.execute"
+required_attributes:
+  - component: "ontology_executor"
+  - operation: "execute"
+  - input_format: "ExecutableSystem"
+  - output_format: "ExecutionResult"
+  - success: boolean
+  - inputs_validated: boolean
+  - validation_rules_applied: boolean
+  - dspy_signature_executed: boolean
+  - model_provider_called: boolean
+  - outputs_generated: boolean
+  - telemetry_generated: boolean
+  - execution_duration_ms: integer
+  - input_count: integer
+  - output_count: integer
+  - validation_violations: integer
+
+required_events:
+  - "execution_started"
+  - "inputs_validated"
+  - "validation_rules_applied"
+  - "dspy_signature_executed"
+  - "model_provider_called"
+  - "outputs_generated"
+  - "telemetry_generated"
+  - "execution_completed"
+```
+
+#### **Execution Method Spans**
+```yaml
+span_name: "ontology.executor.validate_inputs"
+required_attributes:
+  - inputs_validated: integer
+  - validation_errors: list
+  - validation_passed: boolean
+  - input_types_checked: list
+
+span_name: "ontology.executor.apply_validation_rules"
+required_attributes:
+  - rules_applied: integer
+  - rules_passed: integer
+  - rules_failed: integer
+  - violations_detected: list
+  - validation_success: boolean
+
+span_name: "ontology.executor.execute_signature"
+required_attributes:
+  - signature_name: string
+  - model_provider: string
+  - model_name: string
+  - execution_success: boolean
+  - response_time_ms: integer
+  - token_count: integer
+
+span_name: "ontology.executor.generate_telemetry"
+required_attributes:
+  - telemetry_generated: boolean
+  - spans_created: integer
+  - events_emitted: integer
+  - metrics_recorded: integer
+  - telemetry_size_bytes: integer
+```
+
+### **Dynamic Data Validation**
+The following dynamic data must be generated from real signature execution:
+
+#### **Expected Dynamic Data from Sample Execution**
+```yaml
+# Input: ExecutableSystem
+input:
+  signature:
+    name: "recommendation_signature"
+    inputs:
+      user_input:
+        name: "user_input"
+        type: "string"
+        validation_rules: ["min_length:1"]
+    outputs:
+      recommendation:
+        name: "recommendation"
+        type: "string"
+      confidence:
+        name: "confidence"
+        type: "float"
+        validation_rules: ["range:0.0:1.0"]
+  validation_rules:
+    - rule_type: "min_length"
+      target: "user_input"
+      value: 1
+    - rule_type: "range"
+      target: "confidence"
+      min: 0.0
+      max: 1.0
+
+# User Input
+user_inputs:
+  user_input: "I need help with Python programming"
+```
+
+#### **Expected Telemetry Data**
+```yaml
+# Span: ontology.executor.execute
+attributes:
+  success: true
+  inputs_validated: true
+  validation_rules_applied: true
+  dspy_signature_executed: true
+  model_provider_called: true
+  outputs_generated: true
+  telemetry_generated: true
+  execution_duration_ms: 2500
+  input_count: 1
+  output_count: 2
+  validation_violations: 0
+
+# Span: ontology.executor.validate_inputs
+attributes:
+  inputs_validated: 1
+  validation_errors: []
+  validation_passed: true
+  input_types_checked: ["string"]
+
+# Span: ontology.executor.apply_validation_rules
+attributes:
+  rules_applied: 2
+  rules_passed: 2
+  rules_failed: 0
+  violations_detected: []
+  validation_success: true
+
+# Span: ontology.executor.execute_signature
+attributes:
+  signature_name: "recommendation_signature"
+  model_provider: "openai"
+  model_name: "gpt-4"
+  execution_success: true
+  response_time_ms: 2000
+  token_count: 150
+
+# Span: ontology.executor.generate_telemetry
+attributes:
+  telemetry_generated: true
+  spans_created: 5
+  events_emitted: 8
+  metrics_recorded: 3
+  telemetry_size_bytes: 1024
+
+# Expected ExecutionResult output
+output:
+  success: true
+  outputs:
+    recommendation: "Consider learning Python basics first, then move to advanced topics like data structures and algorithms. Start with online tutorials and practice coding regularly."
+    confidence: 0.85
+  validation_results:
+    input_validation: "PASSED"
+    rule_validation: "PASSED"
+    violations: []
+  execution_time: 2.5
+  telemetry:
+    spans_generated: 5
+    events_emitted: 8
+    metrics_recorded: 3
+  metadata:
+    signature_name: "recommendation_signature"
+    model_provider: "openai"
+    model_name: "gpt-4"
+    token_count: 150
+    response_time_ms: 2000
+```
+
+### **Validation Criteria**
+- **NO HARDCODED VALUES**: All telemetry data must be generated from actual execution
+- **REAL EXECUTION**: DSPy signatures must be executed with real model providers
+- **DYNAMIC VALIDATION**: All validation results must come from actual input validation
+- **MODEL INTEGRATION**: Real model provider calls must be made and tracked
+- **PERFORMANCE TRACKING**: Execution time, response time, and token counts must be measured
+- **ERROR HANDLING**: Failed execution must generate error spans with context
+- **TELEMETRY GENERATION**: Real telemetry must be generated during execution
+- **DATA INTEGRITY**: Input/output counts and validation results must be accurate
+
+---
 
 ## Summary
-Implement the ontology-driven executor component that runs DSPy signatures with semantic context, validation, and telemetry for automated AI execution.
+Implement the Ontology Executor component of the AutoTel semantic execution pipeline to execute DSPy signatures with semantic context, validation rules, and comprehensive telemetry.
 
 ## Description
 The Ontology-Driven Executor is the final stage in the AutoTel execution pipeline (`processor > compiler > linker > executor`). It takes executable systems from the semantic linker and runs DSPy signatures with full semantic context, validation rules, and comprehensive telemetry.

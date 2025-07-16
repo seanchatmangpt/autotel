@@ -1,5 +1,139 @@
 # AUTOTEL-001: Ontology Processor Implementation
 
+## 🎯 **TELEMETRY IMPLEMENTATION REQUIREMENTS**
+
+### **Required Spans and Events**
+The following telemetry must be implemented to validate real functionality:
+
+#### **Main Processing Span**
+```yaml
+span_name: "owl.processor.parse_ontology_definition"
+required_attributes:
+  - component: "owl_processor"
+  - operation: "parse_ontology_definition"
+  - input_format: "owl_xml"
+  - output_format: "OWLOntologyDefinition"
+  - success: boolean
+  - classes_extracted: integer
+  - object_properties_extracted: integer
+  - data_properties_extracted: integer
+  - individuals_extracted: integer
+  - axioms_extracted: integer
+  - ontology_uri: string
+  - namespace: string
+  - prefix: string
+
+required_events:
+  - "xml_parsing_started"
+  - "ontology_uri_extracted"
+  - "classes_extracted"
+  - "properties_extracted"
+  - "individuals_extracted"
+  - "axioms_extracted"
+```
+
+#### **Extraction Method Spans**
+```yaml
+span_name: "owl.processor.extract_classes"
+required_attributes:
+  - classes_found: integer
+  - semantic_types_classified: dict
+  - class_hierarchies_detected: integer
+  - restrictions_found: integer
+
+span_name: "owl.processor.extract_object_properties"
+required_attributes:
+  - object_properties_found: integer
+  - domains_extracted: integer
+  - ranges_extracted: integer
+  - property_characteristics: list
+
+span_name: "owl.processor.extract_data_properties"
+required_attributes:
+  - data_properties_found: integer
+  - xsd_types_mapped: integer
+  - constraints_extracted: integer
+```
+
+### **Dynamic Data Validation**
+The following dynamic data must be generated from real XML parsing:
+
+#### **Expected Dynamic Data from Sample OWL XML**
+```xml
+<!-- Input XML -->
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:owl="http://www.w3.org/2002/07/owl#"
+         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">
+    <owl:Ontology rdf:about="http://example.org/ontology"/>
+    <owl:Class rdf:about="#UserInput">
+        <rdfs:label>User Input</rdfs:label>
+        <rdfs:comment>Input data from user</rdfs:comment>
+    </owl:Class>
+    <owl:Class rdf:about="#Recommendation">
+        <rdfs:label>Recommendation</rdfs:label>
+        <rdfs:comment>AI-generated recommendation</rdfs:comment>
+    </owl:Class>
+</rdf:RDF>
+```
+
+#### **Expected Telemetry Data**
+```yaml
+# Span: owl.processor.parse_ontology_definition
+attributes:
+  success: true
+  classes_extracted: 2
+  object_properties_extracted: 0
+  data_properties_extracted: 0
+  individuals_extracted: 0
+  axioms_extracted: 0
+  ontology_uri: "http://example.org/ontology"
+  namespace: "http://example.org/"
+  prefix: "test"
+
+# Span: owl.processor.extract_classes
+attributes:
+  classes_found: 2
+  semantic_types_classified:
+    UserInput: "user_input"
+    Recommendation: "recommendation"
+  class_hierarchies_detected: 0
+  restrictions_found: 0
+
+# Expected OWLOntologyDefinition output
+output:
+  ontology_uri: "http://example.org/ontology"
+  prefix: "test"
+  namespace: "http://example.org/"
+  classes:
+    UserInput:
+      uri: "#UserInput"
+      name: "UserInput"
+      label: "User Input"
+      comment: "Input data from user"
+      semantic_type: "user_input"
+      properties: []
+      superclasses: []
+      restrictions: []
+    Recommendation:
+      uri: "#Recommendation"
+      name: "Recommendation"
+      label: "Recommendation"
+      comment: "AI-generated recommendation"
+      semantic_type: "recommendation"
+      properties: []
+      superclasses: []
+      restrictions: []
+```
+
+### **Validation Criteria**
+- **NO HARDCODED VALUES**: All telemetry data must be generated from actual XML parsing
+- **REAL PARSING**: XML must be parsed using `xml.etree.ElementTree` or `rdflib`
+- **DYNAMIC EXTRACTION**: All counts, URIs, and data must come from XML content
+- **SEMANTIC CLASSIFICATION**: Semantic types must be inferred from class names/labels
+- **ERROR HANDLING**: Failed parsing must generate error spans with context
+
+---
+
 ## Summary
 Implement the OWL processor component of the AutoTel semantic execution pipeline to extract ontological structures from XML/RDF for DSPy signature generation.
 

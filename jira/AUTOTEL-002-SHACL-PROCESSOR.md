@@ -1,7 +1,150 @@
 # AUTOTEL-002: SHACL Processor Implementation
 
+## 🎯 **TELEMETRY IMPLEMENTATION REQUIREMENTS**
+
+### **Required Spans and Events**
+The following telemetry must be implemented to validate real functionality:
+
+#### **Main Processing Span**
+```yaml
+span_name: "shacl.processor.parse"
+required_attributes:
+  - component: "shacl_processor"
+  - operation: "parse"
+  - input_format: "shacl_xml"
+  - output_format: "Graph"
+  - success: boolean
+  - node_shapes_extracted: integer
+  - property_shapes_extracted: integer
+  - constraints_extracted: integer
+  - target_classes_found: integer
+  - validation_rules_generated: integer
+  - xml_size_bytes: integer
+  - parsing_duration_ms: integer
+
+required_events:
+  - "xml_parsing_started"
+  - "node_shapes_extracted"
+  - "property_shapes_extracted"
+  - "constraints_extracted"
+  - "validation_rules_generated"
+```
+
+#### **Shape Extraction Spans**
+```yaml
+span_name: "shacl.processor.extract_node_shapes"
+required_attributes:
+  - node_shapes_found: integer
+  - target_classes: list
+  - shape_types: list
+  - deactivated_shapes: integer
+
+span_name: "shacl.processor.extract_property_shapes"
+required_attributes:
+  - property_shapes_found: integer
+  - property_paths: list
+  - cardinality_constraints: integer
+  - data_type_constraints: integer
+```
+
+### **Dynamic Data Validation**
+The following dynamic data must be generated from real SHACL XML parsing:
+
+#### **Expected Dynamic Data from Sample SHACL XML**
+```xml
+<!-- Input XML -->
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:shacl="http://www.w3.org/ns/shacl#">
+    <shacl:NodeShape rdf:about="#UserInputShape">
+        <shacl:targetClass rdf:resource="#UserInput"/>
+        <shacl:property>
+            <shacl:PropertyShape>
+                <shacl:path rdf:resource="#hasText"/>
+                <shacl:minCount>1</shacl:minCount>
+                <shacl:maxCount>1</shacl:maxCount>
+                <shacl:datatype rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+            </shacl:PropertyShape>
+        </shacl:property>
+    </shacl:NodeShape>
+    
+    <shacl:NodeShape rdf:about="#RecommendationShape">
+        <shacl:targetClass rdf:resource="#Recommendation"/>
+        <shacl:property>
+            <shacl:PropertyShape>
+                <shacl:path rdf:resource="#hasConfidence"/>
+                <shacl:minCount>1</shacl:minCount>
+                <shacl:maxCount>1</shacl:maxCount>
+                <shacl:datatype rdf:resource="http://www.w3.org/2001/XMLSchema#float"/>
+                <shacl:minInclusive>0.0</shacl:minInclusive>
+                <shacl:maxInclusive>1.0</shacl:maxInclusive>
+            </shacl:PropertyShape>
+        </shacl:property>
+    </shacl:NodeShape>
+</rdf:RDF>
+```
+
+#### **Expected Telemetry Data**
+```yaml
+# Span: shacl.processor.parse
+attributes:
+  success: true
+  node_shapes_extracted: 2
+  property_shapes_extracted: 2
+  constraints_extracted: 6
+  target_classes_found: 2
+  validation_rules_generated: 2
+  xml_size_bytes: 1024
+  parsing_duration_ms: 150
+
+# Span: shacl.processor.extract_node_shapes
+attributes:
+  node_shapes_found: 2
+  target_classes: ["#UserInput", "#Recommendation"]
+  shape_types: ["NodeShape", "NodeShape"]
+  deactivated_shapes: 0
+
+# Span: shacl.processor.extract_property_shapes
+attributes:
+  property_shapes_found: 2
+  property_paths: ["#hasText", "#hasConfidence"]
+  cardinality_constraints: 2
+  data_type_constraints: 2
+
+# Expected Graph output structure
+output:
+  node_shapes:
+    UserInputShape:
+      target_class: "#UserInput"
+      properties:
+        hasText:
+          path: "#hasText"
+          min_count: 1
+          max_count: 1
+          datatype: "http://www.w3.org/2001/XMLSchema#string"
+    RecommendationShape:
+      target_class: "#Recommendation"
+      properties:
+        hasConfidence:
+          path: "#hasConfidence"
+          min_count: 1
+          max_count: 1
+          datatype: "http://www.w3.org/2001/XMLSchema#float"
+          min_inclusive: 0.0
+          max_inclusive: 1.0
+```
+
+### **Validation Criteria**
+- **NO HARDCODED VALUES**: All telemetry data must be generated from actual SHACL XML parsing
+- **REAL PARSING**: XML must be parsed using `xml.etree.ElementTree` or `rdflib`
+- **DYNAMIC EXTRACTION**: All counts, paths, and constraints must come from XML content
+- **CONSTRAINT MAPPING**: Validation rules must be extracted from SHACL constraints
+- **ERROR HANDLING**: Failed parsing must generate error spans with context
+- **PERFORMANCE TRACKING**: Parsing duration must be measured and reported
+
+---
+
 ## Summary
-Implement the SHACL processor component to extract validation constraints from XML/RDF for integration with DSPy signature validation.
+Implement the SHACL processor component of the AutoTel semantic execution pipeline to extract validation constraints from XML/RDF for DSPy signature validation.
 
 ## Description
 The SHACL Processor extracts Shape Constraint Language (SHACL) validation rules from XML/RDF content. These constraints will be used by the DSPy compiler to generate validation rules for DSPy signatures, ensuring data integrity and semantic correctness.

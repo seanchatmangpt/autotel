@@ -39,13 +39,15 @@ class TelemetryManager:
     Eliminates hardcoded strings by using schema-driven telemetry
     """
     
-    def __init__(self, config: Optional[TelemetryConfig] = None):
+    def __init__(self, config: Optional[TelemetryConfig] = None, tracer_provider: Optional[TracerProvider] = None, span_exporter: Optional[Any] = None):
         """Initialize the telemetry manager with LinkML schema"""
         self.config = config or TelemetryConfig()
         self.schema_view: Optional[SchemaView] = None
         self.tracer: Optional[trace.Tracer] = None
         self.meter: Optional[metrics.Meter] = None
         self.linkml_connected: bool = False
+        self._external_tracer_provider = tracer_provider
+        self._external_span_exporter = span_exporter
         
         # Load LinkML schema for telemetry
         self._load_telemetry_schema()
@@ -128,11 +130,16 @@ class TelemetryManager:
         })
         
         if self.config.enable_tracing:
-            # Configure tracing
-            trace_provider = TracerProvider(resource=resource)
-            trace_provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
-            trace.set_tracer_provider(trace_provider)
-            self.tracer = trace.get_tracer(self.config.service_name)
+            if self._external_tracer_provider is not None and self._external_span_exporter is not None:
+                # Use externally provided tracer provider and exporter
+                self._external_tracer_provider.add_span_processor(BatchSpanProcessor(self._external_span_exporter))
+                self.tracer = self._external_tracer_provider.get_tracer(self.config.service_name)
+            else:
+                # Configure tracing as before
+                trace_provider = TracerProvider(resource=resource)
+                trace_provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
+                trace.set_tracer_provider(trace_provider)
+                self.tracer = trace.get_tracer(self.config.service_name)
         
         if self.config.enable_metrics:
             # Configure metrics
@@ -390,15 +397,17 @@ def create_telemetry_manager(
     schema_path: Optional[str] = None,
     enable_tracing: bool = True,
     enable_metrics: bool = True,
-    require_linkml_validation: bool = True
+    require_linkml_validation: bool = True,
+    tracer_provider: Optional[TracerProvider] = None,
+    span_exporter: Optional[Any] = None
 ) -> TelemetryManager:
-    """Create a telemetry manager with LinkML schema validation"""
+    """Factory for TelemetryManager with optional dependency injection for testing."""
     config = TelemetryConfig(
         service_name=service_name,
         service_version=service_version,
-        schema_path=schema_path,
         enable_tracing=enable_tracing,
         enable_metrics=enable_metrics,
+        schema_path=schema_path,
         require_linkml_validation=require_linkml_validation
     )
-    return TelemetryManager(config) 
+    return TelemetryManager(config, tracer_provider=tracer_provider, span_exporter=span_exporter) 

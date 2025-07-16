@@ -73,6 +73,37 @@ enums:
         description: Analyzing inheritance
       enum_analysis:
         description: Analyzing enums
+      # Workflow and telemetry operation types
+      workflow_execution:
+        description: Executing a workflow
+      task_execution:
+        description: Executing a task
+      workflow_parsing:
+        description: Parsing workflow definitions
+      telemetry_generation:
+        description: Generating telemetry data
+      span_creation:
+        description: Creating telemetry spans
+      metric_recording:
+        description: Recording metrics
+      # Processing operation types
+      shacl_processing:
+        description: Processing SHACL constraints
+      owl_processing:
+        description: Processing OWL ontologies
+      dspy_processing:
+        description: Processing DSPy signatures
+      dmn_processing:
+        description: Processing DMN decisions
+      # Execution operation types
+      model_execution:
+        description: Executing AI models
+      decision_evaluation:
+        description: Evaluating decisions
+      data_validation:
+        description: Validating data
+      result_generation:
+        description: Generating results
   ValidationType:
     permissible_values:
       slot_validation:
