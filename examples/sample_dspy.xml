@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dspy:config xmlns:dspy="http://autotel.ai/dspy">
+    
+    <dspy:signature name="recommendation_signature" description="Generate recommendations from user input">
+        <dspy:input name="user_input" type="string" description="User input text"/>
+        <dspy:output name="recommendation" type="string" description="AI-generated recommendation"/>
+        <dspy:output name="confidence" type="float" description="Confidence score"/>
+        <dspy:example>
+            <user_input>I need help with Python programming</user_input>
+            <recommendation>Consider learning Python basics first, then move to advanced topics</recommendation>
+            <confidence>0.85</confidence>
+        </dspy:example>
+    </dspy:signature>
+    
+    <dspy:module type="predict">
+        <dspy:config key="temperature" value="0.7"/>
+        <dspy:config key="max_tokens" value="1000"/>
+        <dspy:dependency name="recommendation_signature"/>
+    </dspy:module>
+    
+    <dspy:model provider="openai" name="gpt-4">
+        <dspy:parameter key="temperature" value="0.7"/>
+        <dspy:parameter key="max_tokens" value="1000"/>
+        <dspy:telemetry key="enabled" value="true"/>
+        <dspy:telemetry key="sampling_rate" value="1.0"/>
+    </dspy:model>
+    
+</dspy:config> 

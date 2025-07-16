@@ -9,7 +9,7 @@ from .bpmn_processor import BPMNProcessor
 from .dmn_processor import DMNProcessor
 from .dspy_processor import DSPyProcessor, DSPySignatureDefinition, DSPyModuleDefinition, DSPyModelConfiguration
 from .shacl_processor import SHACLProcessor
-from .owl_processor import OWLProcessor, OWLOntologyDefinition, OWLClassDefinition, OWLPropertyDefinition, OWLIndividualDefinition
+from .owl_processor import OWLProcessor
 
 __all__ = [
     'BPMNProcessor',
@@ -19,9 +19,5 @@ __all__ = [
     'DSPyModuleDefinition',
     'DSPyModelConfiguration',
     'SHACLProcessor',
-    'OWLProcessor',
-    'OWLOntologyDefinition',
-    'OWLClassDefinition',
-    'OWLPropertyDefinition',
-    'OWLIndividualDefinition'
+    'OWLProcessor'
 ] 

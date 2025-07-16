@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:shacl="http://www.w3.org/ns/shacl#"
+         xmlns:xsd="http://www.w3.org/2001/XMLSchema#">
+    
+    <shacl:NodeShape rdf:about="#UserInputShape">
+        <shacl:targetClass rdf:resource="#UserInput"/>
+        <shacl:property>
+            <shacl:PropertyShape>
+                <shacl:path rdf:resource="#hasText"/>
+                <shacl:minCount>1</shacl:minCount>
+                <shacl:maxCount>1</shacl:maxCount>
+                <shacl:datatype rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+            </shacl:PropertyShape>
+        </shacl:property>
+    </shacl:NodeShape>
+    
+    <shacl:NodeShape rdf:about="#RecommendationShape">
+        <shacl:targetClass rdf:resource="#Recommendation"/>
+        <shacl:property>
+            <shacl:PropertyShape>
+                <shacl:path rdf:resource="#hasConfidence"/>
+                <shacl:minCount>0</shacl:minCount>
+                <shacl:maxCount>1</shacl:maxCount>
+                <shacl:datatype rdf:resource="http://www.w3.org/2001/XMLSchema#float"/>
+            </shacl:PropertyShape>
+        </shacl:property>
+    </shacl:NodeShape>
+    
+</rdf:RDF> 
