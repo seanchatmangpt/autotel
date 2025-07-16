@@ -50,8 +50,12 @@ class DMNProcessor:
                 # Add DMN XML to parser
                 self.parser.add_dmn_xml(dmn_tree)
                 
-                # Return the parser's decisions dictionary
-                decisions = self.parser.decisions
+                # Extract decisions from the parser's dmn_parsers
+                decisions = {}
+                for dmn_parser in getattr(self.parser, 'dmn_parsers', {}).values():
+                    if hasattr(dmn_parser, 'decision') and hasattr(dmn_parser.decision, 'id'):
+                        decisions[dmn_parser.decision.id] = dmn_parser.decision
+                
                 self._last_decisions = decisions  # Store for get_decision
                 
                 # Record successful parsing metrics

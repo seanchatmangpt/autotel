@@ -11,6 +11,23 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+# Import factories for dynamic test data generation
+try:
+    from .factories import (
+        BPMNXMLFactory, DMNXMLFactory, OWLXMLFactory, SHACLXMLFactory, DSPyXMLFactory,
+        DSPySignatureDefinitionFactory, TelemetryDataFactory, WorkflowContextFactory,
+        TestFileFactory, create_comprehensive_test_suite
+    )
+except ImportError:
+    # Fallback for when running tests directly
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent))
+    from factories import (
+        BPMNXMLFactory, DMNXMLFactory, OWLXMLFactory, SHACLXMLFactory, DSPyXMLFactory,
+        DSPySignatureDefinitionFactory, TelemetryDataFactory, WorkflowContextFactory,
+        TestFileFactory, create_comprehensive_test_suite
+    )
+
 # Test categories and markers
 pytest_plugins = []
 
@@ -69,155 +86,38 @@ def bpmn_files_dir():
 
 @pytest.fixture
 def sample_bpmn_xml():
-    """Sample BPMN XML for testing"""
-    return """<?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
-                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
-                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
-                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
-                  id="Definitions_1"
-                  targetNamespace="http://bpmn.io/schema/bpmn">
-  <bpmn:process id="Process_1" isExecutable="true">
-    <bpmn:startEvent id="StartEvent_1" name="Start">
-      <bpmn:outgoing>Flow_1</bpmn:outgoing>
-    </bpmn:startEvent>
-    <bpmn:task id="Task_1" name="Process Task">
-      <bpmn:incoming>Flow_1</bpmn:incoming>
-      <bpmn:outgoing>Flow_2</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:endEvent id="EndEvent_1" name="End">
-      <bpmn:incoming>Flow_2</bpmn:incoming>
-    </bpmn:endEvent>
-    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_1" />
-    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_1" targetRef="EndEvent_1" />
-  </bpmn:process>
-</bpmn:definitions>"""
+    """Dynamic BPMN XML for testing using Factory Boy"""
+    return BPMNXMLFactory()['xml_content']
 
 @pytest.fixture
 def sample_dmn_xml():
-    """Sample DMN XML for testing"""
-    return """<?xml version="1.0" encoding="UTF-8"?>
-<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
-             xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/"
-             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC/"
-             xmlns:di="http://www.omg.org/spec/DD/20100524/DI/"
-             id="Definitions_1"
-             name="DRD_1"
-             targetNamespace="http://camunda.org/schema/1.0/dmn">
-  <decision id="Decision_1" name="Sample Decision">
-    <decisionTable id="DecisionTable_1" hitPolicy="UNIQUE">
-      <input id="Input_1" label="Input">
-        <inputExpression id="InputExpression_1" typeRef="string">
-          <text>input</text>
-        </inputExpression>
-      </input>
-      <output id="Output_1" label="Output" typeRef="string" />
-      <rule id="Rule_1">
-        <inputEntry id="InputEntry_1">
-          <text>"test"</text>
-        </inputEntry>
-        <outputEntry id="OutputEntry_1">
-          <text>"result"</text>
-        </outputEntry>
-      </rule>
-    </decisionTable>
-  </decision>
-</definitions>"""
+    """Dynamic DMN XML for testing using Factory Boy"""
+    return DMNXMLFactory()['xml_content']
 
 @pytest.fixture
 def sample_owl_xml():
-    """Sample OWL XML for testing"""
-    return """<?xml version="1.0"?>
-<rdf:RDF xmlns="http://example.com/ontology#"
-         xml:base="http://example.com/ontology"
-         xmlns:owl="http://www.w3.org/2002/07/owl#"
-         xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-         xmlns:xml="http://www.w3.org/XML/1998/namespace"
-         xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
-         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">
-    <owl:Ontology rdf:about="http://example.com/ontology"/>
-    <owl:Class rdf:about="#Person">
-        <rdfs:label>Person</rdfs:label>
-        <rdfs:comment>A human being</rdfs:comment>
-    </owl:Class>
-    <owl:Class rdf:about="#Organization">
-        <rdfs:label>Organization</rdfs:label>
-        <rdfs:comment>An organization</rdfs:comment>
-    </owl:Class>
-</rdf:RDF>"""
+    """Dynamic OWL XML for testing using Factory Boy"""
+    return OWLXMLFactory().xml_content
 
 @pytest.fixture
 def sample_shacl_xml():
-    """Sample SHACL XML for testing"""
-    return """<?xml version="1.0" encoding="UTF-8"?>
-<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
-         xmlns:sh="http://www.w3.org/ns/shacl#"
-         xmlns:xsd="http://www.w3.org/2001/XMLSchema#">
-    <sh:NodeShape rdf:about="#PersonShape">
-        <sh:targetClass rdf:resource="http://example.com/ontology#Person"/>
-        <sh:property>
-            <sh:PropertyShape>
-                <sh:path rdf:resource="http://example.com/ontology#name"/>
-                <sh:datatype rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
-                <sh:minCount rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</sh:minCount>
-            </sh:PropertyShape>
-        </sh:property>
-    </sh:NodeShape>
-</rdf:RDF>"""
+    """Dynamic SHACL XML for testing using Factory Boy"""
+    return SHACLXMLFactory().xml_content
 
 @pytest.fixture
 def sample_dspy_signature():
-    """Sample DSPy signature for testing"""
-    return {
-        "name": "test_signature",
-        "inputs": {
-            "question": "A test question",
-            "context": "Test context"
-        },
-        "outputs": {
-            "answer": "The answer",
-            "confidence": "Confidence score"
-        },
-        "description": "Test signature for unit testing"
-    }
+    """Dynamic DSPy signature for testing using Factory Boy"""
+    return DSPySignatureDefinitionFactory().__dict__
 
 @pytest.fixture
 def sample_telemetry_data():
-    """Sample telemetry data for testing"""
-    import uuid
-    import time
-    
-    return {
-        "trace_id": str(uuid.uuid4()),
-        "span_id": str(uuid.uuid4()),
-        "operation": "test_operation",
-        "timestamp": int(time.time()),
-        "attributes": {
-            "test": "value",
-            "component": "test_component"
-        }
-    }
+    """Dynamic telemetry data for testing using Factory Boy"""
+    return TelemetryDataFactory()
 
 @pytest.fixture
 def sample_workflow_data():
-    """Sample workflow data for testing"""
-    import uuid
-    import time
-    
-    return {
-        "workflow_id": f"test_workflow_{uuid.uuid4().hex[:8]}",
-        "process_id": "test_process",
-        "input_data": {
-            "customer_name": "Test Customer",
-            "inquiry": "Test inquiry",
-            "random_seed": f'{uuid.uuid4().hex[:8]}_{int(time.time())}'
-        },
-        "metadata": {
-            "created_at": int(time.time()),
-            "version": "1.0.0"
-        }
-    }
+    """Dynamic workflow data for testing using Factory Boy"""
+    return WorkflowContextFactory()
 
 @pytest.fixture
 def mock_telemetry_manager():
@@ -298,6 +198,41 @@ def mock_dspy_registry():
     
     return MockDSPyRegistry()
 
+@pytest.fixture
+def dynamic_test_suite():
+    """Comprehensive dynamic test suite with all data types"""
+    return create_comprehensive_test_suite()
+
+@pytest.fixture
+def dynamic_bpmn_files():
+    """Multiple dynamic BPMN files for testing"""
+    return create_bpmn_test_data(3)
+
+@pytest.fixture
+def dynamic_dmn_files():
+    """Multiple dynamic DMN files for testing"""
+    return create_dmn_test_data(2)
+
+@pytest.fixture
+def dynamic_owl_files():
+    """Multiple dynamic OWL files for testing"""
+    return create_owl_test_data(2)
+
+@pytest.fixture
+def dynamic_shacl_files():
+    """Multiple dynamic SHACL files for testing"""
+    return create_shacl_test_data(2)
+
+@pytest.fixture
+def dynamic_dspy_files():
+    """Multiple dynamic DSPy files for testing"""
+    return create_dspy_test_data(3)
+
+@pytest.fixture
+def dynamic_test_files():
+    """Dynamic test file objects for testing"""
+    return [TestFileFactory() for _ in range(5)]
+
 # ============================================================================
 # TEST HELPERS
 # ============================================================================
@@ -341,16 +276,8 @@ def assert_response_time(operation_name: str, start_time: float, max_time: float
     assert duration < max_time, f"{operation_name} took too long: {duration:.2f}s"
 
 def generate_random_data(size: int = 100):
-    """Generate random test data"""
-    import uuid
-    import time
-    
-    return {
-        "id": str(uuid.uuid4()),
-        "timestamp": int(time.time()),
-        "data": "x" * size,
-        "random_seed": f'{uuid.uuid4().hex[:8]}_{int(time.time())}'
-    }
+    """Generate random test data using Factory Boy"""
+    return WorkflowContextFactory(context_size=size)
 
 # ============================================================================
 # TEST CATEGORIES

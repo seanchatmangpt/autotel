@@ -66,6 +66,7 @@ dependencies = [
   "lxml>=5.0.0",
   "owlready2>=0.47",
   "faker>=37.4.2",
+  "factory-boy>=3.3.3",
 ]
 
 [project.optional-dependencies]

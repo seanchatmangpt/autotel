@@ -174,6 +174,7 @@ dependencies = [
     { name = "colorlog" },
     { name = "confz" },
     { name = "dspy-ai" },
+    { name = "factory-boy" },
     { name = "faker" },
     { name = "httpx" },
     { name = "httpx-aiohttp" },
@@ -232,6 +233,7 @@ requires-dist = [
     { name = "colorlog", specifier = ">=6.9.0" },
     { name = "confz", specifier = ">=1.5.0" },
     { name = "dspy-ai", specifier = ">=2.6.27" },
+    { name = "factory-boy", specifier = ">=3.3.3" },
     { name = "faker", specifier = ">=37.4.2" },
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "httpx", specifier = "==0.27.0" },
@@ -631,6 +633,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/d8/86/bd275fd5e779749ec65ba8f40893b9f2501b4eb1f4be78615895b63af2c6/dspy_ai-2.6.27.tar.gz", hash = "sha256:93d363e2ceb3745554133c8849e3eea356653707a6760eadfb9533d7d9e5f330", size = 1112, upload-time = "2025-06-03T17:47:22.669Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fb/3e/47ae39dca48913b755c8ae4ffabd9c9ecc92365065a4461f2bdc3a81e603/dspy_ai-2.6.27-py3-none-any.whl", hash = "sha256:e7d4d3328dd05098efbedbd72d1c324a2317e4693638eb8755926c9ff0f64861", size = 1107, upload-time = "2025-06-03T17:47:21.399Z" },
+]
+
+[[package]]
+name = "factory-boy"
+version = "3.3.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "faker" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ba/98/75cacae9945f67cfe323829fc2ac451f64517a8a330b572a06a323997065/factory_boy-3.3.3.tar.gz", hash = "sha256:866862d226128dfac7f2b4160287e899daf54f2612778327dd03d0e2cb1e3d03", size = 164146, upload-time = "2025-02-03T09:49:04.433Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/27/8d/2bc5f5546ff2ccb3f7de06742853483ab75bf74f36a92254702f8baecc79/factory_boy-3.3.3-py2.py3-none-any.whl", hash = "sha256:1c39e3289f7e667c4285433f305f8d506efc2fe9c73aaea4151ebd5cdea394fc", size = 37036, upload-time = "2025-02-03T09:49:01.659Z" },
 ]
 
 [[package]]
