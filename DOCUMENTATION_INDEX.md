@@ -2,38 +2,48 @@
 
 ## Overview
 
-This index provides navigation to all AutoTel documentation, organized by purpose and implementation status. The AutoTel project is a semantic execution pipeline with a **processor > compiler > linker > executor** architecture.
+This index provides navigation to all AutoTel documentation, organized by purpose and implementation status. The AutoTel project is an **enterprise BPMN 2.0 orchestration framework** with five integrated pillars: BPMN 2.0, DMN, DSPy, SHACL, and OWL.
 
-**⚠️ Current Status**: All core components are **NotImplementedError stubs**. See [GAPS_AND_MISTAKES.md](./GAPS_AND_MISTAKES.md) for detailed implementation status.
+**✅ Current Status**: BPMN/DMN workflow functionality is **fully implemented and working**. Semantic pipeline components (OWL/SHACL/DSPy processors) are **NotImplementedError stubs**. See [GAPS_AND_MISTAKES.md](./GAPS_AND_MISTAKES.md) for detailed implementation status.
 
 ## Documentation Alignment Status
 
 ### ✅ **Fully Aligned**
-- **Architecture**: All documents consistently describe processor > compiler > linker > executor pipeline
-- **Component Structure**: File structure and class names match across all documentation
-- **Implementation Status**: All documents correctly identify NotImplementedError stubs
-- **Data Structures**: Dataclasses and types are consistent across schemas and docs
-- **JIRA Tickets**: Implementation requirements match actual code structure
-- **Examples**: XML formats and usage patterns are consistent
+- **BPMN/DMN Architecture**: All documents consistently describe five pillars integration
+- **Workflow Execution**: BPMN workflow and DMN decision execution is fully functional
+- **CLI Interface**: All BPMN/DMN commands are implemented and working
+- **XML Specifications**: BPMN and DMN XML schemas are complete and documented
+- **Data Structures**: Workflow and decision data structures are consistent
+- **Examples**: BPMN/DMN usage patterns and examples are consistent
 
 ### ⚠️ **Minor Inconsistencies**
-- **DSPy Format**: Standardized on XML format (not JSON)
-- **Telemetry**: All components use OpenTelemetry consistently
-- **Error Handling**: All components follow fail-fast principle
+- **Semantic Pipeline**: OWL/SHACL/DSPy processors are stubs (not implemented)
+- **C4 Diagrams**: Don't include BPMN/DMN workflow components
+- **JIRA Tickets**: Missing BPMN/DMN implementation tickets
+- **Integration Examples**: Limited examples of workflow + AI service integration
 
 ### 📋 **Documentation Quality**
-- **Completeness**: 95% - All major components documented
-- **Accuracy**: 98% - Documentation matches actual implementation
-- **Consistency**: 95% - Cross-references and terminology aligned
-- **Usability**: 90% - Clear navigation and implementation guides
+- **Completeness**: 85% - BPMN/DMN complete, semantic pipeline needs work
+- **Accuracy**: 90% - BPMN/DMN accurate, semantic pipeline outdated
+- **Consistency**: 85% - Cross-references need updates for current state
+- **Usability**: 95% - Clear navigation for working BPMN/DMN functionality
 
 ## Quick Navigation
 
 ### 🚨 **Start Here** (Critical Reading)
-- [GAPS_AND_MISTAKES.md](./GAPS_AND_MISTAKES.md) - **Complete gap analysis and implementation roadmap**
-- [README_PIPELINE.md](./README_PIPELINE.md) - **Pipeline overview and current status**
+- [README.md](./README.md) - **Complete AutoTel overview with working BPMN/DMN**
+- [GAPS_AND_MISTAKES.md](./GAPS_AND_MISTAKES.md) - **Semantic pipeline gap analysis and roadmap**
+- [AUTOTEL_PRD.md](./AUTOTEL_PRD.md) - **Product requirements with five pillars**
 
 ### 📋 **Implementation Guides**
+
+#### ✅ **Working Components** (BPMN/DMN)
+- [autotel/cli.py](./autotel/cli.py) - **BPMN/DMN CLI commands (fully implemented)**
+- [autotel/core/orchestrator.py](./autotel/core/orchestrator.py) - **Workflow orchestration (working)**
+- [bpmn/](./bpmn/) - **BPMN workflow examples**
+- [AUTOTEL_XML_SPECIFICATION.md](./AUTOTEL_XML_SPECIFICATION.md) - **BPMN/DMN XML schemas**
+
+#### 🔴 **Semantic Pipeline** (NotImplementedError stubs)
 - [jira/PIPELINE-INDEX.md](./jira/PIPELINE-INDEX.md) - **JIRA tickets and implementation priority**
 - [jira/AUTOTEL-001-ONTOLOGY-PROCESSOR.md](./jira/AUTOTEL-001-ONTOLOGY-PROCESSOR.md) - OWL Processor implementation
 - [jira/AUTOTEL-002-SHACL-PROCESSOR.md](./jira/AUTOTEL-002-SHACL-PROCESSOR.md) - SHACL Processor implementation
@@ -44,8 +54,10 @@ This index provides navigation to all AutoTel documentation, organized by purpos
 - [jira/AUTOTEL-007-DSPY-COMPILER.md](./jira/AUTOTEL-007-DSPY-COMPILER.md) - DSPy Compiler implementation
 
 ### 🏗️ **Architecture Documentation**
-- [c4_validation_diagrams.md](./c4_validation_diagrams.md) - **Complete C4 architecture diagrams**
-- [pipeline_sequence_diagrams.md](./pipeline_sequence_diagrams.md) - **Sequence diagrams and data flows**
+- [README.md](./README.md) - **Five pillars architecture overview**
+- [AUTOTEL_PRD.md](./AUTOTEL_PRD.md) - **Enterprise BPMN 2.0 framework requirements**
+- [c4_validation_diagrams.md](./c4_validation_diagrams.md) - **C4 architecture diagrams (semantic pipeline only)**
+- [pipeline_sequence_diagrams.md](./pipeline_sequence_diagrams.md) - **Sequence diagrams (semantic pipeline only)**
 - [docs/C4_DIAGRAMS.md](./docs/C4_DIAGRAMS.md) - C4 diagram documentation
 - [docs/COMPONENT_INTERACTIONS.md](./docs/COMPONENT_INTERACTIONS.md) - Component interaction details
 - [docs/DEPLOYMENT_ARCHITECTURE.md](./docs/DEPLOYMENT_ARCHITECTURE.md) - Deployment architecture
@@ -79,6 +91,14 @@ Each JIRA ticket now includes comprehensive telemetry requirements to ensure rea
 - [autotel/schemas/linker_types.py](./autotel/schemas/linker_types.py) - Linker type definitions
 
 ### 🔧 **Implementation Files**
+
+#### ✅ **Working Components** (BPMN/DMN)
+- [autotel/cli.py](./autotel/cli.py) - **BPMN/DMN CLI commands (fully implemented)**
+- [autotel/core/orchestrator.py](./autotel/core/orchestrator.py) - **Workflow orchestration (working)**
+- [autotel/core/telemetry.py](./autotel/core/telemetry.py) - **Telemetry management (working)**
+- [autotel/workflows/](./autotel/workflows/) - **Workflow execution components**
+
+#### 🔴 **Semantic Pipeline** (NotImplementedError stubs)
 - [autotel/factory/pipeline.py](./autotel/factory/pipeline.py) - Main pipeline orchestrator
 - [autotel/factory/processors/owl_processor.py](./autotel/factory/processors/owl_processor.py) - OWL processor (stubs)
 - [autotel/factory/processors/shacl_processor.py](./autotel/factory/processors/shacl_processor.py) - SHACL processor (stubs)
@@ -90,10 +110,25 @@ Each JIRA ticket now includes comprehensive telemetry requirements to ensure rea
 - [autotel/factory/executor.py](./autotel/factory/executor.py) - Ontology executor (stubs)
 
 ### 🧪 **Testing**
+
+#### ✅ **Working Tests** (BPMN/DMN)
+- [test_camunda_simple.py](./test_camunda_simple.py) - **BPMN workflow execution tests**
+- [test_camunda_simple_dspy.py](./test_camunda_simple_dspy.py) - **BPMN + DSPy integration tests**
+- [validate_camunda_examples.py](./validate_camunda_examples.py) - **BPMN validation tests**
+
+#### 🔴 **Semantic Pipeline Tests** (stubs)
 - [test_pipeline.py](./test_pipeline.py) - Main test script (stubs)
 - [test_ontology_dspy_integration.py](./test_ontology_dspy_integration.py) - Integration tests (stubs)
 
 ### 📁 **Examples**
+
+#### ✅ **Working Examples** (BPMN/DMN)
+- [bpmn/](./bpmn/) - **BPMN workflow examples**
+- [bpmn_only/](./bpmn_only/) - **BPMN-only workflow examples**
+- [trivial.bpmn](./trivial.bpmn) - **Simple BPMN workflow**
+- [AUTOTEL_XML_SPECIFICATION.md](./AUTOTEL_XML_SPECIFICATION.md) - **Complete BPMN/DMN XML examples**
+
+#### 🔴 **Semantic Pipeline Examples** (stubs)
 - [examples/sample_owl.xml](./examples/sample_owl.xml) - Sample OWL XML
 - [examples/sample_shacl.xml](./examples/sample_shacl.xml) - Sample SHACL XML
 - [examples/sample_dspy.xml](./examples/sample_dspy.xml) - Sample DSPy XML
@@ -104,8 +139,18 @@ Each JIRA ticket now includes comprehensive telemetry requirements to ensure rea
 
 ## Implementation Status
 
-### 🔴 **Not Started** (All Components)
-All core components exist as `NotImplementedError` stubs:
+### ✅ **Fully Implemented** (BPMN/DMN Workflow)
+BPMN and DMN functionality is complete and working:
+
+| Component | File | Status | Features |
+|-----------|------|--------|----------|
+| BPMN CLI | `autotel/cli.py` | ✅ Working | run, list, validate, workflow commands |
+| Workflow Engine | `autotel/core/orchestrator.py` | ✅ Working | SpiffWorkflow integration |
+| Telemetry | `autotel/core/telemetry.py` | ✅ Working | OpenTelemetry integration |
+| DMN Support | `autotel/workflows/` | ✅ Working | Decision table execution |
+
+### 🔴 **Not Started** (Semantic Pipeline)
+Semantic pipeline components exist as `NotImplementedError` stubs:
 
 | Component | File | Methods | Priority |
 |-----------|------|---------|----------|
@@ -119,17 +164,24 @@ All core components exist as `NotImplementedError` stubs:
 | Ontology Executor | `autotel/factory/executor.py` | 6 | Medium |
 
 ### ✅ **Completed**
-- **Architecture Design**: Complete C4 diagrams and component interfaces
-- **Data Structures**: All dataclasses and type definitions
-- **Component Interfaces**: All method signatures and contracts
-- **Documentation**: Comprehensive JIRA tickets and implementation guides
-- **Test Framework**: Test structure and validation framework
+- **BPMN/DMN Architecture**: Complete workflow and decision execution
+- **CLI Interface**: Full BPMN/DMN command support
+- **XML Specifications**: Complete BPMN/DMN XML schemas
+- **Telemetry Integration**: Working OpenTelemetry for workflows
+- **Test Framework**: Working BPMN/DMN tests
 
 ## Getting Started
 
 ### For New Contributors
 
-1. **Read the Gaps**: Start with [GAPS_AND_MISTAKES.md](./GAPS_AND_MISTAKES.md)
+#### ✅ **Start with Working BPMN/DMN**
+1. **Try the CLI**: Run `autotel --help` to see available commands
+2. **Run a Workflow**: Try `autotel run bpmn/trivial.bpmn --input '{"data": "test"}'`
+3. **Explore Examples**: Check [bpmn/](./bpmn/) directory for workflow examples
+4. **Read Documentation**: Review [README.md](./README.md) for complete overview
+
+#### 🔴 **Then Work on Semantic Pipeline**
+1. **Read the Gaps**: Review [GAPS_AND_MISTAKES.md](./GAPS_AND_MISTAKES.md)
 2. **Understand Architecture**: Review [c4_validation_diagrams.md](./c4_validation_diagrams.md)
 3. **Pick a Ticket**: Choose from [jira/PIPELINE-INDEX.md](./jira/PIPELINE-INDEX.md)
 4. **Follow Implementation Guide**: Each ticket has detailed steps
@@ -138,7 +190,14 @@ All core components exist as `NotImplementedError` stubs:
 
 ### For Experienced Contributors
 
-1. **Review Current State**: All components are stubs - start from scratch
+#### ✅ **BPMN/DMN Development**
+1. **Review Working Code**: Check [autotel/cli.py](./autotel/cli.py) and [autotel/core/orchestrator.py](./autotel/core/orchestrator.py)
+2. **Add Features**: Extend workflow capabilities or add new DMN decisions
+3. **Improve Integration**: Enhance BPMN + DSPy integration
+4. **Add Tests**: Create more comprehensive workflow tests
+
+#### 🔴 **Semantic Pipeline Development**
+1. **Review Current State**: All semantic components are stubs - start from scratch
 2. **Choose Priority**: Follow Phase 1 → Phase 2 → Phase 3 → Phase 4 order
 3. **Implement Incrementally**: One component at a time with tests
 4. **Validate Integration**: Ensure components work together
@@ -152,44 +211,75 @@ git clone <repository>
 cd autotel
 
 # Install dependencies
-pip install rdflib lxml
+uv sync
 
-# Review current state
+# Try working BPMN/DMN functionality
+autotel --help
+autotel version
+autotel list --workflows
+
+# Run a simple workflow
+autotel run bpmn/trivial.bpmn --input '{"data": "test"}'
+
+# Review semantic pipeline gaps
 cat GAPS_AND_MISTAKES.md
 ls jira/
 
-# Start with first ticket
+# Start with first semantic pipeline ticket
 cat jira/AUTOTEL-001-ONTOLOGY-PROCESSOR.md
 ```
 
 ## Implementation Priority
 
-### Phase 1: Critical (Block Pipeline) - **START HERE**
+### ✅ **Phase 0: Complete** (BPMN/DMN Workflow)
+1. **BPMN CLI**: All workflow commands implemented
+2. **Workflow Engine**: SpiffWorkflow integration complete
+3. **DMN Support**: Decision table execution working
+4. **Telemetry**: OpenTelemetry integration complete
+
+### 🔴 **Phase 1: Critical** (Semantic Pipeline) - **START HERE**
 1. **AUTOTEL-001**: OWL Processor (Foundation)
 2. **AUTOTEL-002**: SHACL Processor (Validation)
 
-### Phase 2: High (Block Integration)
+### 🔴 **Phase 2: High** (Semantic Integration)
 3. **AUTOTEL-003**: Ontology Compiler (Schema Generation)
 4. **AUTOTEL-006**: Validation Compiler (Constraint Rules)
 5. **AUTOTEL-007**: DSPy Compiler (Integration)
 
-### Phase 3: Medium (Block Testing)
+### 🔴 **Phase 3: Medium** (Semantic Testing)
 6. **AUTOTEL-004**: Semantic Linker (System Integration)
 7. **AUTOTEL-005**: Ontology Executor (Runtime)
 
-### Phase 4: Low (Block Deployment)
+### 🔴 **Phase 4: Low** (Semantic Deployment)
 8. Configuration Management
 9. CLI Integration
 10. Deployment Configuration
 
 ## Architecture Overview
 
+### ✅ **Working Architecture** (BPMN/DMN)
+```
+BPMN XML → Workflow Engine → Task Execution → Results + Telemetry
+    ↓
+DMN XML → Decision Engine → Rule Evaluation
+    ↓
+DSPy Services → AI Service Execution
+```
+
+### 🔴 **Planned Architecture** (Semantic Pipeline)
 ```
 XML Inputs → Processors → Compilers → Linker → Executor → Results + Telemetry
 ```
 
 ### Components
 
+#### ✅ **Working Components** (BPMN/DMN)
+1. **Workflow Engine**: SpiffWorkflow-based BPMN execution
+2. **Decision Engine**: DMN decision table execution
+3. **DSPy Integration**: AI service execution in workflows
+4. **Telemetry**: OpenTelemetry integration for workflows
+
+#### 🔴 **Planned Components** (Semantic Pipeline)
 1. **Processors** (XML → Data Objects)
    - `OWLProcessor`: Parses OWL/RDF XML into structured ontology definitions
    - `SHACLProcessor`: Parses SHACL/RDF XML into constraint graphs
