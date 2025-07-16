@@ -574,8 +574,8 @@ def pipeline(
     required_files = [owl_file, shacl_file, dspy_file]
     for file_path in required_files:
         if file_path and not file_path.exists():
-            console.print(f"[red]❌ File not found: {file_path}[/red]")
-            raise typer.Exit(1)
+        console.print(f"[red]❌ File not found: {file_path}[/red]")
+        raise typer.Exit(1)
     
     # Parse input data
     input_variables = {}
@@ -777,7 +777,7 @@ def jinja(
                         str(output_size),
                         f"{rendering.rendering_time_ms:.2f}"
                     )
-                
+            
                 console.print(rendering_table)
             
             # Output rendered content
@@ -969,7 +969,7 @@ def otel(
         
     except Exception as e:
         console.print(f"[red]❌ OTEL processing failed: {e}[/red]")
-        raise typer.Exit(1)
+            raise typer.Exit(1)
 
 @app.command()
 @otel_command

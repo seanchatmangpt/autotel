@@ -11,11 +11,12 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 # Add the project root to the path
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from autotel.workflows.autotel_camunda import AutoTelCamundaEngine, create_autotel_camunda_engine
 from autotel.core.telemetry import TelemetryManager
 from autotel.schemas.validation import SchemaValidator
+from autotel.utils.dspy_services import dspy_registry
 
 
 def create_test_bpmn_with_dspy():
@@ -65,17 +66,22 @@ def create_test_bpmn_with_dspy():
 
 
 def create_test_dspy_service():
-    """Create a test DSPy service"""
+    """Create a test DSPy service using the registry"""
     import dspy
     
+    # Create a test signature class
     class TestService(dspy.Signature):
         """A test DSPy service"""
         text = dspy.InputField(desc="Input text to process")
         result = dspy.OutputField(desc="Processed result")
     
-    # Register the signature
-    from autotel.utils.dspy_services import dspy_registry
-    dspy_registry.register_signature("test_service", TestService, "A test DSPy service")
+    # Register the signature using the correct method
+    dspy_registry.register_dynamic_signature(
+        name="test_service",
+        input_fields={"text": "Input text to process"},
+        output_fields={"result": "Processed result"},
+        description="A test DSPy service"
+    )
     
     return TestService
 
@@ -114,6 +120,12 @@ def test_camunda_dspy_integration():
             print(f"✅ Parsed {len(signatures)} DSPy signatures")
             for name, sig_def in signatures.items():
                 print(f"   - {name}: {sig_def['description']}")
+        
+        # Check registered signatures in registry
+        registered_signatures = dspy_registry.list_signatures()
+        print(f"✅ Registry has {len(registered_signatures)} signatures")
+        for name, sig_info in registered_signatures.items():
+            print(f"   - {name}: {sig_info.description}")
         
         # Create workflow
         initial_data = {"input_text": "Hello, DSPy!"}
@@ -167,7 +179,7 @@ def test_cdata_validation():
       <bpmn:incoming>Flow_1</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="EndEvent_1" />
-    <![CDATA[This should be rejected]]>
+    <bpmn:documentation><![CDATA[This should be rejected]]></bpmn:documentation>
   </bpmn:process>
 </bpmn:definitions>'''
     
@@ -176,7 +188,9 @@ def test_cdata_validation():
         bpmn_path = f.name
     
     try:
-        engine = create_autotel_camunda_engine()
+        telemetry_manager = TelemetryManager()
+        schema_validator = SchemaValidator()
+        engine = create_autotel_camunda_engine(telemetry_manager, schema_validator)
         
         try:
             engine.add_bpmn_file(bpmn_path)
@@ -195,6 +209,28 @@ def test_cdata_validation():
             os.unlink(bpmn_path)
 
 
+def test_dspy_registry_integration():
+    """Test DSPy registry integration directly"""
+    print("\n🧪 Testing DSPy Registry Integration")
+    
+    # Test direct registry usage
+    dspy_registry.register_dynamic_signature(
+        name="direct_test",
+        input_fields={"message": "Input message"},
+        output_fields={"response": "Response message"},
+        description="Direct registry test"
+    )
+    
+    # Test calling the signature
+    try:
+        result = dspy_registry.call_signature("direct_test", message="Hello from test!")
+        print(f"✅ Direct registry call successful: {result}")
+        return True
+    except Exception as e:
+        print(f"❌ Direct registry call failed: {e}")
+        return False
+
+
 if __name__ == "__main__":
     print("🚀 Testing DSPy BPMN Parser with Camunda Integration")
     print("=" * 60)
@@ -205,8 +241,11 @@ if __name__ == "__main__":
     # Test 2: CDATA validation
     success2 = test_cdata_validation()
     
+    # Test 3: Direct registry integration
+    success3 = test_dspy_registry_integration()
+    
     print("\n" + "=" * 60)
-    if success1 and success2:
+    if success1 and success2 and success3:
         print("🎉 All tests passed! DSPy BPMN parser works correctly with camunda integration.")
         sys.exit(0)
     else:

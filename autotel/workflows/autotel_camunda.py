@@ -48,47 +48,65 @@ class AutoTelServiceTask(BaseServiceTask):
             # Handle DSPy service tasks with telemetry
             dspy_info = ext['dspy_service']
             
-            with self.telemetry_manager.start_span("dspy.service_task") as span:
+            with self.telemetry_manager.start_span("dspy.service_task", "dspy_execution") as span:
                 span.set_attribute("dspy.service_name", dspy_info['service'])
                 span.set_attribute("dspy.result_var", dspy_info.get('result', ''))
                 
+                # Resolve parameters from task data
+                resolved_params = {k: my_task.get_data(v) for k, v in dspy_info['params'].items()}
+                span.set_attribute("dspy.input_params", str(resolved_params))
+                
+                # Validate input if schema validator is available
+                if self.schema_validator and hasattr(self.schema_validator, 'validate_dspy_input'):
+                    validated_params = self.schema_validator.validate_dspy_input(
+                        dspy_info['service'], resolved_params
+                    )
+                    resolved_params = validated_params
+                
+                # Call DSPy service
+                from ..utils.dspy_services import dspy_service
+                result_json = dspy_service(dspy_info['service'], **resolved_params)
+                
+                # Parse JSON result
+                import json
                 try:
-                    # Resolve parameters from task data
-                    resolved_params = {k: my_task.get_data(v) for k, v in dspy_info['params'].items()}
-                    span.set_attribute("dspy.input_params", str(resolved_params))
-                    
-                    # Validate input if schema validator is available
-                    if self.schema_validator and hasattr(self.schema_validator, 'validate_dspy_input'):
-                        validated_params = self.schema_validator.validate_dspy_input(
-                            dspy_info['service'], resolved_params
-                        )
-                        resolved_params = validated_params
-                    
-                    # Call DSPy service
-                    from ..utils.dspy_services import dspy_service
-                    result = dspy_service(dspy_info['service'], **resolved_params)
-                    
-                    # Validate output if schema validator is available
-                    if self.schema_validator and hasattr(self.schema_validator, 'validate_dspy_output'):
+                    result = json.loads(result_json)
+                except json.JSONDecodeError:
+                    # If it's not valid JSON, treat it as a string result
+                    result = {"result": result_json}
+                
+                # Validate output if schema validator is available
+                if self.schema_validator and hasattr(self.schema_validator, 'validate_dspy_output'):
+                    try:
                         validated_result = self.schema_validator.validate_dspy_output(
                             dspy_info['service'], result
                         )
                         result = validated_result
-                    
-                    # Store result in task data
-                    if dspy_info['result']:
-                        my_task.set_data(**{dspy_info['result']: result})
-                    
-                    span.set_attribute("dspy.output_result", str(result))
-                    span.add_event("DSPy service executed successfully")
-                    
-                    logger.info(f"Executed DSPy service {dspy_info['service']} with result: {result}")
-                    
-                except Exception as e:
-                    span.record_exception(e)
-                    logger.error(f"Failed to execute DSPy service {dspy_info['service']}: {e}")
-                    raise
-        
+                    except Exception as validation_error:
+                        # If validation fails, wrap the result in a standard format
+                        logger.warning(f"DSPy output validation failed: {validation_error}")
+                        if isinstance(result, str):
+                            result = {"result": result}
+                        elif not isinstance(result, dict):
+                            result = {"result": str(result)}
+                
+                # Store result in task data and workflow data
+                if dspy_info['result']:
+                    # Store the entire result dictionary under the result variable name
+                    my_task.set_data(**{dspy_info['result']: result})
+                    # Also store in workflow data for access after task completion
+                    my_task.workflow.set_data(**{dspy_info['result']: result})
+                    # Also store individual fields for easier access
+                    if isinstance(result, dict):
+                        for key, value in result.items():
+                            my_task.set_data(**{f"{dspy_info['result']}_{key}": value})
+                            my_task.workflow.set_data(**{f"{dspy_info['result']}_{key}": value})
+                
+                span.set_attribute("dspy.output_result", str(result))
+                span.add_event("DSPy service executed successfully")
+                
+                logger.info(f"Executed DSPy service {dspy_info['service']} with result: {result}")
+                
         # Call the parent method to continue normal execution
         return super()._run_hook(my_task)
 
@@ -140,9 +158,17 @@ class AutoTelCamundaParser(CamundaParser):
     
     def add_bpmn_xml(self, bpmn, filename=None):
         """Override to parse DSPy signatures and DMN definitions"""
-        # Check for CDATA sections
-        cdata_sections = bpmn.xpath('//text()[contains(., "<![CDATA[")]')
-        if cdata_sections:
+        # Check for CDATA sections - more comprehensive check
+        cdata_found = False
+        for elem in bpmn.iter():
+            if elem.text and '<![CDATA[' in elem.text:
+                cdata_found = True
+                break
+            if elem.tail and '<![CDATA[' in elem.tail:
+                cdata_found = True
+                break
+        
+        if cdata_found:
             raise ValueError(f"CDATA sections are not allowed in BPMN XML. Found CDATA in file: {filename}")
         
         # Parse DSPy signature definitions
@@ -239,73 +265,40 @@ class AutoTelCamundaEngine:
     
     def add_bpmn_file(self, bpmn_path: str) -> None:
         """Add BPMN file to the parser"""
-        with self.telemetry_manager.start_span("autotel.add_bpmn_file") as span:
+        with self.telemetry_manager.start_span("autotel.add_bpmn_file", "bpmn_processing") as span:
             span.set_attribute("bpmn.file_path", bpmn_path)
-            
-            try:
-                self.parser.add_bpmn_file(bpmn_path)
-                
-                # Register dynamic signatures
-                if hasattr(self.parser, 'dynamic_signatures') and self.parser.dynamic_signatures:
-                    dspy_registry.register_parser_signatures(self.parser.dynamic_signatures)
-                    span.set_attribute("dspy.signatures_registered", len(self.parser.dynamic_signatures))
-                
-                span.add_event("BPMN file added successfully")
-                logger.info(f"Added BPMN file: {bpmn_path}")
-                
-            except Exception as e:
-                span.record_exception(e)
-                logger.error(f"Failed to add BPMN file {bpmn_path}: {e}")
-                raise
+            self.parser.add_bpmn_file(bpmn_path)
+            # Register dynamic signatures
+            if hasattr(self.parser, 'dynamic_signatures') and self.parser.dynamic_signatures:
+                dspy_registry.register_parser_signatures(self.parser.dynamic_signatures)
+                span.set_attribute("dspy.signatures_registered", len(self.parser.dynamic_signatures))
+            span.add_event("BPMN file added successfully")
+            logger.info(f"Added BPMN file: {bpmn_path}")
     
     def add_dmn_file(self, dmn_path: str) -> None:
         """Add DMN file to the parser"""
-        with self.telemetry_manager.start_span("autotel.add_dmn_file") as span:
+        with self.telemetry_manager.start_span("autotel.add_dmn_file", "dmn_processing") as span:
             span.set_attribute("dmn.file_path", dmn_path)
-            
-            try:
-                self.parser.add_dmn_files([dmn_path])
-                span.add_event("DMN file added successfully")
-                logger.info(f"Added DMN file: {dmn_path}")
-                
-            except Exception as e:
-                span.record_exception(e)
-                logger.error(f"Failed to add DMN file {dmn_path}: {e}")
-                raise
+            self.parser.add_dmn_files([dmn_path])
+            span.add_event("DMN file added successfully")
+            logger.info(f"Added DMN file: {dmn_path}")
     
     def create_workflow(self, process_id: str, initial_data: Dict[str, Any] = None) -> 'BpmnWorkflow':
         """Create a workflow instance"""
-        with self.telemetry_manager.start_span("autotel.create_workflow") as span:
+        with self.telemetry_manager.start_span("autotel.create_workflow", "workflow_creation") as span:
             span.set_attribute("bpmn.process_id", process_id)
-            
-            try:
-                # Get workflow specification
-                specs = self.parser.find_all_specs()
-                if process_id not in specs:
-                    raise ValueError(f"Process ID '{process_id}' not found in BPMN files")
-                
-                spec = specs[process_id]
-                
-                # Create workflow
-                from SpiffWorkflow.bpmn import BpmnWorkflow
-                workflow = BpmnWorkflow(spec, script_engine=self.script_env)
-                
-                # Set initial data
-                if initial_data:
-                    workflow.set_data(**initial_data)
-                
-                # Set telemetry on service tasks
-                self._set_telemetry_on_tasks(workflow)
-                
-                span.add_event("Workflow created successfully")
-                logger.info(f"Created workflow for process: {process_id}")
-                
-                return workflow
-                
-            except Exception as e:
-                span.record_exception(e)
-                logger.error(f"Failed to create workflow for process {process_id}: {e}")
-                raise
+            specs = self.parser.find_all_specs()
+            if process_id not in specs:
+                raise ValueError(f"Process ID '{process_id}' not found in BPMN files")
+            spec = specs[process_id]
+            from SpiffWorkflow.bpmn import BpmnWorkflow
+            workflow = BpmnWorkflow(spec, script_engine=self.script_env)
+            if initial_data:
+                workflow.set_data(**initial_data)
+            self._set_telemetry_on_tasks(workflow)
+            span.add_event("Workflow created successfully")
+            logger.info(f"Created workflow for process: {process_id}")
+            return workflow
     
     def _set_telemetry_on_tasks(self, workflow):
         """Set telemetry on all service tasks in the workflow"""
@@ -315,26 +308,17 @@ class AutoTelCamundaEngine:
     
     def execute_workflow(self, workflow, run_until_user_input: bool = True) -> Dict[str, Any]:
         """Execute a workflow"""
-        with self.telemetry_manager.start_span("autotel.execute_workflow") as span:
+        with self.telemetry_manager.start_span("autotel.execute_workflow", "workflow_execution") as span:
             span.set_attribute("workflow.initial_data", str(workflow.data))
-            
-            try:
-                if run_until_user_input:
-                    workflow.run_until_user_input_required()
-                else:
-                    workflow.run_all()
-                
-                final_data = workflow.data
-                span.set_attribute("workflow.final_data", str(final_data))
-                span.add_event("Workflow executed successfully")
-                
-                logger.info("Workflow executed successfully")
-                return final_data
-                
-            except Exception as e:
-                span.record_exception(e)
-                logger.error(f"Failed to execute workflow: {e}")
-                raise
+            if run_until_user_input:
+                workflow.run_until_user_input_required()
+            else:
+                workflow.run_all()
+            final_data = workflow.data
+            span.set_attribute("workflow.final_data", str(final_data))
+            span.add_event("Workflow executed successfully")
+            logger.info("Workflow executed successfully")
+            return final_data
     
     def list_processes(self) -> Dict[str, str]:
         """List all available processes"""

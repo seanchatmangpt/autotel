@@ -201,7 +201,7 @@ class SHACLProcessor:
                 span.set_attribute("file_size_bytes", len(xml_content.encode('utf-8')))
                 
                 # Parse the content
-                return self.parse(xml_content)
+                return self.parse(xml_content) 
                 
             except FileNotFoundError:
                 span.set_attribute("error_type", "FileNotFoundError")

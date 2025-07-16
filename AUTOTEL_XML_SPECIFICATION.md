@@ -40,7 +40,7 @@ This document defines the XML schemas for AutoTel's five pillars. All system def
     <bpmn:endEvent id="EndEvent_1" name="End">
       <bpmn:incoming>Flow_3</bpmn:incoming>
     </bpmn:endEvent>
-    
+  
     <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="ServiceTask_1"/>
     <bpmn:sequenceFlow id="Flow_2" sourceRef="ServiceTask_1" targetRef="BusinessRuleTask_1"/>
     <bpmn:sequenceFlow id="Flow_3" sourceRef="BusinessRuleTask_1" targetRef="EndEvent_1"/>
@@ -132,24 +132,24 @@ This document defines the XML schemas for AutoTel's five pillars. All system def
 
 #### 4.1 Shape Definitions
 ```xml
-<rdf:RDF xmlns="http://autotel.ai/shapes#"
-         xmlns:sh="http://www.w3.org/ns/shacl#"
-         xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-         xmlns:xsd="http://www.w3.org/2001/XMLSchema#">
-  
-  <sh:NodeShape rdf:about="http://autotel.ai/shapes#CustomerShape">
+  <rdf:RDF xmlns="http://autotel.ai/shapes#"
+           xmlns:sh="http://www.w3.org/ns/shacl#"
+           xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+           xmlns:xsd="http://www.w3.org/2001/XMLSchema#">
+    
+    <sh:NodeShape rdf:about="http://autotel.ai/shapes#CustomerShape">
     <sh:targetClass rdf:resource="http://autotel.ai/ontology#Customer"/>
-    <sh:property>
-      <sh:PropertyShape>
-        <sh:path rdf:resource="http://autotel.ai/shapes#customerId"/>
-        <sh:datatype rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
-        <sh:minCount>1</sh:minCount>
-        <sh:pattern>^CUST_[0-9]+$</sh:pattern>
-        <sh:message>Customer ID must follow pattern CUST_XXXXX</sh:message>
-      </sh:PropertyShape>
-    </sh:property>
-  </sh:NodeShape>
-</rdf:RDF>
+      <sh:property>
+        <sh:PropertyShape>
+          <sh:path rdf:resource="http://autotel.ai/shapes#customerId"/>
+          <sh:datatype rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+          <sh:minCount>1</sh:minCount>
+          <sh:pattern>^CUST_[0-9]+$</sh:pattern>
+          <sh:message>Customer ID must follow pattern CUST_XXXXX</sh:message>
+        </sh:PropertyShape>
+      </sh:property>
+    </sh:NodeShape>
+  </rdf:RDF>
 ```
 
 #### 4.2 Constraint Types
@@ -166,26 +166,26 @@ This document defines the XML schemas for AutoTel's five pillars. All system def
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-         xmlns:owl="http://www.w3.org/2002/07/owl#"
+           xmlns:owl="http://www.w3.org/2002/07/owl#"
          xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
          xmlns:xsd="http://www.w3.org/2001/XMLSchema#">
-  
-  <owl:Ontology rdf:about="http://autotel.ai/ontology">
-    <rdfs:label>Domain Ontology</rdfs:label>
+    
+    <owl:Ontology rdf:about="http://autotel.ai/ontology">
+      <rdfs:label>Domain Ontology</rdfs:label>
     <rdfs:comment>Domain-specific ontology for AI system</rdfs:comment>
-  </owl:Ontology>
-  
-  <owl:Class rdf:about="http://autotel.ai/ontology#Customer">
-    <rdfs:label>Customer</rdfs:label>
-    <rdfs:comment>A customer entity</rdfs:comment>
-  </owl:Class>
-  
-  <owl:ObjectProperty rdf:about="http://autotel.ai/ontology#hasCustomer">
-    <rdfs:label>hasCustomer</rdfs:label>
-    <rdfs:domain rdf:resource="http://autotel.ai/ontology#LoanApplication"/>
-    <rdfs:range rdf:resource="http://autotel.ai/ontology#Customer"/>
-  </owl:ObjectProperty>
-</rdf:RDF>
+    </owl:Ontology>
+    
+    <owl:Class rdf:about="http://autotel.ai/ontology#Customer">
+      <rdfs:label>Customer</rdfs:label>
+      <rdfs:comment>A customer entity</rdfs:comment>
+    </owl:Class>
+    
+    <owl:ObjectProperty rdf:about="http://autotel.ai/ontology#hasCustomer">
+      <rdfs:label>hasCustomer</rdfs:label>
+      <rdfs:domain rdf:resource="http://autotel.ai/ontology#LoanApplication"/>
+      <rdfs:range rdf:resource="http://autotel.ai/ontology#Customer"/>
+    </owl:ObjectProperty>
+  </rdf:RDF>
 ```
 
 #### 5.2 Ontology Elements
@@ -205,7 +205,7 @@ This document defines the XML schemas for AutoTel's five pillars. All system def
                 xmlns:dmn="http://www.omg.org/spec/DMN/20191111/MODEL/"
                 xmlns:owl="http://www.w3.org/2002/07/owl#"
                 xmlns:shacl="http://www.w3.org/ns/shacl#"
-                xmlns:dspy="http://autotel.ai/dspy"
+                  xmlns:dspy="http://autotel.ai/dspy"
                 xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
                 xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">
 
@@ -389,7 +389,7 @@ This document defines the XML schemas for AutoTel's five pillars. All system def
       </sh:NodeShape>
     </rdf:RDF>
   </shacl:shapes>
-
+    
   <!-- DSPy Signatures -->
   <dspy:signatures>
     <dspy:signature name="CustomerAnalysis" description="Analyze customer data">
@@ -403,7 +403,7 @@ This document defines the XML schemas for AutoTel's five pillars. All system def
                    shaclShape="http://autotel.ai/shapes#RiskAssessmentShape"/>
     </dspy:signature>
   </dspy:signatures>
-
+    
   <!-- DSPy Configuration -->
   <dspy:config>
     <dspy:module type="predict">

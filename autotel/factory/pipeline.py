@@ -106,7 +106,7 @@ class PipelineOrchestrator:
         with open(dspy_file, 'r', encoding='utf-8') as f:
             dspy_xml = f.read()
         
-        return self.execute_pipeline(owl_xml, shacl_xml, dspy_xml, inputs)
+        return self.execute_pipeline(owl_xml, shacl_xml, dspy_xml, inputs) 
 
     def process_otel_data(
         self,
