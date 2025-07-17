@@ -116,10 +116,17 @@ class OWLProcessor:
     def _extract_namespace(self, root: ET.Element) -> str:
         """Extract default namespace."""
         # Try to extract from XML namespace declarations
-        for key, value in root.attrib.items():
-            if key.startswith('xmlns') and not key.endswith(':'):
-                return value
-        
+        # 1. Check for xmlns (default namespace)
+        if 'xmlns' in root.attrib:
+            return root.attrib['xmlns']
+        # 2. Check for xml:base
+        if '{http://www.w3.org/XML/1998/namespace}base' in root.attrib:
+            base = root.attrib['{http://www.w3.org/XML/1998/namespace}base']
+            # If base does not end with #, add it
+            if not base.endswith('#'):
+                base = base.rstrip('/') + '#'
+            return base
+        # 3. Fallback
         return "http://autotel.ai/ontology/default#"
 
     def _extract_classes(self, root: ET.Element) -> Dict[str, Any]:
@@ -147,17 +154,24 @@ class OWLProcessor:
                 span.set_attribute("error_message", str(e))
                 raise
 
+    def _expand_uri(self, uri: str, namespace: str) -> str:
+        """Expand a relative URI (e.g., #ScrumProject) to a full URI using the namespace."""
+        if uri.startswith("#"):
+            return namespace.rstrip('#') + uri
+        return uri
+
     def _extract_class_data(self, class_elem: ET.Element) -> Dict[str, Any]:
         """Extract data from a single class element."""
         with self.telemetry.start_span("owl_extract_class_data", "class_analysis") as span:
             try:
                 # Get class URI/name
                 class_uri = class_elem.get('{http://www.w3.org/1999/02/22-rdf-syntax-ns#}about', '')
+                # Expand relative URI to full URI
+                namespace = self._extract_namespace(class_elem.getroottree().getroot() if hasattr(class_elem, 'getroottree') else class_elem)
+                class_uri = self._expand_uri(class_uri, namespace)
                 class_name = self._extract_name_from_uri(class_uri)
-                
                 if not class_name:
                     return None
-                
                 class_data = {
                     'uri': class_uri,
                     'name': class_name,
@@ -166,11 +180,8 @@ class OWLProcessor:
                     'superclasses': self._extract_superclasses(class_elem),
                     'properties': {}
                 }
-                
                 span.set_attribute("extraction_success", True)
-                
                 return class_data
-                
             except Exception as e:
                 span.set_attribute("extraction_success", False)
                 span.set_attribute("error_type", type(e).__name__)
@@ -233,11 +244,12 @@ class OWLProcessor:
             try:
                 # Get property URI/name
                 prop_uri = prop_elem.get('{http://www.w3.org/1999/02/22-rdf-syntax-ns#}about', '')
+                # Expand relative URI to full URI
+                namespace = self._extract_namespace(prop_elem.getroottree().getroot() if hasattr(prop_elem, 'getroottree') else prop_elem)
+                prop_uri = self._expand_uri(prop_uri, namespace)
                 prop_name = self._extract_name_from_uri(prop_uri)
-                
                 if not prop_name:
                     return None
-                
                 prop_data = {
                     'uri': prop_uri,
                     'name': prop_name,
@@ -248,11 +260,8 @@ class OWLProcessor:
                     'range': self._extract_range(prop_elem),
                     'cardinality': self._extract_cardinality(prop_elem)
                 }
-                
                 span.set_attribute("extraction_success", True)
-                
                 return prop_data
-                
             except Exception as e:
                 span.set_attribute("extraction_success", False)
                 span.set_attribute("error_type", type(e).__name__)

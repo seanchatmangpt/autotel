@@ -6,6 +6,7 @@ import pytest
 import sys
 import os
 from pathlib import Path
+import logging
 
 # Add the project root to the path
 project_root = Path(__file__).parent.parent
@@ -97,12 +98,12 @@ def sample_dmn_xml():
 @pytest.fixture
 def sample_owl_xml():
     """Dynamic OWL XML for testing using Factory Boy"""
-    return OWLXMLFactory().xml_content
+    return OWLXMLFactory()['xml_content']
 
 @pytest.fixture
 def sample_shacl_xml():
     """Dynamic SHACL XML for testing using Factory Boy"""
-    return SHACLXMLFactory().xml_content
+    return SHACLXMLFactory()['xml_content']
 
 @pytest.fixture
 def sample_dspy_signature():
@@ -316,3 +317,11 @@ def pytest_sessionfinish(session, exitstatus):
     # Print test summary
     print(f"\nTest session completed with status: {exitstatus}")
     print(f"Total tests run: {session.testscollected}") 
+
+@pytest.fixture(autouse=True, scope="session")
+def suppress_litellm_logging():
+    # Suppress all LiteLLM and related logs below WARNING
+    for logger_name in [
+        "LiteLLM", "litellm", "httpx", "httpcore"
+    ]:
+        logging.getLogger(logger_name).setLevel(logging.WARNING) 

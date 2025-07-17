@@ -67,6 +67,9 @@ dependencies = [
   "owlready2>=0.47",
   "faker>=37.4.2",
   "factory-boy>=3.3.3",
+  "icontract>=2.7.1",
+  "wrapt>=1.17.2",
+  "inflection>=0.5.1",
 ]
 
 [project.optional-dependencies]

@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jinja:processorGenerator xmlns:jinja="http://autotel.ai/jinja" version="1.0">
+    
+    <jinja:globalVariables>
+        <jinja:variable name="processor_name" type="string" required="true" description="Name of the processor to generate" example="BPMNProcessor"/>
+        <jinja:variable name="processor_description" type="string" required="true" description="Description of the processor" example="Parses BPMN 2.0 XML into SpiffWorkflow WorkflowSpec objects"/>
+        <jinja:variable name="processor_capabilities" type="array" required="true" description="List of processor capabilities" example="['bpmn_parse', 'workflow_spec']"/>
+        <jinja:variable name="supported_formats" type="array" required="true" description="List of supported input/output formats" example="['xml', 'bpmn']"/>
+        <jinja:variable name="dependencies" type="array" required="false" description="List of external dependencies" example="['SpiffWorkflow', 'lxml']"/>
+        <jinja:variable name="imports" type="array" required="false" description="List of import statements" example="['from SpiffWorkflow.camunda.parser import CamundaParser']"/>
+        <jinja:variable name="config_settings" type="object" required="false" description="Default configuration settings" example="{'parser_timeout': 30, 'validate_schema': True}"/>
+        <jinja:variable name="process_impl_logic" type="string" required="true" description="Core processing logic for _process_impl method" example="Parse XML and return WorkflowSpec"/>
+        <jinja:variable name="error_handling" type="string" required="false" description="Specific error handling logic" example="Handle XML parsing errors"/>
+        <jinja:variable name="telemetry_attributes" type="array" required="false" description="Telemetry attributes to record" example="['input_size_bytes', 'parse_success']"/>
+    </jinja:globalVariables>
+    
+    <jinja:template name="unified_processor" type="python" description="Generate unified processor class">
+        <jinja:variables>
+            <jinja:variable name="class_name" type="string" required="true" description="Class name for the processor"/>
+            <jinja:variable name="file_name" type="string" required="true" description="Output file name"/>
+        </jinja:variables>
+        
+        <jinja:content><![CDATA[
+"""
+{{ processor_name }} - Unified Processor
+
+{{ processor_description }}
+
+Generated using AutoTel processor generator with unified ABC/metaclass architecture.
+"""
+
+from typing import Any, Dict, Optional
+from pathlib import Path
+
+{% for import in imports %}
+{{ import }}
+{% endfor %}
+
+from autotel.processors import BaseProcessor, ProcessorConfig, ProcessorResult, processor_metadata
+from autotel.helpers.telemetry.span import create_processor_span, add_span_attributes, record_span_success, record_span_error
+from autotel.helpers.telemetry.metric import record_processor_metric
+from autotel.helpers.errors.handler import handle_processor_error
+from autotel.helpers.xml import parse_xml_string
+
+
+@processor_metadata(
+    name="{{ processor_name.lower() }}_processor",
+    version="2.0.0",
+    capabilities={{ processor_capabilities }},
+    supported_formats={{ supported_formats }},
+    author="AutoTel Processor Generator"
+)
+class {{ class_name }}(BaseProcessor):
+    """
+    {{ processor_description }}
+    
+    Unified processor using AutoTel ABC/metaclass architecture with:
+    - Contract validation (pre/post conditions)
+    - Centralized error handling
+    - Telemetry integration
+    - Configuration management
+    - Metadata support
+    """
+    
+    # Default configuration settings
+    DEFAULT_CONFIG = {{ config_settings }}
+    
+    def __init__(self, config: ProcessorConfig):
+        """Initialize {{ processor_name }} with configuration."""
+        super().__init__(config)
+        
+        # Initialize processor-specific components
+        self._initialize_processor()
+    
+    def _initialize_processor(self) -> None:
+        """Initialize processor-specific components."""
+        # Optional initialization - can be overridden by subclasses
+        pass
+    
+    def _process_impl(self, data: Any) -> ProcessorResult:
+        """
+        Core processing implementation.
+        
+        Args:
+            data: Input data to process (XML string, file path, or dict)
+            
+        Returns:
+            ProcessorResult with processed data or error information
+        """
+        with create_processor_span("process", "{{ processor_name.lower() }}", input_type=type(data).__name__) as span:
+            try:
+                # Validate input
+                validated_data = self._validate_input(data)
+                
+                # Process the data
+                result = self._process_data(validated_data)
+                
+                # Record success
+                record_span_success(span, {
+                    "input_type": type(data).__name__,
+                    "capabilities": {{ processor_capabilities }}
+                })
+                record_processor_metric(
+                    "{{ processor_name.lower() }}_process_success",
+                    1,
+                    {"processor_type": "{{ processor_name.lower() }}", "operation": "process"}
+                )
+                
+                return ProcessorResult.success_result(
+                    data=result,
+                    metadata={
+                        "processor": "{{ processor_name.lower() }}",
+                        "input_type": type(data).__name__,
+                        "capabilities": {{ processor_capabilities }}
+                    }
+                )
+                
+            except Exception as e:
+                # Record error
+                record_span_error(span, e, {
+                    "input_type": type(data).__name__,
+                    "processor_name": "{{ processor_name.lower() }}"
+                })
+                record_processor_metric(
+                    "{{ processor_name.lower() }}_process_error",
+                    1,
+                    {"processor_type": "{{ processor_name.lower() }}", "operation": "process", "error_type": type(e).__name__}
+                )
+                
+                # Handle errors using centralized error handler
+                error_result = handle_processor_error(
+                    e, 
+                    processor_name="{{ processor_name.lower() }}",
+                    input_data=data
+                )
+                
+                return error_result
+    
+    def _validate_input(self, data: Any) -> Any:
+        """
+        Validate input data.
+        
+        Args:
+            data: Input data to validate
+            
+        Returns:
+            Validated data
+            
+        Raises:
+            ValueError: If input is invalid
+        """
+        if isinstance(data, str):
+            # Handle XML string input
+            if not data.strip():
+                raise ValueError("Input XML string cannot be empty")
+            return data
+        elif isinstance(data, (dict, list)):
+            # Handle structured data input
+            return data
+        elif isinstance(data, Path):
+            # Handle file path input
+            if not data.exists():
+                raise ValueError(f"File not found: {data}")
+            return data
+        else:
+            raise ValueError(f"Unsupported input type: {type(data).__name__}")
+    
+    def _process_data(self, data: Any) -> Any:
+        """
+        Process the validated data.
+        
+        Args:
+            data: Validated input data
+            
+        Returns:
+            Processed result
+        """
+        # TODO: Implement {{ process_impl_logic }}
+        # This is where the core processing logic goes
+        # Replace this with actual processor-specific implementation
+        raise NotImplementedError("{{ process_impl_logic }} not yet implemented")
+        
+        if isinstance(data, str):
+            # Process XML string
+            return self._process_xml_string(data)
+        elif isinstance(data, Path):
+            # Process file
+            return self._process_file(data)
+        elif isinstance(data, (dict, list)):
+            # Process structured data
+            return self._process_structured_data(data)
+        else:
+            raise ValueError(f"Unsupported data type for processing: {type(data).__name__}")
+    
+    def _process_xml_string(self, xml_string: str) -> Any:
+        """Process XML string input."""
+        # TODO: Implement XML string processing
+        # This should contain the actual XML parsing logic
+        raise NotImplementedError("XML string processing is not yet implemented.")
+    
+    def _process_file(self, file_path: Path) -> Any:
+        """Process file input."""
+        # TODO: Implement file processing
+        # This should contain the actual file reading and processing logic
+        raise NotImplementedError("File processing is not yet implemented.")
+    
+    def _process_structured_data(self, data: Any) -> Any:
+        """Process structured data input."""
+        # TODO: Implement structured data processing
+        # This should contain the actual data processing logic
+        raise NotImplementedError("Structured data processing is not yet implemented.")
+    
+    def get_capabilities(self) -> list:
+        """Get processor capabilities."""
+        return {{ processor_capabilities | json }}
+    
+    def get_supported_formats(self) -> list:
+        """Get supported input/output formats."""
+        return {{ supported_formats | json }}
+    
+    @classmethod
+    def create_default_config(cls) -> ProcessorConfig:
+        """Create default configuration for this processor."""
+        return ProcessorConfig(
+            name="{{ processor_name.lower() }}_processor",
+            enabled=True,
+            timeout=30,
+            settings=cls.DEFAULT_CONFIG
+        )
+]]>
+    </jinja:content>
+    </jinja:template>
+</jinja:processorGenerator> 

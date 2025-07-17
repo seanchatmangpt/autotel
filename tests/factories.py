@@ -13,6 +13,7 @@ from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 
 from autotel.factory.processors.dspy_processor import DSPySignatureDefinition
+from autotel.schemas.sparql_types import SPARQLQueryDefinition, SPARQLQueryTemplate
 
 
 class BPMNXMLFactory(factory.Factory):
@@ -163,7 +164,7 @@ class OWLXMLFactory(factory.Factory):
         
         # Generate classes
         for i in range(self.class_count):
-            class_name = factory.Faker('word').capitalize()
+            class_name = factory.Faker('word')
             classes.append(f'''    <owl:Class rdf:about="#{class_name}">
         <rdfs:label>{class_name}</rdfs:label>
         <rdfs:comment>{factory.Faker('sentence')}</rdfs:comment>
@@ -207,7 +208,7 @@ class SHACLXMLFactory(factory.Factory):
         shapes = []
         
         for i in range(self.shape_count):
-            shape_name = factory.Faker('word').capitalize()
+            shape_name = factory.Faker('word')
             properties = []
             
             for j in range(self.property_count):
@@ -308,6 +309,154 @@ class DSPySignatureDefinitionFactory(factory.Factory):
         return outputs
 
 
+class SPARQLXMLFactory(factory.Factory):
+    """Factory for generating SPARQL XML content"""
+    
+    class Meta:
+        model = dict
+    
+    query_count = factory.Faker('random_int', min=1, max=3)
+    template_count = factory.Faker('random_int', min=1, max=2)
+    prefix_count = factory.Faker('random_int', min=1, max=3)
+    
+    @factory.lazy_attribute
+    def xml_content(self):
+        """Generate SPARQL XML content dynamically"""
+        queries = []
+        templates = []
+        prefixes = []
+        
+        # Generate prefixes
+        for i in range(self.prefix_count):
+            prefix_name = factory.Faker('word').lower()
+            prefix_uri = factory.Faker('url')
+            prefixes.append(f'''    <sparql:prefix name="{prefix_name}" uri="{prefix_uri}" />''')
+        
+        # Generate queries
+        for i in range(self.query_count):
+            query_name = factory.Faker('word')
+            query_type = factory.Faker('random_element', elements=['SELECT', 'ASK', 'CONSTRUCT', 'DESCRIBE'])
+            query_text = f"{query_type} ?s ?p ?o WHERE {{ ?s ?p ?o }}"
+            
+            queries.append(f'''  <sparql:query name="{query_name}" description="{factory.Faker('sentence')}">
+    {query_text}
+    <sparql:parameter name="limit" type="integer" required="false" default="100" />
+  </sparql:query>''')
+        
+        # Generate templates
+        for i in range(self.template_count):
+            template_name = factory.Faker('word')
+            template_text = "SELECT ?s ?p ?o WHERE { ?s ?p ?o . FILTER(?s = ?subject) }"
+            
+            templates.append(f'''  <sparql:template name="{template_name}" description="{factory.Faker('sentence')}">
+    {template_text}
+    <sparql:validation type="regex" pattern="^[a-zA-Z][a-zA-Z0-9]*$" message="Subject must be alphanumeric" />
+    <sparql:example>
+      <subject>http://example.com/resource</subject>
+    </sparql:example>
+  </sparql:template>''')
+        
+        return f'''<?xml version="1.0" encoding="UTF-8"?>
+<root xmlns:sparql="http://autotel.ai/sparql">
+{chr(10).join(prefixes)}
+{chr(10).join(queries)}
+{chr(10).join(templates)}
+</root>'''
+
+
+class SPARQLQueryDefinitionFactory(factory.Factory):
+    """Factory for generating SPARQLQueryDefinition objects"""
+    
+    class Meta:
+        model = SPARQLQueryDefinition
+    
+    name = factory.Faker('word')
+    description = factory.Faker('sentence')
+    query_type = factory.Faker('random_element', elements=['SELECT', 'ASK', 'CONSTRUCT', 'DESCRIBE'])
+    parameter_count = factory.Faker('random_int', min=0, max=3)
+    prefix_count = factory.Faker('random_int', min=0, max=2)
+    
+    @factory.lazy_attribute
+    def query(self):
+        """Generate dynamic SPARQL query"""
+        return f"{self.query_type} ?s ?p ?o WHERE {{ ?s ?p ?o }}"
+    
+    @factory.lazy_attribute
+    def parameters(self):
+        """Generate dynamic parameters"""
+        parameters = {}
+        for i in range(self.parameter_count):
+            param_name = factory.Faker('word')
+            parameters[param_name] = {
+                "type": factory.Faker('random_element', elements=['string', 'integer', 'boolean']),
+                "required": factory.Faker('boolean'),
+                "default": factory.Faker('word') if factory.Faker('boolean') else None
+            }
+        return parameters
+    
+    @factory.lazy_attribute
+    def prefixes(self):
+        """Generate dynamic prefixes"""
+        prefixes = {}
+        for i in range(self.prefix_count):
+            prefix_name = factory.Faker('word').lower()
+            prefix_uri = factory.Faker('url')
+            prefixes[prefix_name] = prefix_uri
+        return prefixes
+
+
+class SPARQLQueryTemplateFactory(factory.Factory):
+    """Factory for generating SPARQLQueryTemplate objects"""
+    
+    class Meta:
+        model = SPARQLQueryTemplate
+    
+    name = factory.Faker('word')
+    description = factory.Faker('sentence')
+    parameter_count = factory.Faker('random_int', min=1, max=3)
+    validation_count = factory.Faker('random_int', min=0, max=2)
+    example_count = factory.Faker('random_int', min=0, max=2)
+    
+    @factory.lazy_attribute
+    def template(self):
+        """Generate dynamic SPARQL template"""
+        params = []
+        for i in range(self.parameter_count):
+            param_name = factory.Faker('word')
+            params.append(f"?{param_name}")
+        param_str = " ".join(params)
+        return f"SELECT {param_str} WHERE {{ ?s ?p ?o . FILTER(?s = ?subject) }}"
+    
+    @factory.lazy_attribute
+    def parameters(self):
+        """Generate dynamic parameter names"""
+        return [factory.Faker('word') for _ in range(self.parameter_count)]
+    
+    @factory.lazy_attribute
+    def validation_rules(self):
+        """Generate dynamic validation rules"""
+        rules = []
+        for i in range(self.validation_count):
+            rules.append({
+                "type": factory.Faker('random_element', elements=['regex', 'range', 'enum']),
+                "pattern": factory.Faker('word'),
+                "message": factory.Faker('sentence')
+            })
+        return rules
+    
+    @factory.lazy_attribute
+    def examples(self):
+        """Generate dynamic examples"""
+        examples = []
+        for i in range(self.example_count):
+            example = {}
+            for j in range(self.parameter_count):
+                param_name = factory.Faker('word')
+                example[param_name] = factory.Faker('word')
+            examples.append(example)
+        return examples
+
+
 class TelemetryDataFactory(factory.Factory):
     """Factory for generating telemetry data"""
     
@@ -387,7 +536,7 @@ class TestFileFactory(factory.Factory):
     class Meta:
         model = dict
     
-    file_type = factory.Faker('random_element', elements=['bpmn', 'dmn', 'owl', 'shacl', 'dspy'])
+    file_type = factory.Faker('random_element', elements=['bpmn', 'dmn', 'owl', 'shacl', 'dspy', 'sparql'])
     directory = factory.LazyFunction(lambda: Path.cwd() / "test_files")
     
     @factory.lazy_attribute
@@ -413,6 +562,8 @@ class TestFileFactory(factory.Factory):
             return SHACLXMLFactory().xml_content
         elif self.file_type == 'dspy':
             return DSPyXMLFactory().xml_content
+        elif self.file_type == 'sparql':
+            return SPARQLXMLFactory().xml_content
         else:
             return f"# Test {self.file_type} file\n{factory.Faker('text')}"
 
@@ -443,6 +594,11 @@ def create_dspy_test_data(signature_count: int = 1) -> List[str]:
     return [DSPyXMLFactory().xml_content for _ in range(signature_count)]
 
 
+def create_sparql_test_data(query_count: int = 1) -> List[str]:
+    """Create multiple SPARQL test files"""
+    return [SPARQLXMLFactory().xml_content for _ in range(query_count)]
+
+
 def create_comprehensive_test_suite() -> Dict[str, Any]:
     """Create a comprehensive test suite with all data types"""
     return {
@@ -451,6 +607,7 @@ def create_comprehensive_test_suite() -> Dict[str, Any]:
         "owl": create_owl_test_data(2),
         "shacl": create_shacl_test_data(2),
         "dspy": create_dspy_test_data(3),
+        "sparql": create_sparql_test_data(2),
         "telemetry": TelemetryDataFactory(),
         "workflow_context": WorkflowContextFactory(),
         "test_files": [TestFileFactory() for _ in range(5)]

@@ -1,0 +1,165 @@
+%% AutoTel Processor Refactor - Helper Architecture
+
+graph TD
+    subgraph "Processor Helpers Architecture"
+        subgraph "XML Processing Helpers"
+            XML_PARSER["XML Parser Helper"]
+            XML_VALIDATOR["XML Validator Helper"]
+            XML_NAMESPACE["Namespace Helper"]
+            XML_EXTRACTOR["Element Extractor Helper"]
+            XML_TRANSFORMER["XML Transformer Helper"]
+        end
+
+        subgraph "Telemetry Helpers"
+            TELEMETRY_SPAN["Span Helper"]
+            TELEMETRY_METRIC["Metric Helper"]
+            TELEMETRY_CONTEXT["Context Helper"]
+            TELEMETRY_ERROR["Error Reporter Helper"]
+        end
+
+        subgraph "Contract Helpers"
+            CONTRACT_VALIDATOR["Contract Validator Helper"]
+            CONTRACT_APPLIER["Contract Applier Helper"]
+            CONTRACT_CONFIG["Contract Config Helper"]
+            CONTRACT_WRAPT["Wrapt Decorator Helper"]
+        end
+
+        subgraph "Error Handling Helpers"
+            ERROR_HANDLER["Error Handler Helper"]
+            ERROR_FORMATTER["Error Formatter Helper"]
+            ERROR_TELEMETRY["Error Telemetry Helper"]
+        end
+
+        subgraph "Configuration Helpers"
+            CONFIG_LOADER["Config Loader Helper"]
+            CONFIG_VALIDATOR["Config Validator Helper"]
+            CONFIG_MERGER["Config Merger Helper"]
+        end
+
+        subgraph "Utility Helpers"
+            CACHE_HELPER["Cache Helper"]
+            PERFORMANCE_HELPER["Performance Helper"]
+            LOGGING_HELPER["Logging Helper"]
+            VALIDATION_HELPER["Validation Helper"]
+        end
+    end
+
+    %% XML Processing Flow
+    XML_PARSER --> XML_VALIDATOR
+    XML_VALIDATOR --> XML_NAMESPACE
+    XML_NAMESPACE --> XML_EXTRACTOR
+    XML_EXTRACTOR --> XML_TRANSFORMER
+
+    %% Telemetry Flow
+    TELEMETRY_SPAN --> TELEMETRY_METRIC
+    TELEMETRY_METRIC --> TELEMETRY_CONTEXT
+    TELEMETRY_CONTEXT --> TELEMETRY_ERROR
+
+    %% Contract Flow
+    CONTRACT_CONFIG --> CONTRACT_VALIDATOR
+    CONTRACT_VALIDATOR --> CONTRACT_APPLIER
+    CONTRACT_APPLIER --> CONTRACT_WRAPT
+
+    %% Error Handling Flow
+    ERROR_HANDLER --> ERROR_FORMATTER
+    ERROR_FORMATTER --> ERROR_TELEMETRY
+
+    %% Configuration Flow
+    CONFIG_LOADER --> CONFIG_VALIDATOR
+    CONFIG_VALIDATOR --> CONFIG_MERGER
+
+    %% Cross-cutting Concerns
+    TELEMETRY_ERROR --> ERROR_TELEMETRY
+    CONTRACT_VALIDATOR --> ERROR_HANDLER
+    XML_VALIDATOR --> ERROR_HANDLER
+    CONFIG_VALIDATOR --> ERROR_HANDLER
+
+    %% Performance & Caching
+    CACHE_HELPER --> XML_PARSER
+    CACHE_HELPER --> CONTRACT_VALIDATOR
+    PERFORMANCE_HELPER --> TELEMETRY_METRIC
+    PERFORMANCE_HELPER --> CACHE_HELPER
+
+    %% Logging Integration
+    LOGGING_HELPER --> ERROR_FORMATTER
+    LOGGING_HELPER --> TELEMETRY_CONTEXT
+    VALIDATION_HELPER --> XML_VALIDATOR
+    VALIDATION_HELPER --> CONTRACT_VALIDATOR
+
+    %% Helper Usage by Processors
+    subgraph "Processor Usage"
+        BPMN["BPMNProcessor"]
+        DMN["DMNProcessor"]
+        DSPY["DSPyProcessor"]
+        SHACL["SHACLProcessor"]
+        OWL["OWLProcessor"]
+        JINJA["JinjaProcessor"]
+        OTEL["OTELProcessor"]
+    end
+
+    %% Processors use XML Helpers
+    BPMN --> XML_PARSER
+    DMN --> XML_PARSER
+    DSPY --> XML_PARSER
+    SHACL --> XML_PARSER
+    OWL --> XML_PARSER
+    JINJA --> XML_PARSER
+
+    %% Processors use Telemetry Helpers
+    BPMN --> TELEMETRY_SPAN
+    DMN --> TELEMETRY_SPAN
+    DSPY --> TELEMETRY_SPAN
+    SHACL --> TELEMETRY_SPAN
+    OWL --> TELEMETRY_SPAN
+    JINJA --> TELEMETRY_SPAN
+    OTEL --> TELEMETRY_SPAN
+
+    %% Processors use Contract Helpers
+    BPMN --> CONTRACT_WRAPT
+    DMN --> CONTRACT_WRAPT
+    DSPY --> CONTRACT_WRAPT
+    SHACL --> CONTRACT_WRAPT
+    OWL --> CONTRACT_WRAPT
+    JINJA --> CONTRACT_WRAPT
+    OTEL --> CONTRACT_WRAPT
+
+    %% Processors use Error Helpers
+    BPMN --> ERROR_HANDLER
+    DMN --> ERROR_HANDLER
+    DSPY --> ERROR_HANDLER
+    SHACL --> ERROR_HANDLER
+    OWL --> ERROR_HANDLER
+    JINJA --> ERROR_HANDLER
+    OTEL --> ERROR_HANDLER
+
+    %% Processors use Config Helpers
+    BPMN --> CONFIG_LOADER
+    DMN --> CONFIG_LOADER
+    DSPY --> CONFIG_LOADER
+    SHACL --> CONFIG_LOADER
+    OWL --> CONFIG_LOADER
+    JINJA --> CONFIG_LOADER
+    OTEL --> CONFIG_LOADER
+
+    %% Specialized Usage
+    SHACL --> CACHE_HELPER
+    OWL --> CACHE_HELPER
+    OTEL --> PERFORMANCE_HELPER
+    JINJA --> VALIDATION_HELPER
+
+    %% Styling
+    classDef xmlHelper fill:#e1f5fe
+    classDef telemetryHelper fill:#f3e5f5
+    classDef contractHelper fill:#e8f5e8
+    classDef errorHelper fill:#fff3e0
+    classDef configHelper fill:#fce4ec
+    classDef utilityHelper fill:#f1f8e9
+    classDef processor fill:#e3f2fd
+
+    class XML_PARSER,XML_VALIDATOR,XML_NAMESPACE,XML_EXTRACTOR,XML_TRANSFORMER xmlHelper
+    class TELEMETRY_SPAN,TELEMETRY_METRIC,TELEMETRY_CONTEXT,TELEMETRY_ERROR telemetryHelper
+    class CONTRACT_VALIDATOR,CONTRACT_APPLIER,CONTRACT_CONFIG,CONTRACT_WRAPT contractHelper
+    class ERROR_HANDLER,ERROR_FORMATTER,ERROR_TELEMETRY errorHelper
+    class CONFIG_LOADER,CONFIG_VALIDATOR,CONFIG_MERGER configHelper
+    class CACHE_HELPER,PERFORMANCE_HELPER,LOGGING_HELPER,VALIDATION_HELPER utilityHelper
+    class BPMN,DMN,DSPY,SHACL,OWL,JINJA,OTEL processor 

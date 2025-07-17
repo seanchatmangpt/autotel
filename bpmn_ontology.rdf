@@ -1,0 +1,159 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="https://www.omg.org/spec/BPMN/About-BPMN#"
+     xml:base="https://www.omg.org/spec/BPMN/About-BPMN"
+     xmlns:sm="https://www.omg.org/techprocess/ab/SpecificationMetadata/"
+     xmlns:dct="https://purl.org/dc/terms/"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:skos="https://www.w3.org/2004/02/skos/core#">
+    <owl:Ontology rdf:about="https://www.omg.org/spec/BPMN/About-BPMN">
+        <owl:versionIRI rdf:resource="https://www.omg.org/spec/BPMN/2.0.2/About-BPMN"/>
+        <owl:imports rdf:resource="https://www.omg.org/techprocess/ab/SpecificationMetadata/"/>
+        <rdfs:label>About the Business Process Model and Notation Specification Version 2.0.2</rdfs:label>
+        <owl:versionInfo>Generated on 2025-06-28T11:40:49-0400</owl:versionInfo>
+        <dct:license rdf:resource="https://www.omg.org/techprocess/ab/SpecificationMetadata/MITLicense"/>
+        <sm:creationDate rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2014-01-05T00:00:00-0500</sm:creationDate>
+        <sm:filename>About-BPMN</sm:filename>
+    </owl:Ontology>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+
+    
+
+
+    <!-- https://purl.org/dc/terms/license -->
+
+
+    <owl:AnnotationProperty rdf:about="https://purl.org/dc/terms/license"/>
+    
+
+
+    <!-- https://www.omg.org/techprocess/ab/SpecificationMetadata/category -->
+
+
+    <owl:AnnotationProperty rdf:about="https://www.omg.org/techprocess/ab/SpecificationMetadata/category"/>
+    
+
+
+    <!-- https://www.omg.org/techprocess/ab/SpecificationMetadata/creationDate -->
+
+
+    <owl:AnnotationProperty rdf:about="https://www.omg.org/techprocess/ab/SpecificationMetadata/creationDate"/>
+    
+
+
+    <!-- https://www.omg.org/techprocess/ab/SpecificationMetadata/filename -->
+
+
+    <owl:AnnotationProperty rdf:about="https://www.omg.org/techprocess/ab/SpecificationMetadata/filename"/>
+    
+
+
+    <!-- https://www.omg.org/techprocess/ab/SpecificationMetadata/keyword -->
+
+
+    <owl:AnnotationProperty rdf:about="https://www.omg.org/techprocess/ab/SpecificationMetadata/keyword"/>
+    
+
+
+    <!-- https://www.omg.org/techprocess/ab/SpecificationMetadata/publicationDate -->
+
+
+    <owl:AnnotationProperty rdf:about="https://www.omg.org/techprocess/ab/SpecificationMetadata/publicationDate"/>
+    
+
+
+    <!-- https://www.omg.org/techprocess/ab/SpecificationMetadata/specificationAbbreviation -->
+
+
+    <owl:AnnotationProperty rdf:about="https://www.omg.org/techprocess/ab/SpecificationMetadata/specificationAbbreviation"/>
+    
+
+
+    <!-- https://www.omg.org/techprocess/ab/SpecificationMetadata/specificationAbstract -->
+
+
+    <owl:AnnotationProperty rdf:about="https://www.omg.org/techprocess/ab/SpecificationMetadata/specificationAbstract"/>
+    
+
+
+    <!-- https://www.omg.org/techprocess/ab/SpecificationMetadata/specificationTitle -->
+
+
+    <owl:AnnotationProperty rdf:about="https://www.omg.org/techprocess/ab/SpecificationMetadata/specificationTitle"/>
+    
+
+
+    <!-- https://www.omg.org/techprocess/ab/SpecificationMetadata/specificationURL -->
+
+
+    <owl:AnnotationProperty rdf:about="https://www.omg.org/techprocess/ab/SpecificationMetadata/specificationURL"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+
+    
+
+
+    <!-- https://www.omg.org/techprocess/ab/SpecificationMetadata/Specification -->
+
+
+    <owl:Class rdf:about="https://www.omg.org/techprocess/ab/SpecificationMetadata/Specification"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Individuals
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+
+    
+
+
+    <!-- https://www.omg.org/spec/BPMN -->
+
+
+    <owl:NamedIndividual rdf:about="https://www.omg.org/spec/BPMN">
+        <rdf:type rdf:resource="https://www.omg.org/techprocess/ab/SpecificationMetadata/Specification"/>
+        <sm:category>business-modeling</sm:category>
+        <sm:category>domain</sm:category>
+        <sm:keyword>business-process</sm:keyword>
+        <sm:keyword>business-process-modeling</sm:keyword>
+        <sm:keyword>process</sm:keyword>
+        <sm:publicationDate rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2014-01-05T00:00:00-0500</sm:publicationDate>
+        <sm:specificationAbbreviation>BPMN</sm:specificationAbbreviation>
+        <sm:specificationAbstract>Business Process Model and Notation has become the de-facto standard for business processes diagrams. It is intended to be used directly by the stakeholders who design, manage and realize business processes, but at the same time be precise enough to allow BPMN diagrams to be translated into software process components. BPMN has an easy-to-use flowchart-like notation that is independent of any particular implementation environment.</sm:specificationAbstract>
+        <sm:specificationTitle>Business Process Model and Notation</sm:specificationTitle>
+        <sm:specificationURL rdf:resource="https://www.omg.org/spec/BPMN/About-BPMN"/>
+    </owl:NamedIndividual>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 5.1.20.2022-02-19T16:38:31Z) https://github.com/owlcs/owlapi/ -->
+
+

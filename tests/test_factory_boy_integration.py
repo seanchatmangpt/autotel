@@ -15,11 +15,13 @@ from autotel.factory.processors.dmn_processor import DMNProcessor
 from autotel.factory.processors.owl_processor import OWLProcessor
 from autotel.factory.processors.shacl_processor import SHACLProcessor
 from autotel.factory.processors.dspy_processor import DSPyProcessor
+from autotel.processors.sparql_processor import SPARQLProcessor
 from autotel.factory.pipeline import PipelineOrchestrator
 
 from factories import (
     BPMNXMLFactory, DMNXMLFactory, OWLXMLFactory, SHACLXMLFactory, DSPyXMLFactory,
-    DSPySignatureDefinitionFactory, TelemetryDataFactory, WorkflowContextFactory,
+    SPARQLXMLFactory, DSPySignatureDefinitionFactory, SPARQLQueryDefinitionFactory,
+    SPARQLQueryTemplateFactory, TelemetryDataFactory, WorkflowContextFactory,
     TestFileFactory, create_comprehensive_test_suite
 )
 
@@ -131,6 +133,64 @@ class TestFactoryBoyIntegration:
         assert len(signature.inputs) > 0
         assert len(signature.outputs) > 0
     
+    def test_sparql_factory_generates_valid_xml(self):
+        """Test that SPARQL factory generates valid XML content"""
+        sparql_xml = SPARQLXMLFactory().xml_content
+        
+        assert "<?xml version=" in sparql_xml
+        assert "<root xmlns:sparql=" in sparql_xml
+        assert "<sparql:query" in sparql_xml or "<sparql:template" in sparql_xml
+        
+        # Verify it can be parsed by SPARQL processor
+        processor = SPARQLProcessor()
+        result = processor.parse(sparql_xml)
+        
+        assert result is not None
+        assert "queries" in result
+        assert "templates" in result
+        assert len(result["queries"]) >= 0
+        assert len(result["templates"]) >= 0
+    
+    def test_sparql_query_factory_creates_valid_objects(self):
+        """Test that SPARQL query factory creates valid objects"""
+        query = SPARQLQueryDefinitionFactory()
+        
+        assert hasattr(query, 'name')
+        assert hasattr(query, 'description')
+        assert hasattr(query, 'query')
+        assert hasattr(query, 'query_type')
+        assert hasattr(query, 'parameters')
+        assert hasattr(query, 'prefixes')
+        
+        assert isinstance(query.name, str)
+        assert isinstance(query.description, str)
+        assert isinstance(query.query, str)
+        assert isinstance(query.query_type, str)
+        assert isinstance(query.parameters, dict)
+        assert isinstance(query.prefixes, dict)
+        
+        assert query.query_type in ['SELECT', 'ASK', 'CONSTRUCT', 'DESCRIBE']
+    
+    def test_sparql_template_factory_creates_valid_objects(self):
+        """Test that SPARQL template factory creates valid objects"""
+        template = SPARQLQueryTemplateFactory()
+        
+        assert hasattr(template, 'name')
+        assert hasattr(template, 'description')
+        assert hasattr(template, 'template')
+        assert hasattr(template, 'parameters')
+        assert hasattr(template, 'validation_rules')
+        assert hasattr(template, 'examples')
+        
+        assert isinstance(template.name, str)
+        assert isinstance(template.description, str)
+        assert isinstance(template.template, str)
+        assert isinstance(template.parameters, list)
+        assert isinstance(template.validation_rules, list)
+        assert isinstance(template.examples, list)
+        
+        assert len(template.parameters) > 0
+    
     def test_telemetry_factory_generates_valid_data(self):
         """Test that telemetry factory generates valid data"""
         telemetry_data = TelemetryDataFactory()
@@ -175,7 +235,7 @@ class TestFactoryBoyIntegration:
         assert isinstance(test_file['content'], str)
         assert isinstance(test_file['file_type'], str)
         
-        assert test_file['file_type'] in ['bpmn', 'dmn', 'owl', 'shacl', 'dspy']
+        assert test_file['file_type'] in ['bpmn', 'dmn', 'owl', 'shacl', 'dspy', 'sparql']
         assert test_file['filename'].endswith(f".{test_file['file_type']}")
     
     def test_comprehensive_test_suite_creation(self):
@@ -187,6 +247,7 @@ class TestFactoryBoyIntegration:
         assert 'owl' in test_suite
         assert 'shacl' in test_suite
         assert 'dspy' in test_suite
+        assert 'sparql' in test_suite
         assert 'telemetry' in test_suite
         assert 'workflow_context' in test_suite
         assert 'test_files' in test_suite
@@ -196,6 +257,7 @@ class TestFactoryBoyIntegration:
         assert len(test_suite['owl']) == 2
         assert len(test_suite['shacl']) == 2
         assert len(test_suite['dspy']) == 3
+        assert len(test_suite['sparql']) == 2
         assert len(test_suite['test_files']) == 5
     
     def test_factory_data_is_unique_across_runs(self):

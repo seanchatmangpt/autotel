@@ -1,0 +1,55 @@
+%% AutoTel Processor Refactor - C4 Diagrams
+
+%% Context Diagram
+---
+graph TD
+    DEV["Developer"]
+    AUTOTEL["AutoTel System"]
+    PROCESSORS["Processor Subsystem (Unified Architecture)"]
+    DEV -->|"Refactors, extends, tests"| PROCESSORS
+    PROCESSORS -->|"Parsing, validation, telemetry"| AUTOTEL
+
+%% Container Diagram
+---
+graph TD
+    ABC["Processor ABC (Common Interface & Contracts)"]
+    HELPERS["Processor Helpers (Telemetry, Error Handling, Contract Application)"]
+    IMPLS["Processor Implementations (BPMN, DMN, DSPy, SHACL, OWL, Jinja, OTEL)"]
+    TESTS["Processor Tests (pytest)"]
+    CONFIG["Contract/Telemetry Config (YAML/Python)"]
+    IMPLS --> ABC
+    IMPLS --> HELPERS
+    IMPLS --> CONFIG
+    TESTS --> IMPLS
+    TESTS --> HELPERS
+    ABC --> CONFIG
+
+%% Component Diagram
+---
+graph TD
+    BPMN["BPMNProcessor"]
+    DMN["DMNProcessor"]
+    DSPY["DSPyProcessor"]
+    SHACL["SHACLProcessor"]
+    OWL["OWLProcessor"]
+    JINJA["JinjaProcessor"]
+    OTEL["OTELProcessor"]
+    ABC["Processor ABC"]
+    HELPERS["Processor Helpers"]
+    CONFIG["Contract/Telemetry Config"]
+    BPMN --> ABC
+    DMN --> ABC
+    DSPY --> ABC
+    SHACL --> ABC
+    OWL --> ABC
+    JINJA --> ABC
+    OTEL --> ABC
+    BPMN --> HELPERS
+    DMN --> HELPERS
+    DSPY --> HELPERS
+    SHACL --> HELPERS
+    OWL --> HELPERS
+    JINJA --> HELPERS
+    OTEL --> HELPERS
+    HELPERS --> CONFIG
+    ABC --> CONFIG 

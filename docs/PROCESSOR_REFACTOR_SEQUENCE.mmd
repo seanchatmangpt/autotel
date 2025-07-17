@@ -1,0 +1,34 @@
+%% AutoTel Processor Refactor - Sequence Diagram
+
+sequenceDiagram
+    participant Client as Client Code
+    participant Factory as ProcessorFactory
+    participant ABC as ProcessorABC
+    participant Helpers as Helpers (Telemetry/Contract)
+    participant Telemetry as Telemetry
+    participant Contract as ContractValidator
+    participant BPMN as BPMNProcessor
+
+    Client->>Factory: get_processor('bpmn')
+    Factory->>BPMN: create instance (inherits ABC)
+    Client->>BPMN: parse(xml, process_id)
+    BPMN->>ABC: validate_input(xml)
+    ABC->>Helpers: contract precondition check
+    Helpers->>Contract: validate preconditions
+    Contract-->>Helpers: precondition result
+    Helpers-->>ABC: precondition status
+    ABC->>Helpers: start_telemetry_span('parse')
+    Helpers->>Telemetry: start span
+    Telemetry-->>Helpers: span object
+    Helpers-->>ABC: span object
+    ABC->>BPMN: call concrete parse logic
+    BPMN-->>ABC: parsed result
+    ABC->>Helpers: contract postcondition check
+    Helpers->>Contract: validate postconditions
+    Contract-->>Helpers: postcondition result
+    Helpers-->>ABC: postcondition status
+    ABC->>Helpers: end_telemetry_span
+    Helpers->>Telemetry: end span, record metrics
+    Telemetry-->>Helpers: metrics recorded
+    Helpers-->>ABC: done
+    ABC-->>Client: parsed result or error 
