@@ -340,7 +340,8 @@ class TestBPMNProcessor:
         
         result1 = bpmn_processor.process(data1)
         assert result1.success is True
-        assert result1.data.name == "Process 1"
+        # SpiffWorkflow uses 'id' attribute, not 'name'
+        assert result1.data.name == "process1"
         
         # Test parsing second process
         data2 = {
@@ -350,7 +351,8 @@ class TestBPMNProcessor:
         
         result2 = bpmn_processor.process(data2)
         assert result2.success is True
-        assert result2.data.name == "Process 2"
+        # SpiffWorkflow uses 'id' attribute, not 'name'
+        assert result2.data.name == "process2"
     
     def test_complex_bpmn_with_tasks(self, bpmn_processor):
         """Test parsing complex BPMN with multiple tasks"""
@@ -390,7 +392,8 @@ class TestBPMNProcessor:
         result = bpmn_processor.process(data)
         
         assert result.success is True
-        assert result.data.name == "Complex Process"
+        # SpiffWorkflow uses 'id' attribute, not 'name'
+        assert result.data.name == "complex_process"
         
         # Verify the workflow spec contains the expected tasks
         workflow_spec = result.data

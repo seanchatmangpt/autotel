@@ -115,8 +115,12 @@ class BPMNProcessor(BaseProcessor):
             ValueError: If input format is invalid
         """
         if isinstance(data, str):
-            # Assume it's XML content, need process_id
-            raise ValueError("String input requires process_id parameter")
+            # Check if it's a file path first
+            if Path(data).exists():
+                raise ValueError("File path input requires process_id parameter")
+            else:
+                # Assume it's XML content, need process_id
+                raise ValueError("String input requires process_id parameter")
         
         elif isinstance(data, dict):
             # Extract from dictionary
@@ -134,8 +138,8 @@ class BPMNProcessor(BaseProcessor):
             else:
                 raise ValueError("Either 'xml' or 'file_path' must be provided in input data")
         
-        elif isinstance(data, (Path, str)) and Path(data).exists():
-            # Assume it's a file path, need process_id
+        elif isinstance(data, Path):
+            # Path object, need process_id
             raise ValueError("File path input requires process_id parameter")
         
         else:
@@ -195,7 +199,11 @@ class BPMNProcessor(BaseProcessor):
         except (ValidationException, KeyError, etree.XMLSyntaxError) as e:
             raise ValueError(f"Failed to parse BPMN XML: {str(e)}")
         except Exception as e:
-            raise ValueError(f"Unexpected error parsing BPMN XML: {str(e)}")
+            # Check if it's a SpiffWorkflow-specific error about missing process
+            if "was not found" in str(e):
+                raise ValueError(f"Process ID '{process_id}' not found in BPMN XML")
+            else:
+                raise ValueError(f"Unexpected error parsing BPMN XML: {str(e)}")
     
     def parse_file(self, file_path: Union[str, Path], process_id: str) -> WorkflowSpec:
         """

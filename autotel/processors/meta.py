@@ -32,16 +32,12 @@ class ProcessorMeta(ABCMeta):
         # Validate interface
         mcs._validate_processor_interface(cls)
         
-        # Collect metadata
-        metadata = mcs._collect_processor_metadata(cls, namespace)
-        setattr(cls, '_processor_metadata', metadata)
-        
         # Auto-register with registry if not abstract
         if not getattr(cls, '__abstractmethods__', None):
             # Lazy import to avoid circular dependency
             from autotel.processors.registry import registry
-            processor_name = metadata.get('name', name.lower())
-            registry.register(processor_name, cls)
+            # Use class name as fallback, will be updated in __call__
+            registry.register(name.lower(), cls)
         
         return cls
     
@@ -59,17 +55,29 @@ class ProcessorMeta(ABCMeta):
     @classmethod
     def _collect_processor_metadata(mcs, cls: Type, namespace: Dict[str, Any]) -> Dict[str, Any]:
         """Collect metadata about the processor class."""
-        # Start with decorator metadata
+        # Start with decorator metadata - check both namespace and class attributes
         metadata = {
-            'name': namespace.get('__processor_name__', cls.__name__.lower()),
-            'version': namespace.get('__processor_version__', '1.0.0'),
+            'name': (namespace.get('__processor_name__') or 
+                    getattr(cls, '__processor_name__', None) or 
+                    cls.__name__.lower()),
+            'version': (namespace.get('__processor_version__') or 
+                       getattr(cls, '__processor_version__', None) or 
+                       '1.0.0'),
             'description': namespace.get('__doc__', ''),
-            'capabilities': namespace.get('__processor_capabilities__', []),
-            'supported_formats': namespace.get('__supported_formats__', []),
-            'author': namespace.get('__processor_author__', 'Unknown'),
+            'capabilities': (namespace.get('__processor_capabilities__') or 
+                           getattr(cls, '__processor_capabilities__', None) or 
+                           []),
+            'supported_formats': (namespace.get('__supported_formats__') or 
+                                getattr(cls, '__supported_formats__', None) or 
+                                []),
+            'author': (namespace.get('__processor_author__') or 
+                      getattr(cls, '__processor_author__', None) or 
+                      'Unknown'),
             'class_name': cls.__name__,
             'module': cls.__module__,
         }
+        
+
         
         # Merge with class attributes (class attributes take precedence)
         if hasattr(cls, 'CAPABILITIES'):
@@ -90,6 +98,19 @@ class ProcessorMeta(ABCMeta):
     
     def __call__(cls, *args, **kwargs):
         """Enhanced instantiation with metadata validation."""
+        # Collect metadata after decorator has been applied
+        if not hasattr(cls, '_processor_metadata'):
+            metadata = cls._collect_processor_metadata(cls, {})
+            setattr(cls, '_processor_metadata', metadata)
+            
+            # Update registry with correct name if different
+            if metadata.get('name') != cls.__name__.lower():
+                from autotel.processors.registry import registry
+                # Remove old registration and add new one
+                if cls.__name__.lower() in registry._processors:
+                    del registry._processors[cls.__name__.lower()]
+                registry.register(metadata.get('name'), cls)
+        
         # Create instance
         instance = super().__call__(*args, **kwargs)
         
