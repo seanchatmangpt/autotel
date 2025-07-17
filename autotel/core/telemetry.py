@@ -5,6 +5,7 @@ AutoTel Telemetry Manager - OpenTelemetry integration with LinkML schema support
 import json
 import time
 import logging
+import sys
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Union, Callable
 from pathlib import Path
@@ -15,7 +16,7 @@ from contextlib import contextmanager
 from opentelemetry import trace, metrics
 from opentelemetry.trace import Status, StatusCode
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import ConsoleSpanExporter, BatchSpanProcessor
+from opentelemetry.sdk.trace.export import ConsoleSpanExporter, BatchSpanProcessor, SimpleSpanProcessor
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import ConsoleMetricExporter, PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
@@ -27,6 +28,32 @@ from linkml_runtime.loaders import yaml_loader
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+class SafeConsoleSpanExporter(ConsoleSpanExporter):
+    """A ConsoleSpanExporter that handles shutdown gracefully."""
+    
+    def __init__(self, out=None):
+        super().__init__(out=out)
+        self._closed = False
+    
+    def export(self, spans):
+        """Export spans with error handling."""
+        if self._closed:
+            return
+        try:
+            super().export(spans)
+        except (ValueError, OSError) as e:
+            # Ignore I/O errors on shutdown
+            if "closed file" not in str(e).lower():
+                logger.debug(f"Span export error (ignored): {e}")
+    
+    def shutdown(self):
+        """Graceful shutdown."""
+        self._closed = True
+        try:
+            super().shutdown()
+        except Exception:
+            pass
 
 # Global provider management
 _global_tracer_provider: Optional[TracerProvider] = None
@@ -45,21 +72,31 @@ def _initialize_global_providers():
         current_tracer_provider = trace.get_tracer_provider()
         current_meter_provider = metrics.get_meter_provider()
         
-        # If providers are already set, use them
+        # Create global resource
+        resource = Resource.create({
+            "service.name": "autotel-global",
+            "service.version": "1.0.0"
+        })
+        
+        # Initialize tracer provider
         if not isinstance(current_tracer_provider, trace.NoOpTracerProvider):
             _global_tracer_provider = current_tracer_provider
         else:
-            # Create global resource
-            resource = Resource.create({
-                "service.name": "autotel-global",
-                "service.version": "1.0.0"
-            })
-            
-            # Initialize global tracer provider
+            # Initialize global tracer provider with a more robust exporter
             _global_tracer_provider = TracerProvider(resource=resource)
-            _global_tracer_provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
+            
+            # Use safe console exporter that handles shutdown gracefully
+            try:
+                exporter = SafeConsoleSpanExporter()
+                _global_tracer_provider.add_span_processor(BatchSpanProcessor(exporter))
+            except Exception as e:
+                logger.warning(f"Failed to create SafeConsoleSpanExporter: {e}")
+                # Fall back to SimpleSpanProcessor with regular exporter
+                _global_tracer_provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
+            
             trace.set_tracer_provider(_global_tracer_provider)
         
+        # Initialize meter provider
         if not isinstance(current_meter_provider, metrics.NoOpMeterProvider):
             _global_meter_provider = current_meter_provider
         else:
@@ -77,15 +114,21 @@ def _initialize_global_providers():
 
 def _get_or_create_tracer_provider() -> TracerProvider:
     """Get or create the global tracer provider."""
+    global _global_tracer_provider
     if not _global_providers_initialized:
         _initialize_global_providers()
-    return _global_tracer_provider or TracerProvider()
+    if _global_tracer_provider is None:
+        _global_tracer_provider = TracerProvider()
+    return _global_tracer_provider
 
 def _get_or_create_meter_provider() -> MeterProvider:
     """Get or create the global meter provider."""
+    global _global_meter_provider
     if not _global_providers_initialized:
         _initialize_global_providers()
-    return _global_meter_provider or MeterProvider()
+    if _global_meter_provider is None:
+        _global_meter_provider = MeterProvider()
+    return _global_meter_provider
 
 @dataclass
 class TelemetryConfig:
