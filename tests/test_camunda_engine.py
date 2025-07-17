@@ -6,7 +6,7 @@ def test_camunda_engine_basic():
     engine = CamundaEngine()
     
     # Use the trivial BPMN file
-    bpmn_path = "trivial.bpmn"
+    bpmn_path = "schemas/trivial.bpmn"
     
     try:
         # Load the BPMN file

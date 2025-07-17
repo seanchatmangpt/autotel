@@ -9,6 +9,7 @@ from pathlib import Path
 import logging 
 
 logging.getLogger('litellm.llms.custom_httpx.async_client_cleanup').setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
 # Add the project root to the path
 project_root = Path(__file__).parent.parent

@@ -18,15 +18,40 @@ class SemanticLinker:
             require_linkml_validation=False
         )
 
-    def link(self, signature: DSPySignature) -> ExecutableSystem:
-        """Link DSPy signature into executable system configuration."""
+    def link(
+        self, 
+        ontology_schema: Any, 
+        validation_rules: Any, 
+        dspy_signature: Any
+    ) -> ExecutableSystem:
+        """Link ontology, validation rules, and DSPy signature into executable system configuration."""
         with self.telemetry.start_span("semantic_link_system", "dspy_processing") as span:
-            span.set_attribute("signature_name", signature.name)
-            span.set_attribute("inputs_count", len(signature.inputs))
-            span.set_attribute("outputs_count", len(signature.outputs))
-            span.set_attribute("validation_rules_count", len(signature.validation_rules))
+            span.set_attribute("has_ontology", ontology_schema is not None)
+            span.set_attribute("has_validation_rules", validation_rules is not None)
+            span.set_attribute("has_dspy_signature", dspy_signature is not None)
             
             try:
+                # Create a basic executable system from available components
+                if dspy_signature:
+                    # Use DSPy signature as base
+                    signature = dspy_signature
+                    span.set_attribute("signature_name", signature.name)
+                    span.set_attribute("inputs_count", len(signature.inputs))
+                    span.set_attribute("outputs_count", len(signature.outputs))
+                else:
+                    # Create a minimal signature if none provided
+                    signature = DSPySignature(
+                        name="default_signature",
+                        description="Default signature from pipeline",
+                        inputs={},
+                        outputs={},
+                        examples=[],
+                        validation_rules=[],
+                        model_config=None,
+                        module_config=None,
+                        ontology_metadata={}
+                    )
+                
                 # Validate signature before linking
                 self._validate_signature(signature)
                 
@@ -34,16 +59,16 @@ class SemanticLinker:
                 semantic_context = self._generate_semantic_context(signature)
                 
                 # Prepare validation rules
-                validation_rules = self._prepare_validation_rules(signature)
+                validation_rules_list = self._prepare_validation_rules(signature)
                 
                 # Generate metadata
                 metadata = self._generate_metadata(signature)
                 
-                # Create executable system (no 'ontology' field)
+                # Create executable system
                 executable_system = ExecutableSystem(
                     signature=signature,
                     semantic_context=semantic_context,
-                    validation_rules=validation_rules,
+                    validation_rules=validation_rules_list,
                     examples=signature.examples,
                     model_config=signature.model_config,
                     module_config=signature.module_config,
@@ -54,7 +79,7 @@ class SemanticLinker:
                 
                 span.set_attribute("link_success", True)
                 span.set_attribute("semantic_context_size", len(str(semantic_context)))
-                span.set_attribute("validation_rules_prepared", len(validation_rules))
+                span.set_attribute("validation_rules_prepared", len(validation_rules_list))
                 
                 self.telemetry.record_metric("semantic_link_success", 1)
                 

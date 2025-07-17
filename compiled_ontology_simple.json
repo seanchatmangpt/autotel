@@ -1,7 +1,7 @@
 {
   "ontology_uri": "http://autotel.ai/ontology/workflow",
   "namespace": "http://autotel.ai/ontology/workflow#",
-  "prefix": "mock_test",
+  "prefix": "compiler_test",
   "classes": {
     "Workflow": {
       "name": "Workflow",

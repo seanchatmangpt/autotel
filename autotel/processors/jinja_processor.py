@@ -1,7 +1,10 @@
-el Jinja Processor (Unified Architecture)
+"""
+AutoTel Jinja Processor (Unified Architecture)
 
 Processes Jinja2 templates from XML definitions and renders them with variable substitution.
 Implements happy-path parsing and template rendering with telemetry and contracts.
+"""
+
 import time
 from typing import Any, Dict, List, Optional
 from pathlib import Path

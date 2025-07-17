@@ -23,14 +23,11 @@ class DSPyCompiler:
         self,
         ontology_schema: OntologySchema,
         validation_rules: ValidationRules,
-        dspy_signatures: List[DSPySignatureDefinition],
-        dspy_modules: List[DSPyModuleDefinition],
-        model_config: DSPyModelConfiguration
+        dspy_signatures: List[DSPySignatureDefinition]
     ) -> DSPySignature:
         """Compile DSPy components into executable signature."""
         with self.telemetry.start_span("dspy_compile_signature", "dspy_processing") as span:
             span.set_attribute("signatures_count", len(dspy_signatures))
-            span.set_attribute("modules_count", len(dspy_modules))
             span.set_attribute("ontology_classes_count", len(ontology_schema.classes))
             span.set_attribute("validation_rules_count", validation_rules.constraint_count)
             
@@ -44,11 +41,11 @@ class DSPyCompiler:
                 # Integrate validation rules
                 signature_with_validation = self._integrate_validation_rules(signature_with_ontology, validation_rules)
                 
-                # Create final DSPy signature
+                # Create final DSPy signature with default modules and config
                 final_signature = self._create_dspy_signature(
                     signature_with_validation,
-                    dspy_modules,
-                    model_config,
+                    [],  # Empty modules list
+                    DSPyModelConfiguration(),  # Default config
                     ontology_schema,
                     validation_rules
                 )

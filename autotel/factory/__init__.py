@@ -7,11 +7,12 @@ each DSL (BPMN, DMN, DSPy, SHACL, OWL) and a semantic linker that combines them.
 """
 
 from .pipeline import PipelineOrchestrator
-from .processors.bpmn_processor import BPMNProcessor
-from .processors.dmn_processor import DMNProcessor
-from .processors.dspy_processor import DSPyProcessor, DSPySignatureDefinition
-from .processors.shacl_processor import SHACLProcessor
-from .processors.owl_processor import OWLProcessor
+from autotel.processors.bpmn_processor import BPMNProcessor
+from autotel.processors.dmn_processor import DMNProcessor
+from autotel.processors.dspy_processor import DSPyProcessor
+from autotel.processors.shacl_processor import SHACLProcessor
+from autotel.processors.owl_processor import OWLProcessor
+from autotel.processors.otel_processor import OTELProcessor
 from .linker import SemanticLinker
 from .dspy_compiler import DSPyCompiler, DSPySignature
 
@@ -20,9 +21,9 @@ __all__ = [
     'BPMNProcessor',
     'DMNProcessor', 
     'DSPyProcessor',
-    'DSPySignatureDefinition',
     'SHACLProcessor',
     'OWLProcessor',
+    'OTELProcessor',
     'SemanticLinker',
     'DSPyCompiler',
     'DSPySignature'

@@ -11,9 +11,12 @@ import time
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
+import faker
 
-from autotel.factory.processors.dspy_processor import DSPySignatureDefinition
+from autotel.schemas.dspy_types import DSPySignatureDefinition
 from autotel.schemas.sparql_types import SPARQLQueryDefinition, SPARQLQueryTemplate
+from autotel.processors.base import ProcessorConfig
+from autotel.stores.base import StoreConfig
 
 
 class BPMNXMLFactory(factory.Factory):
@@ -328,27 +331,27 @@ class SPARQLXMLFactory(factory.Factory):
         
         # Generate prefixes
         for i in range(self.prefix_count):
-            prefix_name = factory.Faker('word').evaluate(None, None, {'locale': None})
-            prefix_uri = factory.Faker('url').evaluate(None, None, {'locale': None})
+            prefix_name = factory.Faker('word')
+            prefix_uri = factory.Faker('url')
             prefixes.append(f'''    <sparql:prefix name="{prefix_name.lower()}" uri="{prefix_uri}" />''')
         
         # Generate queries
         for i in range(self.query_count):
-            query_name = factory.Faker('word').evaluate(None, None, {'locale': None})
-            query_type = factory.Faker('random_element', elements=['SELECT', 'ASK', 'CONSTRUCT', 'DESCRIBE']).evaluate(None, None, {'locale': None})
+            query_name = factory.Faker('word')
+            query_type = factory.Faker('random_element', elements=['SELECT', 'ASK', 'CONSTRUCT', 'DESCRIBE'])
             query_text = f"{query_type} ?s ?p ?o WHERE {{ ?s ?p ?o }}"
             
-            queries.append(f'''  <sparql:query name="{query_name}" description="{factory.Faker('sentence').evaluate(None, None, {'locale': None})}">
+            queries.append(f'''  <sparql:query name="{query_name}" description="{factory.Faker('sentence')}">
     {query_text}
     <sparql:parameter name="limit" type="integer" required="false" default="100" />
   </sparql:query>''')
         
         # Generate templates
         for i in range(self.template_count):
-            template_name = factory.Faker('word').evaluate(None, None, {'locale': None})
+            template_name = factory.Faker('word')
             template_text = "SELECT ?s ?p ?o WHERE { ?s ?p ?o . FILTER(?s = ?subject) }"
             
-            templates.append(f'''  <sparql:template name="{template_name}" description="{factory.Faker('sentence').evaluate(None, None, {'locale': None})}">
+            templates.append(f'''  <sparql:template name="{template_name}" description="{factory.Faker('sentence')}">
     {template_text}
     <sparql:validation type="regex" pattern="^[a-zA-Z][a-zA-Z0-9]*$" message="Subject must be alphanumeric" />
     <sparql:example>
@@ -365,44 +368,22 @@ class SPARQLXMLFactory(factory.Factory):
 
 
 class SPARQLQueryDefinitionFactory(factory.Factory):
-    """Factory for generating SPARQLQueryDefinition objects"""
-    
     class Meta:
         model = SPARQLQueryDefinition
     
-    name = factory.Faker('word')
-    description = factory.Faker('sentence')
-    query_type = factory.Faker('random_element', elements=['SELECT', 'ASK', 'CONSTRUCT', 'DESCRIBE'])
-    
-    @factory.lazy_attribute
-    def query(self):
-        """Generate dynamic SPARQL query"""
-        return f"{self.query_type} ?s ?p ?o WHERE {{ ?s ?p ?o }}"
-    
-    @factory.lazy_attribute
-    def parameters(self):
-        """Generate dynamic parameters"""
-        parameters = {}
-        param_count = factory.Faker('random_int', min=0, max=3).evaluate(None, None, {'locale': None})
-        for i in range(param_count):
-            param_name = factory.Faker('word').evaluate(None, None, {'locale': None})
-            parameters[param_name] = {
-                "type": factory.Faker('random_element', elements=['string', 'integer', 'boolean']).evaluate(None, None, {'locale': None}),
-                "required": factory.Faker('boolean').evaluate(None, None, {'locale': None}),
-                "default": factory.Faker('word').evaluate(None, None, {'locale': None}) if factory.Faker('boolean').evaluate(None, None, {'locale': None}) else None
-            }
-        return parameters
-    
-    @factory.lazy_attribute
-    def prefixes(self):
-        """Generate dynamic prefixes"""
-        prefixes = {}
-        prefix_count = factory.Faker('random_int', min=0, max=2).evaluate(None, None, {'locale': None})
-        for i in range(prefix_count):
-            prefix_name = factory.Faker('word').evaluate(None, None, {'locale': None}).lower()
-            prefix_uri = factory.Faker('url').evaluate(None, None, {'locale': None})
-            prefixes[prefix_name] = prefix_uri
-        return prefixes
+    name = factory.Sequence(lambda n: f"query_{n}")
+    description = factory.Faker("sentence")
+    query = factory.LazyFunction(lambda: """
+    PREFIX sro: <http://example.com/sro#>
+    SELECT ?class
+    WHERE {
+      ?class a owl:Class .
+      FILTER(STRSTARTS(STR(?class), STR(sro:)))
+    }
+    """.strip())
+    query_type = factory.Iterator(["SELECT", "ASK", "CONSTRUCT", "DESCRIBE"])
+    parameters = factory.LazyFunction(lambda: {"limit": 10, "offset": 0})
+    prefixes = factory.LazyFunction(lambda: {"sro": "http://example.com/sro#", "owl": "http://www.w3.org/2002/07/owl#"})
 
 
 class SPARQLQueryTemplateFactory(factory.Factory):
@@ -417,10 +398,10 @@ class SPARQLQueryTemplateFactory(factory.Factory):
     @factory.lazy_attribute
     def template(self):
         """Generate dynamic SPARQL template"""
-        param_count = factory.Faker('random_int', min=1, max=3).evaluate(None, None, {'locale': None})
+        param_count = factory.Faker('random_int', min=1, max=3)
         params = []
         for i in range(param_count):
-            param_name = factory.Faker('word').evaluate(None, None, {'locale': None})
+            param_name = factory.Faker('word')
             params.append(f"?{param_name}")
         param_str = " ".join(params)
         return f"SELECT {param_str} WHERE {{ ?s ?p ?o . FILTER(?s = ?subject) }}"
@@ -428,19 +409,19 @@ class SPARQLQueryTemplateFactory(factory.Factory):
     @factory.lazy_attribute
     def parameters(self):
         """Generate dynamic parameter names"""
-        param_count = factory.Faker('random_int', min=1, max=3).evaluate(None, None, {'locale': None})
-        return [factory.Faker('word').evaluate(None, None, {'locale': None}) for _ in range(param_count)]
+        param_count = factory.Faker('random_int', min=1, max=3)
+        return [factory.Faker('word') for _ in range(param_count)]
     
     @factory.lazy_attribute
     def validation_rules(self):
         """Generate dynamic validation rules"""
         rules = []
-        validation_count = factory.Faker('random_int', min=0, max=2).evaluate(None, None, {'locale': None})
+        validation_count = factory.Faker('random_int', min=0, max=2)
         for i in range(validation_count):
             rules.append({
-                "type": factory.Faker('random_element', elements=['regex', 'range', 'enum']).evaluate(None, None, {'locale': None}),
-                "pattern": factory.Faker('word').evaluate(None, None, {'locale': None}),
-                "message": factory.Faker('sentence').evaluate(None, None, {'locale': None})
+                "type": factory.Faker('random_element', elements=['regex', 'range', 'enum']),
+                "pattern": factory.Faker('word'),
+                "message": factory.Faker('sentence')
             })
         return rules
     
@@ -448,13 +429,13 @@ class SPARQLQueryTemplateFactory(factory.Factory):
     def examples(self):
         """Generate dynamic examples"""
         examples = []
-        example_count = factory.Faker('random_int', min=0, max=2).evaluate(None, None, {'locale': None})
-        param_count = factory.Faker('random_int', min=1, max=3).evaluate(None, None, {'locale': None})
+        example_count = factory.Faker('random_int', min=0, max=2)
+        param_count = factory.Faker('random_int', min=1, max=3)
         for i in range(example_count):
             example = {}
             for j in range(param_count):
-                param_name = factory.Faker('word').evaluate(None, None, {'locale': None})
-                example[param_name] = factory.Faker('word').evaluate(None, None, {'locale': None})
+                param_name = factory.Faker('word')
+                example[param_name] = factory.Faker('word')
             examples.append(example)
         return examples
 
@@ -613,4 +594,101 @@ def create_comprehensive_test_suite() -> Dict[str, Any]:
         "telemetry": TelemetryDataFactory(),
         "workflow_context": WorkflowContextFactory(),
         "test_files": [TestFileFactory() for _ in range(5)]
-    } 
+    }
+
+
+class ProcessorConfigFactory(factory.Factory):
+    """Factory for generating ProcessorConfig objects for processor tests."""
+    class Meta:
+        model = ProcessorConfig
+    name = factory.Faker('word')
+    enabled = True
+    timeout = factory.Faker('random_int', min=10, max=60)
+    config_path = None
+    settings = factory.LazyFunction(lambda: {faker.Faker().word(): faker.Faker().word() for _ in range(3)})
+
+
+class StoreConfigFactory(factory.Factory):
+    """Factory for generating StoreConfig objects for store tests."""
+    class Meta:
+        model = StoreConfig
+    name = factory.Faker('word')
+    enabled = True
+    path = factory.LazyFunction(lambda: f"/tmp/{faker.Faker().word()}.json")
+    settings = factory.LazyFunction(lambda: {faker.Faker().word(): faker.Faker().word() for _ in range(3)}) 
+
+# SRO-related factories (ensure these are at the top level and importable)
+class SROClassFactory(factory.Factory):
+    class Meta:
+        model = dict
+    uri = factory.Sequence(lambda n: f"http://example.com/sro#Class{n}")
+    name = factory.Sequence(lambda n: f"Class{n}")
+    type = "owl:Class"
+
+class SROUserStoryFactory(factory.Factory):
+    class Meta:
+        model = dict
+    uri = "http://example.com/sro#UserStory"
+    name = "UserStory"
+    type = "owl:Class"
+    subclasses = factory.List([
+        {"uri": "http://example.com/sro#Epic", "name": "Epic", "type": "owl:Class"},
+        {"uri": "http://example.com/sro#Story", "name": "Story", "type": "owl:Class"}
+    ])
+
+class SROScrumTeamMemberFactory(factory.Factory):
+    class Meta:
+        model = dict
+    uri = "http://example.com/sro#ScrumTeamMember"
+    name = "ScrumTeamMember"
+    type = "owl:Class"
+    roles = factory.List([
+        {"uri": "http://example.com/sro#ScrumMaster", "name": "ScrumMaster", "type": "owl:Class"},
+        {"uri": "http://example.com/sro#ProductOwner", "name": "ProductOwner", "type": "owl:Class"},
+        {"uri": "http://example.com/sro#Developer", "name": "Developer", "type": "owl:Class"}
+    ])
+
+class SROObjectPropertyFactory(factory.Factory):
+    class Meta:
+        model = dict
+    uri = factory.Sequence(lambda n: f"http://example.com/sro#hasProperty{n}")
+    name = factory.Sequence(lambda n: f"hasProperty{n}")
+    type = "owl:ObjectProperty"
+    domain = factory.Dict({
+        "uri": factory.Sequence(lambda n: f"http://example.com/sro#DomainClass{n}"),
+        "name": factory.Sequence(lambda n: f"DomainClass{n}"),
+        "type": "owl:Class"
+    })
+    range = factory.Dict({
+        "uri": factory.Sequence(lambda n: f"http://example.com/sro#RangeClass{n}"),
+        "name": factory.Sequence(lambda n: f"RangeClass{n}"),
+        "type": "owl:Class"
+    })
+
+class SROUserStoryPropertyFactory(factory.Factory):
+    class Meta:
+        model = dict
+    uri = factory.Sequence(lambda n: f"http://example.com/sro#userStoryProperty{n}")
+    name = factory.Sequence(lambda n: f"userStoryProperty{n}")
+    relation = factory.Iterator(["domain", "range"])
+    user_story_uri = "http://example.com/sro#UserStory"
+
+class SROOntologyDataFactory(factory.Factory):
+    class Meta:
+        model = dict
+    classes = factory.List([SROClassFactory() for _ in range(5)])
+    user_story = factory.SubFactory(SROUserStoryFactory)
+    scrum_team_member = factory.SubFactory(SROScrumTeamMemberFactory)
+    object_properties = factory.List([SROObjectPropertyFactory() for _ in range(3)])
+    user_story_properties = factory.List([SROUserStoryPropertyFactory() for _ in range(4)])
+
+__all__ = [
+    "SPARQLQueryDefinitionFactory",
+    "SROClassFactory",
+    "SROUserStoryFactory",
+    "SROScrumTeamMemberFactory",
+    "SROObjectPropertyFactory",
+    "SROUserStoryPropertyFactory",
+    "SROOntologyDataFactory",
+    # ... add other factories as needed ...
+] 

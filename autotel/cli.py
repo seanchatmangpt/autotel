@@ -94,8 +94,8 @@ def init(
         
         # Load default schemas
         default_schemas = [
-            "otel_traces_schema.yaml",
-            "workflow_telemetry_schema.yaml"
+            "schemas/otel_traces_schema.yaml",
+            "schemas/workflow_telemetry_schema.yaml"
         ]
         
         for schema_file in default_schemas:
@@ -574,8 +574,8 @@ def pipeline(
     required_files = [owl_file, shacl_file, dspy_file]
     for file_path in required_files:
         if file_path and not file_path.exists():
-        console.print(f"[red]❌ File not found: {file_path}[/red]")
-        raise typer.Exit(1)
+            console.print(f"[red]❌ File not found: {file_path}[/red]")
+            raise typer.Exit(1)
     
     # Parse input data
     input_variables = {}

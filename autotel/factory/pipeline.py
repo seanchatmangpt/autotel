@@ -3,10 +3,11 @@
 from typing import Dict, Any, Optional
 from datetime import datetime
 
-from .processors.owl_processor import OWLProcessor
-from .processors.shacl_processor import SHACLProcessor
-from .processors.dspy_processor import DSPyProcessor
-from .processors.otel_processor import OTELProcessor
+from autotel.processors.owl_processor import OWLProcessor
+from autotel.processors.shacl_processor import SHACLProcessor
+from autotel.processors.dspy_processor import DSPyProcessor
+from autotel.processors.otel_processor import OTELProcessor
+from autotel.processors.base import ProcessorConfig
 from .ontology_compiler import OntologyCompiler
 from .validation_compiler import ValidationCompiler
 from .dspy_compiler import DSPyCompiler
@@ -20,10 +21,14 @@ class PipelineOrchestrator:
 
     def __init__(self, telemetry_manager: TelemetryManager = None):
         """Initialize the pipeline orchestrator."""
-        self.owl_processor = OWLProcessor()
-        self.shacl_processor = SHACLProcessor()
-        self.dspy_processor = DSPyProcessor()
-        self.otel_processor = OTELProcessor()
+        # Initialize processors with unified configuration
+        self.owl_processor = OWLProcessor(
+            ProcessorConfig(name="owl_processor"), 
+            telemetry=telemetry_manager
+        )
+        self.shacl_processor = SHACLProcessor(ProcessorConfig(name="shacl_processor"))
+        self.dspy_processor = DSPyProcessor(ProcessorConfig(name="dspy_processor"))
+        self.otel_processor = OTELProcessor(ProcessorConfig(name="otel_processor"))
         self.ontology_compiler = OntologyCompiler()
         self.validation_compiler = ValidationCompiler()
         self.dspy_compiler = DSPyCompiler()
@@ -43,7 +48,14 @@ class PipelineOrchestrator:
                     span.set_attribute("empty_content", True)
                     return {"error": "Empty OWL content provided"}
                 
-                ontology_def = self.owl_processor.parse_ontology_definition(owl_xml)
+                # Use unified processor
+                result = self.owl_processor.process(owl_xml)
+                if not result.success:
+                    span.set_attribute("success", False)
+                    span.set_attribute("error", result.error)
+                    return {"error": result.error}
+                
+                ontology_def = result.data
                 span.set_attribute("classes_count", len(ontology_def.classes))
                 span.set_attribute("properties_count", len(ontology_def.object_properties) + len(ontology_def.data_properties))
                 span.set_attribute("success", True)
@@ -77,13 +89,26 @@ class PipelineOrchestrator:
                     span.set_attribute("empty_content", True)
                     return {"error": "Empty SHACL content provided"}
                 
-                shacl_result = self.shacl_processor.parse(shacl_xml)
-                span.set_attribute("node_shapes_count", len(shacl_result['node_shapes']))
-                span.set_attribute("property_shapes_count", len(shacl_result['property_shapes']))
-                span.set_attribute("constraints_count", len(shacl_result['constraints']))
+                # Use unified processor
+                result = self.shacl_processor.process(shacl_xml)
+                if not result.success:
+                    span.set_attribute("success", False)
+                    span.set_attribute("error", result.error)
+                    return {"error": result.error}
+                
+                shacl_result = result.data
+                span.set_attribute("node_shapes_count", len(shacl_result.node_shapes))
+                span.set_attribute("property_shapes_count", len(shacl_result.property_shapes))
+                span.set_attribute("constraints_count", len(shacl_result.constraints))
                 span.set_attribute("success", True)
                 
-                return shacl_result
+                return {
+                    "node_shapes": shacl_result.node_shapes,
+                    "property_shapes": shacl_result.property_shapes,
+                    "constraints": shacl_result.constraints,
+                    "total_shapes": shacl_result.total_shapes,
+                    "total_constraints": shacl_result.total_constraints
+                }
             except Exception as e:
                 span.set_attribute("success", False)
                 span.set_attribute("error_type", type(e).__name__)
@@ -103,25 +128,24 @@ class PipelineOrchestrator:
                     span.set_attribute("empty_content", True)
                     return {"error": "Empty DSPy content provided"}
                 
-                signatures = self.dspy_processor.parse(dspy_xml)
-                modules = self.dspy_processor.parse_modules(dspy_xml)
-                model_config = self.dspy_processor.parse_model_configuration(dspy_xml)
-                validation_rules = self.dspy_processor.parse_validation_rules(dspy_xml)
+                # Use unified processor
+                result = self.dspy_processor.process(dspy_xml)
+                if not result.success:
+                    span.set_attribute("success", False)
+                    span.set_attribute("error", result.error)
+                    return {"error": result.error}
+                
+                dspy_result = result.data
+                signatures = dspy_result.signatures
                 
                 span.set_attribute("signatures_count", len(signatures))
-                span.set_attribute("modules_count", len(modules))
-                span.set_attribute("validation_rules_count", len(validation_rules))
                 span.set_attribute("success", True)
                 
                 return {
                     "signatures": signatures,
-                    "modules": modules,
-                    "model_configuration": model_config,
-                    "validation_rules": validation_rules,
                     "metadata": {
                         "signatures_count": len(signatures),
-                        "modules_count": len(modules),
-                        "validation_rules_count": len(validation_rules)
+                        "total_signatures": dspy_result.total_signatures
                     }
                 }
             except Exception as e:
@@ -150,13 +174,16 @@ class PipelineOrchestrator:
             ontology_def = None
             shacl_graph = None
             dspy_signatures = []
-            dspy_modules = []
-            model_config = None
             
             # Process OWL
             if owl_xml and owl_xml.strip():
                 try:
-                    ontology_def = self.owl_processor.parse_ontology_definition(owl_xml)
+                    result = self.owl_processor.process(owl_xml)
+                    if result.success:
+                        ontology_def = result.data
+                    else:
+                        self.telemetry.record_metric("pipeline_owl_processing_failure", 1)
+                        raise ValueError(f"OWL processing failed: {result.error}")
                 except Exception as e:
                     self.telemetry.record_metric("pipeline_owl_processing_failure", 1)
                     raise
@@ -164,8 +191,12 @@ class PipelineOrchestrator:
             # Process SHACL
             if shacl_xml and shacl_xml.strip():
                 try:
-                    shacl_result = self.shacl_processor.parse(shacl_xml)
-                    shacl_graph = shacl_result
+                    result = self.shacl_processor.process(shacl_xml)
+                    if result.success:
+                        shacl_graph = result.data
+                    else:
+                        self.telemetry.record_metric("pipeline_shacl_processing_failure", 1)
+                        raise ValueError(f"SHACL processing failed: {result.error}")
                 except Exception as e:
                     self.telemetry.record_metric("pipeline_shacl_processing_failure", 1)
                     raise
@@ -173,9 +204,12 @@ class PipelineOrchestrator:
             # Process DSPy
             if dspy_xml and dspy_xml.strip():
                 try:
-                    dspy_signatures = self.dspy_processor.parse(dspy_xml)
-                    dspy_modules = self.dspy_processor.parse_modules(dspy_xml)
-                    model_config = self.dspy_processor.parse_model_configuration(dspy_xml)
+                    result = self.dspy_processor.process(dspy_xml)
+                    if result.success:
+                        dspy_signatures = result.data.signatures
+                    else:
+                        self.telemetry.record_metric("pipeline_dspy_processing_failure", 1)
+                        raise ValueError(f"DSPy processing failed: {result.error}")
                 except Exception as e:
                     self.telemetry.record_metric("pipeline_dspy_processing_failure", 1)
                     raise
@@ -198,48 +232,28 @@ class PipelineOrchestrator:
             
             if ontology_schema and validation_rules and dspy_signatures:
                 dspy_signature = self.dspy_compiler.compile(
-                    ontology_schema=ontology_schema,
-                    validation_rules=validation_rules,
-                    dspy_signatures=dspy_signatures,
-                    dspy_modules=dspy_modules,
-                    model_config=model_config
+                    ontology_schema, validation_rules, dspy_signatures
                 )
         
-        # Stage 3: Linker
+        # Stage 3: Linking
         with self.telemetry.start_span(
-            name="pipeline.linker",
-            operation_type="LINKER",
-            stage="linker"
+            name="pipeline.linking",
+            operation_type="LINKING",
+            stage="linking"
         ):
-            executable_system = None
-            if dspy_signature:
-                executable_system = self.linker.link(dspy_signature)
+            linked_result = self.linker.link(
+                ontology_schema, validation_rules, dspy_signature
+            )
         
-        # Stage 4: Executor
+        # Stage 4: Execution
         with self.telemetry.start_span(
-            name="pipeline.executor",
-            operation_type="EXECUTOR",
-            stage="executor"
+            name="pipeline.execution",
+            operation_type="EXECUTION",
+            stage="execution"
         ):
-            result = None
-            if executable_system:
-                result = self.executor.execute(executable_system, inputs)
-            else:
-                # Return a basic result if no executable system
-                result = ExecutionResult(
-                    success=False,
-                    outputs={},
-                    errors=["No executable system generated from inputs"],
-                    metadata={"stage": "executor", "reason": "no_executable_system"}
-                )
+            execution_result = self.executor.execute(linked_result, inputs)
         
-        with self.telemetry.start_span(
-            name="pipeline.complete",
-            operation_type="COMPLETE",
-            stage="complete"
-        ):
-            pass
-        return result
+        return execution_result
 
     def execute_from_files(
         self,

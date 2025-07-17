@@ -135,7 +135,8 @@ class TestFactoryBoyIntegration:
     
     def test_sparql_factory_generates_valid_xml(self):
         """Test that SPARQL factory generates valid XML content"""
-        sparql_xml = SPARQLXMLFactory().xml_content
+        sparql_factory = SPARQLXMLFactory()
+        sparql_xml = sparql_factory['xml_content']
         
         assert "<?xml version=" in sparql_xml
         assert "<root xmlns:sparql=" in sparql_xml

@@ -28,6 +28,65 @@ from linkml_runtime.loaders import yaml_loader
 # Configure logging
 logger = logging.getLogger(__name__)
 
+# Global provider management
+_global_tracer_provider: Optional[TracerProvider] = None
+_global_meter_provider: Optional[MeterProvider] = None
+_global_providers_initialized = False
+
+def _initialize_global_providers():
+    """Initialize global providers only once."""
+    global _global_tracer_provider, _global_meter_provider, _global_providers_initialized
+    
+    if _global_providers_initialized:
+        return
+    
+    try:
+        # Check if providers are already set globally
+        current_tracer_provider = trace.get_tracer_provider()
+        current_meter_provider = metrics.get_meter_provider()
+        
+        # If providers are already set, use them
+        if not isinstance(current_tracer_provider, trace.NoOpTracerProvider):
+            _global_tracer_provider = current_tracer_provider
+        else:
+            # Create global resource
+            resource = Resource.create({
+                "service.name": "autotel-global",
+                "service.version": "1.0.0"
+            })
+            
+            # Initialize global tracer provider
+            _global_tracer_provider = TracerProvider(resource=resource)
+            _global_tracer_provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
+            trace.set_tracer_provider(_global_tracer_provider)
+        
+        if not isinstance(current_meter_provider, metrics.NoOpMeterProvider):
+            _global_meter_provider = current_meter_provider
+        else:
+            # Initialize global meter provider
+            metric_reader = PeriodicExportingMetricReader(ConsoleMetricExporter())
+            _global_meter_provider = MeterProvider(resource=resource, metric_readers=[metric_reader])
+            metrics.set_meter_provider(_global_meter_provider)
+        
+        _global_providers_initialized = True
+        logger.debug("Global telemetry providers initialized successfully")
+        
+    except Exception as e:
+        logger.warning(f"Failed to initialize global telemetry providers: {e}")
+        # Continue with no-op providers if initialization fails
+
+def _get_or_create_tracer_provider() -> TracerProvider:
+    """Get or create the global tracer provider."""
+    if not _global_providers_initialized:
+        _initialize_global_providers()
+    return _global_tracer_provider or TracerProvider()
+
+def _get_or_create_meter_provider() -> MeterProvider:
+    """Get or create the global meter provider."""
+    if not _global_providers_initialized:
+        _initialize_global_providers()
+    return _global_meter_provider or MeterProvider()
+
 @dataclass
 class TelemetryConfig:
     """Configuration for telemetry operations"""
@@ -186,7 +245,7 @@ class TelemetryManager:
             schema_path = Path(self.config.schema_path)
         else:
             # Default to the schema in the project root
-            schema_path = Path(__file__).parent.parent.parent / "otel_traces_schema.yaml"
+            schema_path = Path(__file__).parent.parent.parent / "schemas" / "otel_traces_schema.yaml"
         
         if not schema_path.exists():
             if self.config.require_linkml_validation:
@@ -269,30 +328,24 @@ class TelemetryManager:
     
     def _initialize_otel(self) -> None:
         """Initialize OpenTelemetry with resource information"""
-        # Create resource with service information
-        resource = Resource.create({
-            "service.name": self.config.service_name,
-            "service.version": self.config.service_version
-        })
-        
         if self.config.enable_tracing:
             if self._external_tracer_provider is not None and self._external_span_exporter is not None:
                 # Use externally provided tracer provider and exporter
                 self._external_tracer_provider.add_span_processor(BatchSpanProcessor(self._external_span_exporter))
                 self.tracer = self._external_tracer_provider.get_tracer(self.config.service_name)
             else:
-                # Configure tracing as before
-                trace_provider = TracerProvider(resource=resource)
-                trace_provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
-                trace.set_tracer_provider(trace_provider)
-                self.tracer = trace.get_tracer(self.config.service_name)
+                # Use global tracer provider
+                tracer_provider = _get_or_create_tracer_provider()
+                self.tracer = tracer_provider.get_tracer(self.config.service_name)
         
         if self.config.enable_metrics:
-            # Configure metrics
-            metric_reader = PeriodicExportingMetricReader(ConsoleMetricExporter())
-            metric_provider = MeterProvider(resource=resource, metric_readers=[metric_reader])
-            metrics.set_meter_provider(metric_provider)
-            self.meter = metrics.get_meter(self.config.service_name)
+            if self._external_tracer_provider is not None:
+                # Use external meter provider if provided
+                self.meter = metrics.get_meter(self.config.service_name)
+            else:
+                # Use global meter provider
+                meter_provider = _get_or_create_meter_provider()
+                self.meter = meter_provider.get_meter(self.config.service_name)
     
     def _create_metrics_from_schema(self) -> None:
         """Create metrics based on the LinkML schema definitions"""

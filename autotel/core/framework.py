@@ -522,7 +522,7 @@ def demonstrate_autotel():
     
     # Initialize framework
     framework = Framework()
-    init_result = framework.initialize("autotel_demo_ontology.yaml")
+    init_result = framework.initialize("examples/autotel_demo_ontology.yaml")
     
     print(f"\n📊 Initialization Result: {init_result['status']}")
     

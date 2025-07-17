@@ -39,30 +39,8 @@ from opentelemetry.sdk.metrics.export import ConsoleMetricExporter, PeriodicExpo
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Configure OpenTelemetry
-trace.set_tracer_provider(TracerProvider())
-trace.get_tracer_provider().add_span_processor(
-    BatchSpanProcessor(ConsoleSpanExporter())
-)
-
-metrics.set_meter_provider(MeterProvider())
-meter = metrics.get_meter(__name__)
-
-# Telemetry instruments
-process_counter = meter.create_counter(
-    name="bpmn_processes_total",
-    description="Total number of BPMN processes executed"
-)
-
-task_duration_histogram = meter.create_histogram(
-    name="bpmn_task_duration_seconds",
-    description="Duration of BPMN tasks in seconds"
-)
-
-error_counter = meter.create_counter(
-    name="bpmn_errors_total",
-    description="Total number of BPMN execution errors"
-)
+# Telemetry will be managed by the TelemetryManager
+# No duplicate provider setup here
 
 from autotel.utils import persistence
 from autotel.utils.dspy_services import dspy_registry
@@ -162,10 +140,14 @@ class Orchestrator:
         self.dspy_config = dspy_config
         
         # Initialize telemetry
+        self.telemetry_manager = telemetry_manager
         if telemetry_manager:
             self.tracer = telemetry_manager.tracer
         else:
-            self.tracer = None
+            # Use global tracer if no telemetry manager provided
+            from autotel.core.telemetry import _get_or_create_tracer_provider
+            tracer_provider = _get_or_create_tracer_provider()
+            self.tracer = tracer_provider.get_tracer("autotel-orchestrator")
         
         # Use provided process definitions
         self.process_definitions: Dict[str, BpmnWorkflow] = process_definitions or {}

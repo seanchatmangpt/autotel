@@ -1,6 +1,6 @@
 {
   "ontology_uri": "http://autotel.ai/ontology/workflow",
-  "namespace": "http://autotel.ai/ontology/default#",
+  "namespace": "http://autotel.ai/ontology/workflow#",
   "prefix": "workflow",
   "classes": {
     "Workflow": {
@@ -33,7 +33,7 @@
       "label": "ServiceTask",
       "comment": "A service task that performs automated operations",
       "superclasses": [
-        "http://autotel.ai/ontology/workflow#Task"
+        "Task"
       ],
       "properties": {}
     },
@@ -43,7 +43,7 @@
       "label": "UserTask",
       "comment": "A task that requires human interaction",
       "superclasses": [
-        "http://autotel.ai/ontology/workflow#Task"
+        "Task"
       ],
       "properties": {}
     },
@@ -53,7 +53,7 @@
       "label": "DecisionTask",
       "comment": "A task that makes decisions based on business rules",
       "superclasses": [
-        "http://autotel.ai/ontology/workflow#Task"
+        "Task"
       ],
       "properties": {}
     },
@@ -63,7 +63,7 @@
       "label": "DSPySignature",
       "comment": "An AI signature for DSPy reasoning",
       "superclasses": [
-        "http://autotel.ai/ontology/workflow#WorkflowElement"
+        "WorkflowElement"
       ],
       "properties": {}
     },
@@ -73,7 +73,7 @@
       "label": "DSPyServiceTask",
       "comment": "A service task that uses DSPy for AI reasoning",
       "superclasses": [
-        "http://autotel.ai/ontology/workflow#ServiceTask"
+        "ServiceTask"
       ],
       "properties": {}
     },
@@ -83,7 +83,7 @@
       "label": "DMNDecisionTable",
       "comment": "A DMN decision table for business rules",
       "superclasses": [
-        "http://autotel.ai/ontology/workflow#WorkflowElement"
+        "WorkflowElement"
       ],
       "properties": {}
     },
@@ -93,7 +93,7 @@
       "label": "DMNDecisionTask",
       "comment": "A decision task that uses DMN decision tables",
       "superclasses": [
-        "http://autotel.ai/ontology/workflow#DecisionTask"
+        "DecisionTask"
       ],
       "properties": {}
     },
@@ -103,7 +103,7 @@
       "label": "SHACLShape",
       "comment": "A SHACL shape for data validation",
       "superclasses": [
-        "http://autotel.ai/ontology/workflow#WorkflowElement"
+        "WorkflowElement"
       ],
       "properties": {}
     },
@@ -113,7 +113,7 @@
       "label": "ValidationTask",
       "comment": "A task that validates data using SHACL shapes",
       "superclasses": [
-        "http://autotel.ai/ontology/workflow#ServiceTask"
+        "ServiceTask"
       ],
       "properties": {}
     },
@@ -155,7 +155,7 @@
       "label": "WorkflowStatus",
       "comment": "Status of a workflow",
       "superclasses": [
-        "http://autotel.ai/ontology/workflow#Status"
+        "Status"
       ],
       "properties": {}
     },
@@ -165,7 +165,7 @@
       "label": "TaskStatus",
       "comment": "Status of a task",
       "superclasses": [
-        "http://autotel.ai/ontology/workflow#Status"
+        "Status"
       ],
       "properties": {}
     }
@@ -174,287 +174,270 @@
     "hasTask": {
       "uri": "http://autotel.ai/ontology/workflow#hasTask",
       "name": "hasTask",
+      "type": "object",
       "label": "hasTask",
       "comment": "",
-      "domain": "http://autotel.ai/ontology/workflow#Workflow",
-      "range": "http://autotel.ai/ontology/workflow#Task"
+      "domain": "Workflow",
+      "range": "Task",
+      "cardinality": ""
     },
     "hasCustomer": {
       "uri": "http://autotel.ai/ontology/workflow#hasCustomer",
       "name": "hasCustomer",
+      "type": "object",
       "label": "hasCustomer",
       "comment": "",
-      "domain": "http://autotel.ai/ontology/workflow#Order",
-      "range": "http://autotel.ai/ontology/workflow#Customer"
+      "domain": "Order",
+      "range": "Customer",
+      "cardinality": ""
     },
     "hasDSPySignature": {
       "uri": "http://autotel.ai/ontology/workflow#hasDSPySignature",
       "name": "hasDSPySignature",
+      "type": "object",
       "label": "hasDSPySignature",
       "comment": "",
-      "domain": "http://autotel.ai/ontology/workflow#DSPyServiceTask",
-      "range": "http://autotel.ai/ontology/workflow#DSPySignature"
+      "domain": "DSPyServiceTask",
+      "range": "DSPySignature",
+      "cardinality": ""
     },
     "hasDMNDecisionTable": {
       "uri": "http://autotel.ai/ontology/workflow#hasDMNDecisionTable",
       "name": "hasDMNDecisionTable",
+      "type": "object",
       "label": "hasDMNDecisionTable",
       "comment": "",
-      "domain": "http://autotel.ai/ontology/workflow#DMNDecisionTask",
-      "range": "http://autotel.ai/ontology/workflow#DMNDecisionTable"
+      "domain": "DMNDecisionTask",
+      "range": "DMNDecisionTable",
+      "cardinality": ""
     },
     "hasSHACLShape": {
       "uri": "http://autotel.ai/ontology/workflow#hasSHACLShape",
       "name": "hasSHACLShape",
+      "type": "object",
       "label": "hasSHACLShape",
       "comment": "",
-      "domain": "http://autotel.ai/ontology/workflow#ValidationTask",
-      "range": "http://autotel.ai/ontology/workflow#SHACLShape"
+      "domain": "ValidationTask",
+      "range": "SHACLShape",
+      "cardinality": ""
     },
     "hasStatus": {
       "uri": "http://autotel.ai/ontology/workflow#hasStatus",
       "name": "hasStatus",
+      "type": "object",
       "label": "hasStatus",
       "comment": "",
-      "domain": "http://autotel.ai/ontology/workflow#WorkflowElement",
-      "range": "http://autotel.ai/ontology/workflow#Status"
+      "domain": "WorkflowElement",
+      "range": "Status",
+      "cardinality": ""
     },
     "hasRiskAssessment": {
       "uri": "http://autotel.ai/ontology/workflow#hasRiskAssessment",
       "name": "hasRiskAssessment",
+      "type": "object",
       "label": "hasRiskAssessment",
       "comment": "",
-      "domain": "http://autotel.ai/ontology/workflow#Order",
-      "range": "http://autotel.ai/ontology/workflow#RiskAssessment"
+      "domain": "Order",
+      "range": "RiskAssessment",
+      "cardinality": ""
     }
   },
   "data_properties": {
     "hasCustomerId": {
       "uri": "http://autotel.ai/ontology/workflow#hasCustomerId",
       "name": "hasCustomerId",
+      "type": "data",
       "label": "hasCustomerId",
       "comment": "",
-      "domain": "http://autotel.ai/ontology/workflow#Customer",
-      "range": "http://www.w3.org/2001/XMLSchema#string"
+      "domain": "Customer",
+      "range": "string",
+      "cardinality": ""
     },
     "hasCustomerName": {
       "uri": "http://autotel.ai/ontology/workflow#hasCustomerName",
       "name": "hasCustomerName",
+      "type": "data",
       "label": "hasCustomerName",
       "comment": "",
-      "domain": "http://autotel.ai/ontology/workflow#Customer",
-      "range": "http://www.w3.org/2001/XMLSchema#string"
+      "domain": "Customer",
+      "range": "string",
+      "cardinality": ""
     },
     "hasOrderId": {
       "uri": "http://autotel.ai/ontology/workflow#hasOrderId",
       "name": "hasOrderId",
+      "type": "data",
       "label": "hasOrderId",
       "comment": "",
-      "domain": "http://autotel.ai/ontology/workflow#Order",
-      "range": "http://www.w3.org/2001/XMLSchema#string"
+      "domain": "Order",
+      "range": "string",
+      "cardinality": ""
     },
     "hasOrderAmount": {
       "uri": "http://autotel.ai/ontology/workflow#hasOrderAmount",
       "name": "hasOrderAmount",
+      "type": "data",
       "label": "hasOrderAmount",
       "comment": "",
-      "domain": "http://autotel.ai/ontology/workflow#Order",
-      "range": "http://www.w3.org/2001/XMLSchema#decimal"
+      "domain": "Order",
+      "range": "decimal",
+      "cardinality": ""
     },
     "hasRiskLevel": {
       "uri": "http://autotel.ai/ontology/workflow#hasRiskLevel",
       "name": "hasRiskLevel",
+      "type": "data",
       "label": "hasRiskLevel",
       "comment": "",
-      "domain": "http://autotel.ai/ontology/workflow#RiskAssessment",
-      "range": "http://www.w3.org/2001/XMLSchema#string"
+      "domain": "RiskAssessment",
+      "range": "string",
+      "cardinality": ""
     },
     "hasConfidence": {
       "uri": "http://autotel.ai/ontology/workflow#hasConfidence",
       "name": "hasConfidence",
+      "type": "data",
       "label": "hasConfidence",
       "comment": "",
-      "domain": "http://autotel.ai/ontology/workflow#RiskAssessment",
-      "range": "http://www.w3.org/2001/XMLSchema#decimal"
+      "domain": "RiskAssessment",
+      "range": "decimal",
+      "cardinality": ""
     },
     "hasStatusValue": {
       "uri": "http://autotel.ai/ontology/workflow#hasStatusValue",
       "name": "hasStatusValue",
+      "type": "data",
       "label": "hasStatusValue",
       "comment": "",
-      "domain": "http://autotel.ai/ontology/workflow#Status",
-      "range": "http://www.w3.org/2001/XMLSchema#string"
+      "domain": "Status",
+      "range": "string",
+      "cardinality": ""
     }
   },
   "individuals": {
     "PendingStatus": {
       "uri": "http://autotel.ai/ontology/workflow#PendingStatus",
       "name": "PendingStatus",
+      "type": "WorkflowStatus",
       "label": "Pending",
       "comment": "",
-      "type": "http://autotel.ai/ontology/workflow#WorkflowStatus",
-      "properties": {
-        "}label": {
-          "uri": "{http://www.w3.org/2000/01/rdf-schema#}label",
-          "value": "Pending"
-        }
-      }
+      "properties": {}
     },
     "RunningStatus": {
       "uri": "http://autotel.ai/ontology/workflow#RunningStatus",
       "name": "RunningStatus",
+      "type": "WorkflowStatus",
       "label": "Running",
       "comment": "",
-      "type": "http://autotel.ai/ontology/workflow#WorkflowStatus",
-      "properties": {
-        "}label": {
-          "uri": "{http://www.w3.org/2000/01/rdf-schema#}label",
-          "value": "Running"
-        }
-      }
+      "properties": {}
     },
     "CompletedStatus": {
       "uri": "http://autotel.ai/ontology/workflow#CompletedStatus",
       "name": "CompletedStatus",
+      "type": "WorkflowStatus",
       "label": "Completed",
       "comment": "",
-      "type": "http://autotel.ai/ontology/workflow#WorkflowStatus",
-      "properties": {
-        "}label": {
-          "uri": "{http://www.w3.org/2000/01/rdf-schema#}label",
-          "value": "Completed"
-        }
-      }
+      "properties": {}
     },
     "FailedStatus": {
       "uri": "http://autotel.ai/ontology/workflow#FailedStatus",
       "name": "FailedStatus",
+      "type": "WorkflowStatus",
       "label": "Failed",
       "comment": "",
-      "type": "http://autotel.ai/ontology/workflow#WorkflowStatus",
-      "properties": {
-        "}label": {
-          "uri": "{http://www.w3.org/2000/01/rdf-schema#}label",
-          "value": "Failed"
-        }
-      }
+      "properties": {}
     },
     "ApprovedStatus": {
       "uri": "http://autotel.ai/ontology/workflow#ApprovedStatus",
       "name": "ApprovedStatus",
+      "type": "WorkflowStatus",
       "label": "Approved",
       "comment": "",
-      "type": "http://autotel.ai/ontology/workflow#WorkflowStatus",
-      "properties": {
-        "}label": {
-          "uri": "{http://www.w3.org/2000/01/rdf-schema#}label",
-          "value": "Approved"
-        }
-      }
+      "properties": {}
     },
     "RejectedStatus": {
       "uri": "http://autotel.ai/ontology/workflow#RejectedStatus",
       "name": "RejectedStatus",
+      "type": "WorkflowStatus",
       "label": "Rejected",
       "comment": "",
-      "type": "http://autotel.ai/ontology/workflow#WorkflowStatus",
-      "properties": {
-        "}label": {
-          "uri": "{http://www.w3.org/2000/01/rdf-schema#}label",
-          "value": "Rejected"
-        }
-      }
+      "properties": {}
     },
     "LowRisk": {
       "uri": "http://autotel.ai/ontology/workflow#LowRisk",
       "name": "LowRisk",
+      "type": "",
       "label": "Low Risk",
       "comment": "",
-      "type": "",
-      "properties": {
-        "}label": {
-          "uri": "{http://www.w3.org/2000/01/rdf-schema#}label",
-          "value": "Low Risk"
-        }
-      }
+      "properties": {}
     },
     "MediumRisk": {
       "uri": "http://autotel.ai/ontology/workflow#MediumRisk",
       "name": "MediumRisk",
+      "type": "",
       "label": "Medium Risk",
       "comment": "",
-      "type": "",
-      "properties": {
-        "}label": {
-          "uri": "{http://www.w3.org/2000/01/rdf-schema#}label",
-          "value": "Medium Risk"
-        }
-      }
+      "properties": {}
     },
     "HighRisk": {
       "uri": "http://autotel.ai/ontology/workflow#HighRisk",
       "name": "HighRisk",
+      "type": "",
       "label": "High Risk",
       "comment": "",
-      "type": "",
-      "properties": {
-        "}label": {
-          "uri": "{http://www.w3.org/2000/01/rdf-schema#}label",
-          "value": "High Risk"
-        }
-      }
+      "properties": {}
     }
   },
   "axioms": [
     {
       "type": "restriction",
-      "property": "http://autotel.ai/ontology/workflow#hasDSPySignature",
-      "min_cardinality": "1"
+      "property": "hasDSPySignature",
+      "value": "1"
     },
     {
       "type": "restriction",
-      "property": "http://autotel.ai/ontology/workflow#hasDMNDecisionTable",
-      "min_cardinality": "1"
+      "property": "hasDMNDecisionTable",
+      "value": "1"
     },
     {
       "type": "restriction",
-      "property": "http://autotel.ai/ontology/workflow#hasSHACLShape",
-      "min_cardinality": "1"
+      "property": "hasSHACLShape",
+      "value": "1"
     },
     {
       "type": "restriction",
-      "property": "http://autotel.ai/ontology/workflow#hasCustomerId",
-      "min_cardinality": "1"
+      "property": "hasCustomerId",
+      "value": "1"
     },
     {
       "type": "restriction",
-      "property": "http://autotel.ai/ontology/workflow#hasCustomerName",
-      "min_cardinality": "1"
+      "property": "hasCustomerName",
+      "value": "1"
     },
     {
       "type": "restriction",
-      "property": "http://autotel.ai/ontology/workflow#hasOrderId",
-      "min_cardinality": "1"
+      "property": "hasOrderId",
+      "value": "1"
     },
     {
       "type": "restriction",
-      "property": "http://autotel.ai/ontology/workflow#hasCustomer",
-      "min_cardinality": "1"
+      "property": "hasCustomer",
+      "value": "1"
     },
     {
       "type": "restriction",
-      "property": "http://autotel.ai/ontology/workflow#hasRiskLevel",
-      "min_cardinality": "1"
+      "property": "hasRiskLevel",
+      "value": "1"
     },
     {
       "type": "restriction",
-      "property": "http://autotel.ai/ontology/workflow#hasStatus",
-      "min_cardinality": "1"
+      "property": "hasStatus",
+      "value": "1"
     },
     {
       "type": "restriction",
-      "property": "http://autotel.ai/ontology/workflow#hasStatus",
-      "min_cardinality": "1"
+      "property": "hasStatus",
+      "value": "1"
     }
   ]
 }
