@@ -328,27 +328,27 @@ class SPARQLXMLFactory(factory.Factory):
         
         # Generate prefixes
         for i in range(self.prefix_count):
-            prefix_name = factory.Faker('word').lower()
-            prefix_uri = factory.Faker('url')
-            prefixes.append(f'''    <sparql:prefix name="{prefix_name}" uri="{prefix_uri}" />''')
+            prefix_name = factory.Faker('word').evaluate(None, None, {'locale': None})
+            prefix_uri = factory.Faker('url').evaluate(None, None, {'locale': None})
+            prefixes.append(f'''    <sparql:prefix name="{prefix_name.lower()}" uri="{prefix_uri}" />''')
         
         # Generate queries
         for i in range(self.query_count):
-            query_name = factory.Faker('word')
-            query_type = factory.Faker('random_element', elements=['SELECT', 'ASK', 'CONSTRUCT', 'DESCRIBE'])
+            query_name = factory.Faker('word').evaluate(None, None, {'locale': None})
+            query_type = factory.Faker('random_element', elements=['SELECT', 'ASK', 'CONSTRUCT', 'DESCRIBE']).evaluate(None, None, {'locale': None})
             query_text = f"{query_type} ?s ?p ?o WHERE {{ ?s ?p ?o }}"
             
-            queries.append(f'''  <sparql:query name="{query_name}" description="{factory.Faker('sentence')}">
+            queries.append(f'''  <sparql:query name="{query_name}" description="{factory.Faker('sentence').evaluate(None, None, {'locale': None})}">
     {query_text}
     <sparql:parameter name="limit" type="integer" required="false" default="100" />
   </sparql:query>''')
         
         # Generate templates
         for i in range(self.template_count):
-            template_name = factory.Faker('word')
+            template_name = factory.Faker('word').evaluate(None, None, {'locale': None})
             template_text = "SELECT ?s ?p ?o WHERE { ?s ?p ?o . FILTER(?s = ?subject) }"
             
-            templates.append(f'''  <sparql:template name="{template_name}" description="{factory.Faker('sentence')}">
+            templates.append(f'''  <sparql:template name="{template_name}" description="{factory.Faker('sentence').evaluate(None, None, {'locale': None})}">
     {template_text}
     <sparql:validation type="regex" pattern="^[a-zA-Z][a-zA-Z0-9]*$" message="Subject must be alphanumeric" />
     <sparql:example>
@@ -373,8 +373,6 @@ class SPARQLQueryDefinitionFactory(factory.Factory):
     name = factory.Faker('word')
     description = factory.Faker('sentence')
     query_type = factory.Faker('random_element', elements=['SELECT', 'ASK', 'CONSTRUCT', 'DESCRIBE'])
-    parameter_count = factory.Faker('random_int', min=0, max=3)
-    prefix_count = factory.Faker('random_int', min=0, max=2)
     
     @factory.lazy_attribute
     def query(self):
@@ -385,12 +383,13 @@ class SPARQLQueryDefinitionFactory(factory.Factory):
     def parameters(self):
         """Generate dynamic parameters"""
         parameters = {}
-        for i in range(self.parameter_count):
-            param_name = factory.Faker('word')
+        param_count = factory.Faker('random_int', min=0, max=3).evaluate(None, None, {'locale': None})
+        for i in range(param_count):
+            param_name = factory.Faker('word').evaluate(None, None, {'locale': None})
             parameters[param_name] = {
-                "type": factory.Faker('random_element', elements=['string', 'integer', 'boolean']),
-                "required": factory.Faker('boolean'),
-                "default": factory.Faker('word') if factory.Faker('boolean') else None
+                "type": factory.Faker('random_element', elements=['string', 'integer', 'boolean']).evaluate(None, None, {'locale': None}),
+                "required": factory.Faker('boolean').evaluate(None, None, {'locale': None}),
+                "default": factory.Faker('word').evaluate(None, None, {'locale': None}) if factory.Faker('boolean').evaluate(None, None, {'locale': None}) else None
             }
         return parameters
     
@@ -398,9 +397,10 @@ class SPARQLQueryDefinitionFactory(factory.Factory):
     def prefixes(self):
         """Generate dynamic prefixes"""
         prefixes = {}
-        for i in range(self.prefix_count):
-            prefix_name = factory.Faker('word').lower()
-            prefix_uri = factory.Faker('url')
+        prefix_count = factory.Faker('random_int', min=0, max=2).evaluate(None, None, {'locale': None})
+        for i in range(prefix_count):
+            prefix_name = factory.Faker('word').evaluate(None, None, {'locale': None}).lower()
+            prefix_uri = factory.Faker('url').evaluate(None, None, {'locale': None})
             prefixes[prefix_name] = prefix_uri
         return prefixes
 
@@ -413,16 +413,14 @@ class SPARQLQueryTemplateFactory(factory.Factory):
     
     name = factory.Faker('word')
     description = factory.Faker('sentence')
-    parameter_count = factory.Faker('random_int', min=1, max=3)
-    validation_count = factory.Faker('random_int', min=0, max=2)
-    example_count = factory.Faker('random_int', min=0, max=2)
     
     @factory.lazy_attribute
     def template(self):
         """Generate dynamic SPARQL template"""
+        param_count = factory.Faker('random_int', min=1, max=3).evaluate(None, None, {'locale': None})
         params = []
-        for i in range(self.parameter_count):
-            param_name = factory.Faker('word')
+        for i in range(param_count):
+            param_name = factory.Faker('word').evaluate(None, None, {'locale': None})
             params.append(f"?{param_name}")
         param_str = " ".join(params)
         return f"SELECT {param_str} WHERE {{ ?s ?p ?o . FILTER(?s = ?subject) }}"
@@ -430,17 +428,19 @@ class SPARQLQueryTemplateFactory(factory.Factory):
     @factory.lazy_attribute
     def parameters(self):
         """Generate dynamic parameter names"""
-        return [factory.Faker('word') for _ in range(self.parameter_count)]
+        param_count = factory.Faker('random_int', min=1, max=3).evaluate(None, None, {'locale': None})
+        return [factory.Faker('word').evaluate(None, None, {'locale': None}) for _ in range(param_count)]
     
     @factory.lazy_attribute
     def validation_rules(self):
         """Generate dynamic validation rules"""
         rules = []
-        for i in range(self.validation_count):
+        validation_count = factory.Faker('random_int', min=0, max=2).evaluate(None, None, {'locale': None})
+        for i in range(validation_count):
             rules.append({
-                "type": factory.Faker('random_element', elements=['regex', 'range', 'enum']),
-                "pattern": factory.Faker('word'),
-                "message": factory.Faker('sentence')
+                "type": factory.Faker('random_element', elements=['regex', 'range', 'enum']).evaluate(None, None, {'locale': None}),
+                "pattern": factory.Faker('word').evaluate(None, None, {'locale': None}),
+                "message": factory.Faker('sentence').evaluate(None, None, {'locale': None})
             })
         return rules
     
@@ -448,11 +448,13 @@ class SPARQLQueryTemplateFactory(factory.Factory):
     def examples(self):
         """Generate dynamic examples"""
         examples = []
-        for i in range(self.example_count):
+        example_count = factory.Faker('random_int', min=0, max=2).evaluate(None, None, {'locale': None})
+        param_count = factory.Faker('random_int', min=1, max=3).evaluate(None, None, {'locale': None})
+        for i in range(example_count):
             example = {}
-            for j in range(self.parameter_count):
-                param_name = factory.Faker('word')
-                example[param_name] = factory.Faker('word')
+            for j in range(param_count):
+                param_name = factory.Faker('word').evaluate(None, None, {'locale': None})
+                example[param_name] = factory.Faker('word').evaluate(None, None, {'locale': None})
             examples.append(example)
         return examples
 

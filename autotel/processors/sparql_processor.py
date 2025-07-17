@@ -175,9 +175,10 @@ class SPARQLProcessor(BaseProcessor):
 
     def _extract_template_parameters(self, template_text: str) -> List[str]:
         """Extract parameter names from template text."""
-        # Look for patterns like ?param or $param
+        # Look for patterns like ?param or $param and extract just the parameter name
         param_pattern = r'[?$](\w+)'
-        return list(set(re.findall(param_pattern, template_text)))
+        params = re.findall(param_pattern, template_text)
+        return list(set(params))  # Remove duplicates
 
     def _extract_validation_rules(self, elem: ET.Element) -> List[Dict[str, Any]]:
         """Extract validation rules from template element."""
@@ -211,6 +212,9 @@ class SPARQLProcessor(BaseProcessor):
                 "queries": queries,
                 "templates": templates
             }
+        except ValueError as e:
+            # Re-raise ValueError with original message
+            raise e
         except Exception:
             raise ValueError("Invalid XML format")
 
@@ -226,7 +230,16 @@ class SPARQLProcessor(BaseProcessor):
         """Validate SPARQL query syntax (basic validation)."""
         query_upper = query_text.strip().upper()
         valid_types = ["SELECT", "ASK", "CONSTRUCT", "DESCRIBE"]
-        return any(query_upper.startswith(qt) for qt in valid_types)
+        
+        # Check if query starts with a valid type
+        if not any(query_upper.startswith(qt) for qt in valid_types):
+            return False
+        
+        # Additional validation: SELECT queries should have WHERE clause
+        if query_upper.startswith("SELECT") and "WHERE" not in query_upper:
+            return False
+            
+        return True
 
     def extract_variables(self, query_text: str) -> List[str]:
         """Extract variable names from SPARQL query."""

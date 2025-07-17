@@ -18,7 +18,7 @@ import lxml.etree as etree
 
 from autotel.processors.base import BaseProcessor, ProcessorConfig, ProcessorResult
 from autotel.processors.meta import processor_metadata
-from autotel.helpers.telemetry.span import create_span
+from autotel.helpers.telemetry.span import create_processor_span
 
 
 @processor_metadata(
@@ -60,7 +60,7 @@ class BPMNProcessor(BaseProcessor):
         Returns:
             ProcessorResult with WorkflowSpec or error
         """
-        with create_span("bpmn_processor.process", {"processor": "bpmn_processor"}) as span:
+        with create_processor_span("process", "bpmn") as span:
             start_time = time.time()
             
             try:
@@ -73,11 +73,9 @@ class BPMNProcessor(BaseProcessor):
                 # Calculate processing time
                 duration_ms = (time.time() - start_time) * 1000
                 
-                span.set_attributes({
-                    "bpmn.process_id": process_id,
-                    "bpmn.parsing_success": True,
-                    "bpmn.duration_ms": duration_ms
-                })
+                span.set_attribute("bpmn.process_id", process_id)
+                span.set_attribute("bpmn.parsing_success", True)
+                span.set_attribute("bpmn.duration_ms", duration_ms)
                 
                 return ProcessorResult.success_result(
                     data=workflow_spec,
@@ -91,11 +89,9 @@ class BPMNProcessor(BaseProcessor):
             except Exception as e:
                 duration_ms = (time.time() - start_time) * 1000
                 
-                span.set_attributes({
-                    "bpmn.parsing_success": False,
-                    "bpmn.error": str(e),
-                    "bpmn.duration_ms": duration_ms
-                })
+                span.set_attribute("bpmn.parsing_success", False)
+                span.set_attribute("bpmn.error", str(e))
+                span.set_attribute("bpmn.duration_ms", duration_ms)
                 
                 return ProcessorResult.error_result(
                     error=str(e),
