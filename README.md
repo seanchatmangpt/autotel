@@ -9,6 +9,7 @@ AutoTel is an enterprise-grade **BPMN 2.0 orchestration framework** that combine
 - **OWL** - Semantic ontology processing
 - **Jinja2** - Dynamic template processing (now with unified JinjaProcessor)
 - **OpenTelemetry** - Comprehensive observability
+- **AnyStore** - Universal data persistence layer supporting multiple formats
 
 ## Unified Processor Architecture
 
@@ -30,6 +31,7 @@ autotel/
 ├── helpers/        # Contracts, error handling, telemetry helpers
 ├── processors/     # Unified processor implementations (bpmn, dmn, dspy, shacl, owl, jinja, otel)
 ├── schemas/        # Pydantic models for processor data
+├── stores/         # Data persistence layer (AnyStore, JSONStore, YAMLStore, etc.)
 ├── utils/          # Utility functions
 ├── workflows/      # Workflow engine integrations
 └── autotel_cli.py  # Typer-based CLI
@@ -38,12 +40,13 @@ autotel/
 ## Features
 
 - **Unified Processor Pattern**: All processors share a common interface, config, and telemetry
-- **BPMN 2.0 Orchestration**: Complete workflow automation with SpiffWorkflow engine
+- **BPMN 2.0 Orchestration**: Complete workflow automation with SpiffWorkflow engine (FAANG-level implementation)
 - **DMN Integration**: Business rule execution with decision tables
 - **AI-Powered Services**: DSPy integration for intelligent task execution (XML-only)
 - **Semantic Validation**: SHACL constraint validation and OWL ontology processing
 - **Dynamic Templating**: Jinja2 integration for dynamic content generation (via JinjaProcessor)
 - **Comprehensive Telemetry**: OpenTelemetry integration (telemetry is the only source of truth for system behavior)
+- **Universal Data Persistence**: AnyStore supports JSON, YAML, Pickle, XML, Parquet, and SQLite formats
 - **Factory Boy Integration**: All processors and test data are generated and validated using Factory Boy
 - **80/20 Rule**: Focus on robust happy-path implementation, let rare errors crash
 - **Enterprise Ready**: Production-grade error handling and validation
@@ -85,6 +88,10 @@ autotel validate bpmn/simple_process.bpmn
 
 # Execute semantic pipeline
 autotel pipeline execute --owl ontology.owl --shacl shapes.shacl --dspy signatures.dspy --input data.json
+
+# Use AnyStore for data persistence
+autotel store save data.json --format yaml --output data.yaml
+autotel store load data.yaml --format yaml
 ```
 
 ## Architecture
@@ -100,6 +107,17 @@ AutoTel integrates seven key technologies into a unified orchestration framework
 5. **OWL** - Semantic ontology processing and reasoning
 6. **Jinja2** - Dynamic template processing and content generation (unified JinjaProcessor)
 7. **OpenTelemetry** - Comprehensive observability and monitoring
+
+### Data Persistence Layer
+
+AutoTel includes a universal data persistence layer with **AnyStore**:
+
+- **Format Detection**: Automatically detects file format by extension
+- **Multiple Formats**: JSON, YAML, Pickle, XML, Parquet, SQLite
+- **Unified Interface**: Single API for all storage operations
+- **Telemetry Integration**: All storage operations are traced
+- **Error Handling**: Graceful fallback and detailed error reporting
+- **Metadata Enrichment**: Automatic metadata and timestamp tracking
 
 ### Workflow Execution Pipeline
 
@@ -117,17 +135,20 @@ OWL XML → Ontology Engine → Semantic Processing
 Jinja2 XML → Template Engine → Dynamic Content Generation
     ↓
 OTEL XML → Telemetry Engine → Observability & Monitoring
+    ↓
+AnyStore → Data Persistence → Multi-format Storage
 ```
 
 ### Core Components
 
-- **Workflow Engine**: SpiffWorkflow-based BPMN execution engine
+- **Workflow Engine**: SpiffWorkflow-based BPMN execution engine (FAANG-level)
 - **DMN Engine**: Decision table execution and business rule processing
 - **DSPy Integration**: AI service execution with dynamic signatures (XML-only)
 - **Telemetry Manager**: OpenTelemetry integration with fallback support
 - **OWL Processor**: Semantic ontology processing (unified)
 - **SHACL Processor**: Constraint validation processing (unified, replaces LinkML)
 - **JinjaProcessor**: Dynamic template processing and rendering (unified)
+- **AnyStore**: Universal data persistence with format detection
 - **Factory Integration**: All test data and configs generated with Factory Boy
 
 ## CLI Commands
@@ -140,6 +161,13 @@ OTEL XML → Telemetry Engine → Observability & Monitoring
 - `autotel list --workflows` - List available workflows
 - `autotel validate <file>` - Validate BPMN/DMN/OWL/SHACL/DSPy files
 - `autotel workflow --validate <file>` - Validate workflow structure
+
+### Data Persistence Commands
+
+- `autotel store save <file> --format <format>` - Save data in specified format
+- `autotel store load <file> --format <format>` - Load data from specified format
+- `autotel store convert <input> --from <format> --to <format>` - Convert between formats
+- `autotel store info <file>` - Show file format and metadata information
 
 ### Telemetry Commands
 
@@ -181,6 +209,9 @@ uv run python test_pipeline.py
 
 # Run dynamic workflow tests
 uv run python test_dynamic_dspy_jinja_bpmn.py
+
+# Run AnyStore tests
+uv run python test_anystore.py
 ```
 
 ### Best Practices
@@ -191,6 +222,7 @@ uv run python test_dynamic_dspy_jinja_bpmn.py
 - **XML-Only DSPy**: DSPy configuration and definitions are always in XML, never in Python code
 - **No LinkML**: SHACL and OWL are used for all validation
 - **Unified Processor Pattern**: All processors follow the same interface, config, and telemetry pattern
+- **Data Persistence**: Use AnyStore for all data storage operations with automatic format detection
 
 ### Adding New Processors
 
@@ -210,6 +242,10 @@ uv run python test_dynamic_dspy_jinja_bpmn.py
 ## Recent Updates
 
 ### Latest Features
+- **AnyStore Universal Data Persistence**: Multi-format data storage with automatic format detection (JSON, YAML, Pickle, XML, Parquet, SQLite)
+- **FAANG-Level BPMN Processor**: Enhanced BPMN processor with unified telemetry, robust error handling, and best-practice metadata registration
+- **Unified SPARQL Processor**: SPARQL processor with factoryboy integration and comprehensive tests
+- **Comprehensive Documentation**: Complete AnyStore documentation with quick reference guides and implementation details
 - **Unified JinjaProcessor**: Dynamic template processing with XML configuration, telemetry, and contract-based programming
 - **Factory Boy Integration**: All processors and test data are generated and validated using Factory Boy
 - **SHACL/OWL Validation**: All validation now uses SHACL and OWL (no LinkML)
@@ -221,6 +257,7 @@ uv run python test_dynamic_dspy_jinja_bpmn.py
 - **Test Coverage**: Enhanced integration testing with real processor methods and Factory Boy data
 - **Error Handling**: Improved validation and error reporting
 - **Telemetry**: Better span tracking and metrics collection
+- **Data Persistence**: Optimized storage operations with format-specific backends
 
 ## Troubleshooting
 
@@ -239,6 +276,21 @@ autotel telemetry --stats
 autotel telemetry --export debug.json
 ```
 
+### Data Persistence Issues
+
+If AnyStore operations fail:
+
+```bash
+# Check file format
+autotel store info <file>
+
+# Convert between formats
+autotel store convert <input> --from <format> --to <format>
+
+# Validate file structure
+autotel validate <file>
+```
+
 ### Common Issues
 
 1. **SHACL/OWL schema not found**: Ensure your schema files are in the project root
@@ -246,6 +298,7 @@ autotel telemetry --export debug.json
 3. **OWL parsing errors**: Validate OWL file format and namespace declarations
 4. **DMN parsing issues**: Check XML namespace format (use default namespace, not prefixed)
 5. **Jinja2 template errors**: Validate XML structure and CDATA sections
+6. **AnyStore format detection fails**: Check file extension or specify format explicitly
 
 ## Contributing
 
@@ -264,6 +317,7 @@ autotel telemetry --export debug.json
 - **Type Safety**: Follow Pydantic v2 patterns for data validation
 - **Error Handling**: Implement graceful error handling with detailed telemetry
 - **Testing**: Write comprehensive integration tests for all processor combinations
+- **Data Persistence**: Use AnyStore for all storage operations with proper format detection
 
 ## License
 
