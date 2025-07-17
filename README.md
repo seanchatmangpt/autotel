@@ -29,7 +29,7 @@ autotel/
 ├── core/           # Framework, orchestrator, telemetry
 ├── factory/        # Processor factories, dynamic processor generation
 ├── helpers/        # Contracts, error handling, telemetry helpers
-├── processors/     # Unified processor implementations (bpmn, dmn, dspy, shacl, owl, jinja, otel)
+├── processors/     # Unified processor implementations (bpmn, dmn, dspy, shacl, owl, jinja, otel, sparql)
 ├── schemas/        # Pydantic models for processor data
 ├── stores/         # Data persistence layer (AnyStore, JSONStore, YAMLStore, etc.)
 ├── utils/          # Utility functions
@@ -88,10 +88,6 @@ autotel validate bpmn/simple_process.bpmn
 
 # Execute semantic pipeline
 autotel pipeline execute --owl ontology.owl --shacl shapes.shacl --dspy signatures.dspy --input data.json
-
-# Use AnyStore for data persistence
-autotel store save data.json --format yaml --output data.yaml
-autotel store load data.yaml --format yaml
 ```
 
 ## Architecture
@@ -118,6 +114,7 @@ AutoTel includes a universal data persistence layer with **AnyStore**:
 - **Telemetry Integration**: All storage operations are traced
 - **Error Handling**: Graceful fallback and detailed error reporting
 - **Metadata Enrichment**: Automatic metadata and timestamp tracking
+- **Extensible Registry**: Support for custom format implementations
 
 ### Workflow Execution Pipeline
 
@@ -148,6 +145,7 @@ AnyStore → Data Persistence → Multi-format Storage
 - **OWL Processor**: Semantic ontology processing (unified)
 - **SHACL Processor**: Constraint validation processing (unified, replaces LinkML)
 - **JinjaProcessor**: Dynamic template processing and rendering (unified)
+- **SPARQL Processor**: SPARQL query parsing and template extraction (unified)
 - **AnyStore**: Universal data persistence with format detection
 - **Factory Integration**: All test data and configs generated with Factory Boy
 
@@ -161,13 +159,6 @@ AnyStore → Data Persistence → Multi-format Storage
 - `autotel list --workflows` - List available workflows
 - `autotel validate <file>` - Validate BPMN/DMN/OWL/SHACL/DSPy files
 - `autotel workflow --validate <file>` - Validate workflow structure
-
-### Data Persistence Commands
-
-- `autotel store save <file> --format <format>` - Save data in specified format
-- `autotel store load <file> --format <format>` - Load data from specified format
-- `autotel store convert <input> --from <format> --to <format>` - Convert between formats
-- `autotel store info <file>` - Show file format and metadata information
 
 ### Telemetry Commands
 
@@ -211,7 +202,7 @@ uv run python test_pipeline.py
 uv run python test_dynamic_dspy_jinja_bpmn.py
 
 # Run AnyStore tests
-uv run python test_anystore.py
+uv run python test_any_store.py
 ```
 
 ### Best Practices
@@ -242,9 +233,9 @@ uv run python test_anystore.py
 ## Recent Updates
 
 ### Latest Features
-- **AnyStore Universal Data Persistence**: Multi-format data storage with automatic format detection (JSON, YAML, Pickle, XML, Parquet, SQLite)
-- **FAANG-Level BPMN Processor**: Enhanced BPMN processor with unified telemetry, robust error handling, and best-practice metadata registration
-- **Unified SPARQL Processor**: SPARQL processor with factoryboy integration and comprehensive tests
+- **AnyStore Universal Data Persistence**: Multi-format data storage with automatic format detection (JSON, YAML, Pickle, XML, Parquet, SQLite) and extensible registry
+- **FAANG-Level BPMN Processor**: Enhanced BPMN processor with unified telemetry, robust error handling, and best-practice metadata registration using CamundaParser
+- **Unified SPARQL Processor**: SPARQL processor with factoryboy integration, query extraction, and template processing capabilities
 - **Comprehensive Documentation**: Complete AnyStore documentation with quick reference guides and implementation details
 - **Unified JinjaProcessor**: Dynamic template processing with XML configuration, telemetry, and contract-based programming
 - **Factory Boy Integration**: All processors and test data are generated and validated using Factory Boy
@@ -274,21 +265,6 @@ autotel telemetry --stats
 
 # Export telemetry for debugging
 autotel telemetry --export debug.json
-```
-
-### Data Persistence Issues
-
-If AnyStore operations fail:
-
-```bash
-# Check file format
-autotel store info <file>
-
-# Convert between formats
-autotel store convert <input> --from <format> --to <format>
-
-# Validate file structure
-autotel validate <file>
 ```
 
 ### Common Issues
