@@ -5,6 +5,7 @@
 
 #define INITIAL_CAPACITY 1024
 #define BITVEC_WORD_BITS 64
+#define HASH_TABLE_SIZE 1024
 
 // Track allocated sizes
 typedef struct
@@ -14,6 +15,24 @@ typedef struct
     size_t node_counts_size;
     size_t ps_index_size;
 } AllocSizes;
+
+// Simple hash table entry for PS->O mapping
+typedef struct
+{
+    uint32_t subject;
+    uint32_t predicate;
+    uint32_t *objects;
+    size_t count;
+    size_t capacity;
+} PSOEntry;
+
+// Hash table for PS->O lookups
+typedef struct
+{
+    PSOEntry *entries;
+    size_t size;
+    size_t count;
+} PSOHashTable;
 
 // Helper to ensure array capacity
 static void ensure_capacity(void **array, size_t *current_size, size_t required_size, size_t elem_size)
@@ -32,6 +51,46 @@ static void ensure_capacity(void **array, size_t *current_size, size_t required_
         *array = new_array;
         *current_size = new_size;
     }
+}
+
+// Simple hash function for PS pairs
+static uint32_t hash_ps(uint32_t predicate, uint32_t subject)
+{
+    return (predicate * 31 + subject) % HASH_TABLE_SIZE;
+}
+
+// Find or create PS entry in hash table
+static PSOEntry *find_or_create_ps_entry(PSOHashTable *table, uint32_t predicate, uint32_t subject)
+{
+    uint32_t hash = hash_ps(predicate, subject);
+    uint32_t index = hash;
+
+    // Linear probing
+    for (int i = 0; i < HASH_TABLE_SIZE; i++)
+    {
+        index = (hash + i) % HASH_TABLE_SIZE;
+
+        if (table->entries[index].predicate == 0 && table->entries[index].subject == 0)
+        {
+            // Empty slot - create new entry
+            table->entries[index].predicate = predicate;
+            table->entries[index].subject = subject;
+            table->entries[index].objects = NULL;
+            table->entries[index].count = 0;
+            table->entries[index].capacity = 0;
+            table->count++;
+            return &table->entries[index];
+        }
+
+        if (table->entries[index].predicate == predicate && table->entries[index].subject == subject)
+        {
+            // Found existing entry
+            return &table->entries[index];
+        }
+    }
+
+    // Table is full (shouldn't happen with our size)
+    abort();
 }
 
 // Bit vector implementation
@@ -146,10 +205,18 @@ EngineState *s7t_create_engine(void)
     // Pre-allocate arrays
     engine->predicate_vectors = calloc(INITIAL_CAPACITY, sizeof(BitVector *));
     engine->object_vectors = calloc(INITIAL_CAPACITY, sizeof(BitVector *));
-    engine->ps_to_o_index = calloc(INITIAL_CAPACITY, sizeof(uint32_t **));
-    engine->ps_to_o_counts = calloc(INITIAL_CAPACITY, sizeof(size_t *));
     engine->node_property_counts = calloc(INITIAL_CAPACITY, sizeof(uint32_t));
     engine->object_type_ids = calloc(INITIAL_CAPACITY, sizeof(uint32_t));
+
+    // Initialize PS->O hash table
+    engine->ps_to_o_index = calloc(1, sizeof(PSOHashTable));
+    PSOHashTable *table = (PSOHashTable *)engine->ps_to_o_index;
+    table->entries = calloc(HASH_TABLE_SIZE, sizeof(PSOEntry));
+    table->size = HASH_TABLE_SIZE;
+    table->count = 0;
+
+    // Initialize counts array (not used with hash table)
+    engine->ps_to_o_counts = NULL;
 
     return engine;
 }
@@ -186,24 +253,20 @@ void s7t_destroy_engine(EngineState *engine)
     }
     free(engine->object_vectors);
 
-    // Free PS->O index
-    for (size_t p = 0; p <= engine->max_predicate_id && p < sizes->ps_index_size; p++)
+    // Free PS->O hash table
+    if (engine->ps_to_o_index)
     {
-        if (engine->ps_to_o_index[p])
+        PSOHashTable *table = (PSOHashTable *)engine->ps_to_o_index;
+        for (size_t i = 0; i < table->size; i++)
         {
-            for (size_t s = 0; s <= engine->max_subject_id; s++)
+            if (table->entries[i].objects)
             {
-                if (engine->ps_to_o_index[p][s]) // Only free if actually allocated
-                {
-                    free(engine->ps_to_o_index[p][s]);
-                }
+                free(table->entries[i].objects);
             }
-            free(engine->ps_to_o_index[p]);
-            free(engine->ps_to_o_counts[p]);
         }
+        free(table->entries);
+        free(table);
     }
-    free(engine->ps_to_o_index);
-    free(engine->ps_to_o_counts);
 
     free(engine->node_property_counts);
     free(engine->object_type_ids);
@@ -252,10 +315,6 @@ S7T_HOT void s7t_add_triple(EngineState *engine, uint32_t s, uint32_t p, uint32_
                     p + 1, sizeof(BitVector *));
     ensure_capacity((void **)&engine->object_vectors, &sizes->object_vectors_size,
                     o + 1, sizeof(BitVector *));
-    ensure_capacity((void **)&engine->ps_to_o_index, &sizes->ps_index_size,
-                    p + 1, sizeof(uint32_t **));
-    ensure_capacity((void **)&engine->ps_to_o_counts, &sizes->ps_index_size,
-                    p + 1, sizeof(size_t *));
     ensure_capacity((void **)&engine->node_property_counts, &sizes->node_counts_size,
                     s + 1, sizeof(uint32_t));
     ensure_capacity((void **)&engine->object_type_ids, &sizes->object_vectors_size,
@@ -275,38 +334,26 @@ S7T_HOT void s7t_add_triple(EngineState *engine, uint32_t s, uint32_t p, uint32_
     }
     bitvec_set(engine->object_vectors[o], s);
 
-    // Update PS->O index
-    if (S7T_UNLIKELY(!engine->ps_to_o_index[p]))
+    // Update PS->O hash table
+    PSOHashTable *table = (PSOHashTable *)engine->ps_to_o_index;
+    PSOEntry *entry = find_or_create_ps_entry(table, p, s);
+
+    // Add object to entry
+    if (entry->count >= entry->capacity)
     {
-        size_t initial_size = s + 1000; // More generous initial allocation
-        engine->ps_to_o_index[p] = calloc(initial_size, sizeof(uint32_t *));
-        engine->ps_to_o_counts[p] = calloc(initial_size, sizeof(size_t));
+        size_t new_capacity = entry->capacity == 0 ? 4 : entry->capacity * 2;
+        entry->objects = realloc(entry->objects, new_capacity * sizeof(uint32_t));
+        entry->capacity = new_capacity;
     }
 
-    // Check if subject array needs expansion
-    // For now, we'll rely on the initial allocation being large enough
-    // In a production system, we'd track actual allocated sizes per predicate
-
-    // Add object to PS->O index
-    size_t current_count = engine->ps_to_o_counts[p][s];
-    if (current_count == 0)
-    {
-        engine->ps_to_o_index[p][s] = malloc(sizeof(uint32_t));
-    }
-    else
-    {
-        engine->ps_to_o_index[p][s] = realloc(engine->ps_to_o_index[p][s],
-                                              (current_count + 1) * sizeof(uint32_t));
-    }
-
-    engine->ps_to_o_index[p][s][current_count] = o;
-    engine->ps_to_o_counts[p][s]++;
+    entry->objects[entry->count++] = o;
 
     // Update node property count
     engine->node_property_counts[s]++;
 
     engine->triple_count++;
 }
+
 // Query primitives - optimized for L1 cache
 S7T_HOT BitVector *s7t_get_subject_vector(EngineState *engine, uint32_t predicate_id, uint32_t object_id)
 {
@@ -339,22 +386,35 @@ S7T_HOT BitVector *s7t_get_object_vector(EngineState *engine, uint32_t predicate
         return bitvec_create(0);
     }
 
-    if (S7T_UNLIKELY(!engine->ps_to_o_index[predicate_id]))
+    // Use hash table lookup
+    PSOHashTable *table = (PSOHashTable *)engine->ps_to_o_index;
+    uint32_t hash = hash_ps(predicate_id, subject_id);
+    uint32_t index = hash;
+
+    // Linear probing
+    for (int i = 0; i < HASH_TABLE_SIZE; i++)
     {
-        return bitvec_create(0);
+        index = (hash + i) % HASH_TABLE_SIZE;
+
+        if (table->entries[index].predicate == 0 && table->entries[index].subject == 0)
+        {
+            // Not found
+            return bitvec_create(0);
+        }
+
+        if (table->entries[index].predicate == predicate_id && table->entries[index].subject == subject_id)
+        {
+            // Found - create bit vector from objects
+            BitVector *result = bitvec_create(engine->max_object_id + 1);
+            for (size_t j = 0; j < table->entries[index].count; j++)
+            {
+                bitvec_set(result, table->entries[index].objects[j]);
+            }
+            return result;
+        }
     }
 
-    BitVector *result = bitvec_create(engine->max_object_id + 1);
-
-    size_t count = engine->ps_to_o_counts[predicate_id][subject_id];
-    uint32_t *objects = engine->ps_to_o_index[predicate_id][subject_id];
-
-    for (size_t i = 0; i < count; i++)
-    {
-        bitvec_set(result, objects[i]);
-    }
-
-    return result;
+    return bitvec_create(0);
 }
 
 S7T_HOT S7T_PURE uint32_t *s7t_get_objects(EngineState *engine, uint32_t predicate_id,
@@ -369,14 +429,33 @@ S7T_HOT S7T_PURE uint32_t *s7t_get_objects(EngineState *engine, uint32_t predica
         return NULL;
     }
 
-    if (S7T_UNLIKELY(!engine->ps_to_o_index[predicate_id]))
+    // Use hash table lookup
+    PSOHashTable *table = (PSOHashTable *)engine->ps_to_o_index;
+    uint32_t hash = hash_ps(predicate_id, subject_id);
+    uint32_t index = hash;
+
+    // Linear probing
+    for (int i = 0; i < HASH_TABLE_SIZE; i++)
     {
-        *count = 0;
-        return NULL;
+        index = (hash + i) % HASH_TABLE_SIZE;
+
+        if (table->entries[index].predicate == 0 && table->entries[index].subject == 0)
+        {
+            // Not found
+            *count = 0;
+            return NULL;
+        }
+
+        if (table->entries[index].predicate == predicate_id && table->entries[index].subject == subject_id)
+        {
+            // Found
+            *count = table->entries[index].count;
+            return table->entries[index].objects;
+        }
     }
 
-    *count = engine->ps_to_o_counts[predicate_id][subject_id];
-    return engine->ps_to_o_index[predicate_id][subject_id];
+    *count = 0;
+    return NULL;
 }
 
 // SHACL validation primitives
@@ -391,12 +470,30 @@ S7T_HOT S7T_PURE int shacl_check_min_count(EngineState *engine, uint32_t subject
         return min_count == 0;
     }
 
-    if (S7T_UNLIKELY(!engine->ps_to_o_counts[predicate_id]))
+    // Use hash table lookup
+    PSOHashTable *table = (PSOHashTable *)engine->ps_to_o_index;
+    uint32_t hash = hash_ps(predicate_id, subject_id);
+    uint32_t index = hash;
+
+    // Linear probing
+    for (int i = 0; i < HASH_TABLE_SIZE; i++)
     {
-        return min_count == 0;
+        index = (hash + i) % HASH_TABLE_SIZE;
+
+        if (table->entries[index].predicate == 0 && table->entries[index].subject == 0)
+        {
+            // Not found
+            return min_count == 0;
+        }
+
+        if (table->entries[index].predicate == predicate_id && table->entries[index].subject == subject_id)
+        {
+            // Found
+            return table->entries[index].count >= min_count;
+        }
     }
 
-    return engine->ps_to_o_counts[predicate_id][subject_id] >= min_count;
+    return min_count == 0;
 }
 
 S7T_HOT S7T_PURE int shacl_check_max_count(EngineState *engine, uint32_t subject_id,
@@ -410,12 +507,30 @@ S7T_HOT S7T_PURE int shacl_check_max_count(EngineState *engine, uint32_t subject
         return 1;
     }
 
-    if (S7T_UNLIKELY(!engine->ps_to_o_counts[predicate_id]))
+    // Use hash table lookup
+    PSOHashTable *table = (PSOHashTable *)engine->ps_to_o_index;
+    uint32_t hash = hash_ps(predicate_id, subject_id);
+    uint32_t index = hash;
+
+    // Linear probing
+    for (int i = 0; i < HASH_TABLE_SIZE; i++)
     {
-        return 1;
+        index = (hash + i) % HASH_TABLE_SIZE;
+
+        if (table->entries[index].predicate == 0 && table->entries[index].subject == 0)
+        {
+            // Not found
+            return 1;
+        }
+
+        if (table->entries[index].predicate == predicate_id && table->entries[index].subject == subject_id)
+        {
+            // Found
+            return table->entries[index].count <= max_count;
+        }
     }
 
-    return engine->ps_to_o_counts[predicate_id][subject_id] <= max_count;
+    return 1;
 }
 
 S7T_HOT S7T_PURE int shacl_check_class(EngineState *engine, uint32_t subject_id, uint32_t class_id)

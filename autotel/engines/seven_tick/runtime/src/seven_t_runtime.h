@@ -25,9 +25,9 @@ typedef struct {
     BitVector** predicate_vectors;  // Array of bit vectors per predicate
     BitVector** object_vectors;     // Array of bit vectors per object
     
-    // Direct lookup table
-    uint32_t*** ps_to_o_index;      // [predicate][subject] -> object_ids
-    size_t** ps_to_o_counts;        // Count of objects per ps pair
+    // Hash table for PS->O lookups
+    void* ps_to_o_index;            // PSOHashTable pointer
+    void* ps_to_o_counts;           // Not used with hash table
     
     // Cardinality tracking
     uint32_t* node_property_counts; // Per-node property count

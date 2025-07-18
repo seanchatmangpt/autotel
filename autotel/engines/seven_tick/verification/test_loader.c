@@ -7,7 +7,7 @@ int main() {
     printf("Test: Loading TTL data\n");
     
     EngineState* engine = s7t_create_engine();
-    FILE* f = fopen("/tmp/small_test_data.ttl", "r");
+    FILE* f = fopen("/tmp/sprint_health_data.ttl", "r");
     if (!f) {
         printf("Cannot open data file\n");
         return 1;
