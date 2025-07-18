@@ -5,7 +5,7 @@
 
 #define INITIAL_CAPACITY 1024
 #define BITVEC_WORD_BITS 64
-#define HASH_TABLE_SIZE 1024
+#define HASH_TABLE_SIZE 16384
 
 // Track allocated sizes
 typedef struct
