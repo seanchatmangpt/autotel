@@ -82,3 +82,6 @@ run-shacl-7tick-benchmark: all
 
 run-shacl-impl-benchmark: all
 	cd $(VERIFICATION_DIR) && LD_LIBRARY_PATH=../lib ./shacl_implementation_benchmark
+
+run-shacl-7tick-benchmark: all
+	cd $(VERIFICATION_DIR) && LD_LIBRARY_PATH=../lib ./shacl_7tick_benchmark

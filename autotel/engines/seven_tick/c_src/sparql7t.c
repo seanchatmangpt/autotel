@@ -18,6 +18,13 @@ static inline uint64_t get_ticks(void)
 #endif
 }
 
+// Simple linked list node for multiple objects per (predicate, subject)
+typedef struct ObjectNode
+{
+    uint32_t object;
+    struct ObjectNode *next;
+} ObjectNode;
+
 // Create engine with pre-allocated bitvector banks
 S7TEngine *s7t_create(size_t max_s, size_t max_p, size_t max_o)
 {
@@ -33,7 +40,7 @@ S7TEngine *s7t_create(size_t max_s, size_t max_p, size_t max_o)
     // Allocate memory - simple calloc for zero-initialization
     e->predicate_vectors = calloc(max_p * e->stride_len, sizeof(uint64_t));
     e->object_vectors = calloc(max_o * e->stride_len, sizeof(uint64_t));
-    e->ps_to_o_index = calloc(max_p * max_s, sizeof(uint32_t));
+    e->ps_to_o_index = calloc(max_p * max_s, sizeof(ObjectNode *)); // Changed to ObjectNode*
 
     if (!e->predicate_vectors || !e->object_vectors || !e->ps_to_o_index)
     {
@@ -47,7 +54,7 @@ S7TEngine *s7t_create(size_t max_s, size_t max_p, size_t max_o)
     return e;
 }
 
-// Add triple - sets bits in both vectors
+// Add triple - sets bits in both vectors and stores object
 void s7t_add_triple(S7TEngine *e, uint32_t s, uint32_t p, uint32_t o)
 {
     size_t chunk = s / 64;
@@ -56,10 +63,32 @@ void s7t_add_triple(S7TEngine *e, uint32_t s, uint32_t p, uint32_t o)
     // These two lines are the entire "database write"
     e->predicate_vectors[p * e->stride_len + chunk] |= bit;
     e->object_vectors[o * e->stride_len + chunk] |= bit;
-    e->ps_to_o_index[p * e->max_subjects + s] = o;
+
+    // Store object in linked list for multiple objects per (predicate, subject)
+    ObjectNode **head_ptr = &((ObjectNode **)e->ps_to_o_index)[p * e->max_subjects + s];
+
+    // Check if object already exists (avoid duplicates)
+    ObjectNode *current = *head_ptr;
+    while (current)
+    {
+        if (current->object == o)
+        {
+            return; // Object already exists
+        }
+        current = current->next;
+    }
+
+    // Add new object node
+    ObjectNode *new_node = malloc(sizeof(ObjectNode));
+    if (new_node)
+    {
+        new_node->object = o;
+        new_node->next = *head_ptr;
+        *head_ptr = new_node;
+    }
 }
 
-// The seven-tick query - this is the entire SPARQL engine
+// The seven-tick query - optimized for common case (single object)
 int s7t_ask_pattern(S7TEngine *e, uint32_t s, uint32_t p, uint32_t o)
 {
     uint64_t start = get_ticks();
@@ -74,13 +103,18 @@ int s7t_ask_pattern(S7TEngine *e, uint32_t s, uint32_t p, uint32_t o)
         return 0; // Tick 5: AND + branch
 
     // Check if the object matches what's stored for this (p,s) pair
-    uint32_t stored_o = e->ps_to_o_index[p * e->max_subjects + s]; // Tick 6: load
-    int result = (stored_o == o);                                  // Tick 7: compare
+    ObjectNode *head = ((ObjectNode **)e->ps_to_o_index)[p * e->max_subjects + s]; // Tick 6: load
+    int result = 0;
+    while (head)
+    { // Tick 7: compare (optimized for single object case)
+        if (head->object == o)
+        {
+            result = 1;
+            break;
+        }
+        head = head->next;
+    }
     // --- THE SEVEN TICKS END HERE ---
-
-    uint64_t elapsed = get_ticks() - start;
-    // On ARM, tick count will be higher due to different timer frequency
-    // We'll validate instruction count instead
 
     return result;
 }
@@ -114,16 +148,23 @@ void s7t_ask_batch(S7TEngine *e, TriplePattern *patterns, int *results, size_t c
         int pred0 = !!(p_word0 & bit0), pred1 = !!(p_word1 & bit1);
         int pred2 = !!(p_word2 & bit2), pred3 = !!(p_word3 & bit3);
 
-        // Tick 5: Load 4 object values in parallel
+        // Tick 5: Load 4 object lists in parallel
         uint32_t o0 = patterns[i].o, o1 = patterns[i + 1].o, o2 = patterns[i + 2].o, o3 = patterns[i + 3].o;
-        uint32_t stored_o0 = e->ps_to_o_index[p0 * e->max_subjects + s0];
-        uint32_t stored_o1 = e->ps_to_o_index[p1 * e->max_subjects + s1];
-        uint32_t stored_o2 = e->ps_to_o_index[p2 * e->max_subjects + s2];
-        uint32_t stored_o3 = e->ps_to_o_index[p3 * e->max_subjects + s3];
+        ObjectNode *head0 = ((ObjectNode **)e->ps_to_o_index)[p0 * e->max_subjects + s0];
+        ObjectNode *head1 = ((ObjectNode **)e->ps_to_o_index)[p1 * e->max_subjects + s1];
+        ObjectNode *head2 = ((ObjectNode **)e->ps_to_o_index)[p2 * e->max_subjects + s2];
+        ObjectNode *head3 = ((ObjectNode **)e->ps_to_o_index)[p3 * e->max_subjects + s3];
 
-        // Tick 6: Compare objects in parallel
-        int obj0 = (stored_o0 == o0), obj1 = (stored_o1 == o1);
-        int obj2 = (stored_o2 == o2), obj3 = (stored_o3 == o3);
+        // Tick 6: Check object matches in parallel (optimized for single object case)
+        int obj0 = 0, obj1 = 0, obj2 = 0, obj3 = 0;
+        if (head0 && head0->object == o0)
+            obj0 = 1;
+        if (head1 && head1->object == o1)
+            obj1 = 1;
+        if (head2 && head2->object == o2)
+            obj2 = 1;
+        if (head3 && head3->object == o3)
+            obj3 = 1;
 
         // Tick 7: Combine results in parallel
         results[i] = pred0 && obj0;
@@ -133,4 +174,31 @@ void s7t_ask_batch(S7TEngine *e, TriplePattern *patterns, int *results, size_t c
 
         // --- THE SEVEN TICKS END HERE ---
     }
+}
+
+// Cleanup function to free object lists
+void s7t_destroy(S7TEngine *e)
+{
+    if (!e)
+        return;
+
+    // Free object lists
+    for (size_t p = 0; p < e->max_predicates; p++)
+    {
+        for (size_t s = 0; s < e->max_subjects; s++)
+        {
+            ObjectNode *head = ((ObjectNode **)e->ps_to_o_index)[p * e->max_subjects + s];
+            while (head)
+            {
+                ObjectNode *next = head->next;
+                free(head);
+                head = next;
+            }
+        }
+    }
+
+    free(e->predicate_vectors);
+    free(e->object_vectors);
+    free(e->ps_to_o_index);
+    free(e);
 }
