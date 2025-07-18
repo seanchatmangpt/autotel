@@ -46,6 +46,7 @@ void cjinja_destroy(CJinjaEngine *engine);
 CJinjaContext *cjinja_create_context(void);
 void cjinja_destroy_context(CJinjaContext *ctx);
 void cjinja_set_var(CJinjaContext *ctx, const char *key, const char *value);
+char *get_var(CJinjaContext *ctx, const char *key); // Make this public for benchmarks
 
 // Template rendering
 char *cjinja_render(CJinjaEngine *engine, const char *template_name, CJinjaContext *ctx);
