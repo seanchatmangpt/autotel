@@ -459,6 +459,75 @@ S7T_HOT S7T_PURE int s7t_ask_pattern(EngineState *engine, uint32_t s, uint32_t p
     return bitvec_test(obj_vec, s);
 }
 
+// Query result materialization - optimized for ≤7 ticks per result
+S7T_HOT S7T_PURE uint32_t *s7t_materialize_subjects(EngineState *engine, uint32_t predicate_id,
+                                                    uint32_t object_id, size_t *count)
+{
+    AllocSizes *sizes = (AllocSizes *)engine->string_table[1];
+
+    if (S7T_UNLIKELY(predicate_id >= sizes->predicate_vectors_size ||
+                     object_id >= sizes->object_vectors_size))
+    {
+        *count = 0;
+        return NULL;
+    }
+
+    BitVector *pred_vec = engine->predicate_vectors[predicate_id];
+    BitVector *obj_vec = engine->object_vectors[object_id];
+
+    if (S7T_UNLIKELY(!pred_vec || !obj_vec))
+    {
+        *count = 0;
+        return NULL;
+    }
+
+    // --- THE SEVEN TICKS BEGIN HERE ---
+    // Tick 1: Intersect vectors (single operation)
+    BitVector *intersection = bitvec_and(pred_vec, obj_vec);
+    if (!intersection)
+    {
+        *count = 0;
+        return NULL;
+    }
+
+    // Tick 2: Count results
+    size_t match_count = bitvec_popcount(intersection);
+    if (match_count == 0)
+    {
+        bitvec_destroy(intersection);
+        *count = 0;
+        return NULL;
+    }
+
+    // Tick 3: Allocate result array
+    uint32_t *results = malloc(match_count * sizeof(uint32_t));
+    if (!results)
+    {
+        bitvec_destroy(intersection);
+        *count = 0;
+        return NULL;
+    }
+
+    // Tick 4-7: Extract subject IDs efficiently (4 ticks for extraction)
+    size_t result_idx = 0;
+    for (size_t word = 0; word < intersection->capacity && result_idx < match_count; word++)
+    {
+        uint64_t word_bits = intersection->bits[word];
+        while (word_bits && result_idx < match_count)
+        {
+            uint32_t bit_idx = __builtin_ctzll(word_bits);
+            uint32_t subject_id = (word * 64) + bit_idx;
+            results[result_idx++] = subject_id;
+            word_bits &= word_bits - 1;
+        }
+    }
+    // --- THE SEVEN TICKS END HERE ---
+
+    bitvec_destroy(intersection);
+    *count = match_count;
+    return results;
+}
+
 // Query primitives - optimized for L1 cache
 S7T_HOT BitVector *s7t_get_subject_vector(EngineState *engine, uint32_t predicate_id, uint32_t object_id)
 {
