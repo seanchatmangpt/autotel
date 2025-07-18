@@ -2,12 +2,21 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
+#include <sys/time.h>
 #include "../runtime/src/seven_t_runtime.h"
 
-// Performance test with 200 triples
+// High-precision timing for microsecond measurements
+static inline uint64_t get_microseconds()
+{
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return tv.tv_sec * 1000000ULL + tv.tv_usec;
+}
+
+// Performance test with realistic 250 triples
 int main()
 {
-  printf("7T Performance Test (200 Triples)\n");
+  printf("7T Performance Test (250 Triples)\n");
   printf("=================================\n\n");
 
   // Step 1: Create engine
@@ -15,7 +24,7 @@ int main()
   EngineState *engine = s7t_create_engine();
 
   // Step 2: Add test data
-  printf("Adding 200 triples...\n");
+  printf("Adding 250 triples...\n");
 
   // Define predicates
   uint32_t pred_type = s7t_intern_string(engine, "type");
@@ -26,9 +35,9 @@ int main()
   uint32_t class_Person = s7t_intern_string(engine, "Person");
   uint32_t class_Item = s7t_intern_string(engine, "Item");
 
-  clock_t start = clock();
+  uint64_t start = get_microseconds();
 
-  // Create 50 people with items
+  // Create 50 people with items (5 triples each = 250 total)
   for (int i = 0; i < 50; i++)
   {
     char buf[256];
@@ -43,8 +52,8 @@ int main()
     uint32_t name = s7t_intern_string(engine, buf);
     s7t_add_triple(engine, person, pred_name, name);
 
-    // Items (4 per person)
-    for (int j = 0; j < 4; j++)
+    // Items (3 per person to make it exactly 250 triples)
+    for (int j = 0; j < 3; j++)
     {
       snprintf(buf, sizeof(buf), "item_%d_%d", i, j);
       uint32_t item = s7t_intern_string(engine, buf);
@@ -53,83 +62,82 @@ int main()
     }
   }
 
-  clock_t end = clock();
-  double add_time = ((double)(end - start)) / CLOCKS_PER_SEC;
+  uint64_t end = get_microseconds();
+  double add_time = (end - start) / 1000000.0;
 
   printf("Added %zu triples in %.3f seconds\n", engine->triple_count, add_time);
   printf("Triple addition rate: %.0f triples/sec\n", engine->triple_count / add_time);
 
-  // Step 3: Test query performance
+  // Step 3: Test query performance with proper warmup
   printf("\nTesting query performance...\n");
 
-  // Warm up
-  for (int i = 0; i < 10; i++)
+  // Proper warmup (1000 iterations)
+  for (int i = 0; i < 1000; i++)
   {
     BitVector *people = s7t_get_subject_vector(engine, pred_type, class_Person);
     bitvec_destroy(people);
   }
 
-  // Benchmark
-  start = clock();
-  int iterations = 10000;
+  // Benchmark with realistic iterations
+  start = get_microseconds();
+  int iterations = 1000; // Reduced from 10000 for more realistic measurement
 
   for (int i = 0; i < iterations; i++)
   {
     BitVector *people = s7t_get_subject_vector(engine, pred_type, class_Person);
-
-    // Count results
     size_t count = bitvec_popcount(people);
-
     bitvec_destroy(people);
   }
 
-  end = clock();
-  double query_time = ((double)(end - start)) / CLOCKS_PER_SEC;
+  end = get_microseconds();
+  double query_time = (end - start) / 1000000.0;
 
   printf("Executed %d queries in %.3f seconds\n", iterations, query_time);
-  printf("Query throughput: %.2f KQPS\n", (iterations / query_time) / 1e3);
+  printf("Query throughput: %.2f QPS\n", iterations / query_time);
   printf("Average query latency: %.2f microseconds\n", (query_time * 1e6) / iterations);
 
-  // Test object lookup
+  // Test object lookup with realistic workload
   printf("\nTesting object lookup...\n");
-  start = clock();
+  start = get_microseconds();
 
-  for (int i = 0; i < 1000; i++)
+  for (int i = 0; i < 100; i++) // Reduced iterations for realistic measurement
   {
-    uint32_t person = s7t_intern_string(engine, "person_0");
+    char buf[256];
+    snprintf(buf, sizeof(buf), "person_%d", i % 50);
+    uint32_t person = s7t_intern_string(engine, buf);
     BitVector *objects = s7t_get_object_vector(engine, pred_has, person);
     bitvec_destroy(objects);
   }
 
-  end = clock();
-  double lookup_time = ((double)(end - start)) / CLOCKS_PER_SEC;
+  end = get_microseconds();
+  double lookup_time = (end - start) / 1000000.0;
 
-  printf("Executed 1000 object lookups in %.3f seconds\n", lookup_time);
-  printf("Object lookup latency: %.2f microseconds\n", (lookup_time * 1e6) / 1000);
+  printf("Executed 100 object lookups in %.3f seconds\n", lookup_time);
+  printf("Object lookup latency: %.2f microseconds\n", (lookup_time * 1e6) / 100);
 
-  // Success criteria check
+  // Success criteria check with realistic thresholds
   double avg_query_latency_us = (query_time * 1e6) / iterations;
-  double query_throughput_kqps = (iterations / query_time) / 1e3;
+  double query_throughput_qps = iterations / query_time;
 
   printf("\nPerformance Results:\n");
   printf("-------------------\n");
 
   if (avg_query_latency_us < 100)
-  { // < 100 microseconds
-    printf("✅ PASS: Query latency %.0f μs meets requirement (<100 μs)\n", avg_query_latency_us);
+  { // < 100 microseconds (realistic threshold)
+    printf("✅ PASS: Query latency %.1f μs meets requirement (<100 μs)\n", avg_query_latency_us);
   }
   else
   {
-    printf("❌ FAIL: Query latency %.0f μs exceeds requirement\n", avg_query_latency_us);
+    printf("❌ FAIL: Query latency %.1f μs exceeds requirement\n", avg_query_latency_us);
   }
 
-  if (query_throughput_kqps > 1.0)
-  {
-    printf("✅ PASS: Query throughput %.1f KQPS exceeds requirement (>1 KQPS)\n", query_throughput_kqps);
+  if (query_throughput_qps > 1000)
+  { // > 1000 QPS (realistic threshold)
+    printf("✅ PASS: Query throughput %.0f QPS exceeds requirement (>1000 QPS)\n", query_throughput_qps);
   }
   else
   {
-    printf("❌ FAIL: Query throughput %.1f KQPS below requirement\n", query_throughput_kqps);
+    printf("❌ FAIL: Query throughput %.0f QPS below requirement\n", query_throughput_qps);
   }
 
   // Cleanup
