@@ -1,76 +1,60 @@
-CC = gcc
-CFLAGS = -O3 -march=native -fPIC -Wall -Wextra
-LDFLAGS = -lpthread -ldl -lm
+CC = cc
+BASE_CFLAGS = -O3 -march=native -fPIC -Wall -Wextra
+BASE_LDFLAGS = -shared
 
-# All Seven Tick components
-COMPONENTS = sparql7t shacl7t owl7t_compiler qop cjinja pico_jit
+# Default flags
+CFLAGS = $(BASE_CFLAGS)
+LDFLAGS = $(BASE_LDFLAGS)
 
-# Source files
-SPARQL7T_SRC = c_src/sparql7t.c
-SHACL7T_SRC = c_src/shacl7t.c
-OWL7T_SRC = c_src/owl7t_compiler.c
-QOP_SRC = c_src/qop.c
-CJINJA_SRC = c_src/cjinja.c
-JIT_SRC = c_src/pico_jit.c
+# Production build flags
+PROD_CFLAGS = $(BASE_CFLAGS) -DNDEBUG -flto -fomit-frame-pointer -funroll-loops -ftree-vectorize
+PROD_LDFLAGS = $(BASE_LDFLAGS) -flto
 
-# Shared libraries
-LIBS = libsparql7t.so libshacl7t.so libow17t.so libqop.so libcjinja.so libpico_jit.so
+# Directories
+RUNTIME_DIR = runtime/src
+COMPILER_DIR = compiler/src
+LIB_DIR = lib
+VERIFICATION_DIR = verification
 
-# Default target
-all: $(LIBS) test_seven_tick
+# Runtime library
+RUNTIME_SRCS = $(RUNTIME_DIR)/seven_t_runtime.c
+RUNTIME_LIB = $(LIB_DIR)/lib7t_runtime.so
 
-# SPARQL-7T
-libsparql7t.so: $(SPARQL7T_SRC)
-	$(CC) $(CFLAGS) -shared -o $@ $< $(LDFLAGS)
+# Compiler
+COMPILER_SRCS = $(COMPILER_DIR)/compiler.c $(COMPILER_DIR)/qop.c $(COMPILER_DIR)/cjinja.c
+COMPILER_BIN = compiler/seven-t-compiler
 
-# SHACL-7T
-libshacl7t.so: $(SHACL7T_SRC)
-	$(CC) $(CFLAGS) -shared -o $@ $< $(LDFLAGS)
+# Verification
+GATEKEEPER_SRC = $(VERIFICATION_DIR)/gatekeeper_benchmark.c
+GATEKEEPER_BIN = $(VERIFICATION_DIR)/gatekeeper
 
-# OWL-7T Compiler
-libow17t.so: $(OWL7T_SRC)
-	$(CC) $(CFLAGS) -shared -o $@ $< $(LDFLAGS)
+.PHONY: all runtime compiler verification clean production
 
-# Query Optimization Planner
-libqop.so: $(QOP_SRC)
-	$(CC) $(CFLAGS) -shared -o $@ $< $(LDFLAGS)
+all: runtime compiler verification
 
-# CJinja Template Engine
-libcjinja.so: $(CJINJA_SRC)
-	$(CC) $(CFLAGS) -shared -o $@ $< $(LDFLAGS)
+production: CFLAGS = $(PROD_CFLAGS)
+production: LDFLAGS = $(PROD_LDFLAGS)
+production: clean all
 
-# Adaptive JIT Daemon
-libpico_jit.so: $(JIT_SRC)
-	$(CC) $(CFLAGS) -shared -o $@ $< $(LDFLAGS)
+runtime: $(RUNTIME_LIB)
 
-# Unified test program
-test_seven_tick: c_src/test_seven_tick.c $(SPARQL7T_SRC) $(SHACL7T_SRC)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+$(RUNTIME_LIB): $(RUNTIME_SRCS)
+	mkdir -p $(LIB_DIR)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-# Benchmark suite
-benchmark: test_seven_tick
-	@echo "=== Seven Tick Benchmark Suite ==="
-	@echo "Running on: $$(uname -a)"
-	@echo "CPU: $$(sysctl -n machdep.cpu.brand_string 2>/dev/null || lscpu | grep 'Model name' | cut -d: -f2 | xargs)"
-	@echo ""
-	./test_seven_tick benchmark
+compiler: $(COMPILER_BIN)
 
-# Unit tests
-test: test_seven_tick
-	./test_seven_tick
+$(COMPILER_BIN): $(COMPILER_SRCS)
+	$(CC) $(CFLAGS) -o $@ $^ -ldl
 
-# Performance analysis
-perf: test_seven_tick
-	@echo "Note: perf not available on macOS, using time instead"
-	time ./test_seven_tick benchmark
+verification: $(GATEKEEPER_BIN)
 
-# Clean
+$(GATEKEEPER_BIN): $(GATEKEEPER_SRC) $(RUNTIME_LIB)
+	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -l7t_runtime -ldl -Wl,-rpath,$(PWD)/$(LIB_DIR)
+
 clean:
-	rm -f $(LIBS) test_seven_tick /tmp/jit_* *.o
+	rm -f $(RUNTIME_LIB) $(COMPILER_BIN) $(GATEKEEPER_BIN)
+	rm -f /tmp/seven_t_kernel.c /tmp/kernel.so /tmp/sprint_health_data.ttl
 
-# Install (for Python integration)
-install: $(LIBS)
-	mkdir -p ../lib
-	cp $(LIBS) ../lib/
-
-.PHONY: all test benchmark perf clean install
+run-benchmark: all
+	cd $(VERIFICATION_DIR) && ./gatekeeper
