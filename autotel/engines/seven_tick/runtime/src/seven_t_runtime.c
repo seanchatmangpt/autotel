@@ -425,6 +425,40 @@ S7T_HOT void s7t_add_triple(EngineState *engine, uint32_t s, uint32_t p, uint32_
     engine->triple_count++;
 }
 
+// Simple pattern matching - optimized for L1 cache
+S7T_HOT S7T_PURE int s7t_ask_pattern(EngineState *engine, uint32_t s, uint32_t p, uint32_t o)
+{
+    AllocSizes *sizes = (AllocSizes *)engine->string_table[1];
+
+    if (S7T_UNLIKELY(p >= sizes->predicate_vectors_size ||
+                     o >= sizes->object_vectors_size ||
+                     s > engine->max_subject_id))
+    {
+        return 0;
+    }
+
+    // Check if subject has the predicate
+    BitVector *pred_vec = engine->predicate_vectors[p];
+    if (S7T_UNLIKELY(!pred_vec))
+    {
+        return 0;
+    }
+
+    if (!bitvec_test(pred_vec, s))
+    {
+        return 0;
+    }
+
+    // Check if subject has the object
+    BitVector *obj_vec = engine->object_vectors[o];
+    if (S7T_UNLIKELY(!obj_vec))
+    {
+        return 0;
+    }
+
+    return bitvec_test(obj_vec, s);
+}
+
 // Query primitives - optimized for L1 cache
 S7T_HOT BitVector *s7t_get_subject_vector(EngineState *engine, uint32_t predicate_id, uint32_t object_id)
 {
