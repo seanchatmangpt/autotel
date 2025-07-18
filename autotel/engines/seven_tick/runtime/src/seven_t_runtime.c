@@ -6,6 +6,7 @@
 #define INITIAL_CAPACITY 1024
 #define BITVEC_WORD_BITS 64
 #define HASH_TABLE_SIZE 16384
+#define STRING_HASH_SIZE 8192
 
 // Track allocated sizes
 typedef struct
@@ -15,6 +16,20 @@ typedef struct
     size_t node_counts_size;
     size_t ps_index_size;
 } AllocSizes;
+
+// String hash table entry
+typedef struct StringHashEntry
+{
+    char *str;
+    uint32_t id;
+    struct StringHashEntry *next;
+} StringHashEntry;
+
+// String hash table
+typedef struct
+{
+    StringHashEntry *entries[STRING_HASH_SIZE];
+} StringHashTable;
 
 // Simple hash table entry for PS->O mapping
 typedef struct
@@ -51,6 +66,18 @@ static void ensure_capacity(void **array, size_t *current_size, size_t required_
         *array = new_array;
         *current_size = new_size;
     }
+}
+
+// Simple hash function for strings
+static uint32_t hash_string(const char *str)
+{
+    uint32_t hash = 5381;
+    int c;
+    while ((c = *str++))
+    {
+        hash = ((hash << 5) + hash) + c; // hash * 33 + c
+    }
+    return hash % STRING_HASH_SIZE;
 }
 
 // Simple hash function for PS pairs
@@ -196,11 +223,15 @@ EngineState *s7t_create_engine(void)
     sizes->node_counts_size = INITIAL_CAPACITY;
     sizes->ps_index_size = INITIAL_CAPACITY;
 
-    // Store sizes in first slot of string table for now (hack for MVP)
+    // Initialize string hash table
+    StringHashTable *string_hash = calloc(1, sizeof(StringHashTable));
+
+    // Store string hash table in first slot, sizes in second slot
     engine->string_table = calloc(INITIAL_CAPACITY, sizeof(char *));
-    engine->string_table[0] = (char *)sizes;
+    engine->string_table[0] = (char *)string_hash;
+    engine->string_table[1] = (char *)sizes;
     engine->string_capacity = INITIAL_CAPACITY;
-    engine->string_count = 1; // Start at 1 to skip sizes
+    engine->string_count = 2; // Start at 2 to skip hash table and sizes
 
     // Pre-allocate arrays
     engine->predicate_vectors = calloc(INITIAL_CAPACITY, sizeof(BitVector *));
@@ -223,14 +254,26 @@ EngineState *s7t_create_engine(void)
 
 void s7t_destroy_engine(EngineState *engine)
 {
-    // Get sizes
-    AllocSizes *sizes = (AllocSizes *)engine->string_table[0];
+    // Get sizes and string hash table
+    StringHashTable *string_hash = (StringHashTable *)engine->string_table[0];
+    AllocSizes *sizes = (AllocSizes *)engine->string_table[1];
 
-    // Free string table (skip first entry)
-    for (size_t i = 1; i < engine->string_count; i++)
+    // Free string hash table entries
+    for (int i = 0; i < STRING_HASH_SIZE; i++)
     {
-        free(engine->string_table[i]);
+        StringHashEntry *entry = string_hash->entries[i];
+        while (entry)
+        {
+            StringHashEntry *next = entry->next;
+            free(entry->str);
+            free(entry);
+            entry = next;
+        }
     }
+    free(string_hash);
+
+    // Free string table (skip first two entries - strings are freed via hash table)
+    // The strings are already freed when we freed the hash table entries above
     free(sizes);
     free(engine->string_table);
 
@@ -276,13 +319,18 @@ void s7t_destroy_engine(EngineState *engine)
 // String interning
 S7T_HOT uint32_t s7t_intern_string(EngineState *engine, const char *str)
 {
-    // Linear search starting from 1 (0 is reserved for sizes)
-    for (size_t i = 1; i < engine->string_count; i++)
+    // Use a hash table for O(1) lookups
+    StringHashTable *string_hash = (StringHashTable *)engine->string_table[0];
+    uint32_t hash = hash_string(str);
+    StringHashEntry *entry = string_hash->entries[hash];
+
+    while (entry)
     {
-        if (strcmp(engine->string_table[i], str) == 0)
+        if (strcmp(entry->str, str) == 0)
         {
-            return i;
+            return entry->id;
         }
+        entry = entry->next;
     }
 
     // Add new string
@@ -293,14 +341,37 @@ S7T_HOT uint32_t s7t_intern_string(EngineState *engine, const char *str)
                                        engine->string_capacity * sizeof(char *));
     }
 
-    engine->string_table[engine->string_count] = strdup(str);
+    // Allocate memory for the new string and its hash entry
+    size_t str_len = strlen(str) + 1; // +1 for null terminator
+    char *new_str = malloc(str_len);
+    if (!new_str)
+        abort(); // Out of memory
+    strcpy(new_str, str);
+
+    // Allocate memory for the new hash entry
+    StringHashEntry *new_entry = malloc(sizeof(StringHashEntry));
+    if (!new_entry)
+        abort(); // Out of memory
+
+    // Initialize new entry
+    new_entry->str = new_str;
+    new_entry->id = engine->string_count;
+    new_entry->next = NULL;
+
+    // Insert new entry at the head of the linked list
+    new_entry->next = string_hash->entries[hash];
+    string_hash->entries[hash] = new_entry;
+
+    // Store the new string in the string table
+    engine->string_table[engine->string_count] = new_str;
     return engine->string_count++;
 }
 
 // Triple addition - hot path optimized
 S7T_HOT void s7t_add_triple(EngineState *engine, uint32_t s, uint32_t p, uint32_t o)
 {
-    AllocSizes *sizes = (AllocSizes *)engine->string_table[0];
+    // Get sizes from the second slot (first slot is now string hash table)
+    AllocSizes *sizes = (AllocSizes *)engine->string_table[1];
 
     // Update max IDs
     if (S7T_UNLIKELY(s > engine->max_subject_id))
@@ -357,7 +428,7 @@ S7T_HOT void s7t_add_triple(EngineState *engine, uint32_t s, uint32_t p, uint32_
 // Query primitives - optimized for L1 cache
 S7T_HOT BitVector *s7t_get_subject_vector(EngineState *engine, uint32_t predicate_id, uint32_t object_id)
 {
-    AllocSizes *sizes = (AllocSizes *)engine->string_table[0];
+    AllocSizes *sizes = (AllocSizes *)engine->string_table[1];
 
     if (S7T_UNLIKELY(predicate_id >= sizes->predicate_vectors_size ||
                      object_id >= sizes->object_vectors_size))
@@ -378,7 +449,7 @@ S7T_HOT BitVector *s7t_get_subject_vector(EngineState *engine, uint32_t predicat
 
 S7T_HOT BitVector *s7t_get_object_vector(EngineState *engine, uint32_t predicate_id, uint32_t subject_id)
 {
-    AllocSizes *sizes = (AllocSizes *)engine->string_table[0];
+    AllocSizes *sizes = (AllocSizes *)engine->string_table[1];
 
     if (S7T_UNLIKELY(predicate_id >= sizes->ps_index_size ||
                      subject_id > engine->max_subject_id))
@@ -420,7 +491,7 @@ S7T_HOT BitVector *s7t_get_object_vector(EngineState *engine, uint32_t predicate
 S7T_HOT S7T_PURE uint32_t *s7t_get_objects(EngineState *engine, uint32_t predicate_id,
                                            uint32_t subject_id, size_t *count)
 {
-    AllocSizes *sizes = (AllocSizes *)engine->string_table[0];
+    AllocSizes *sizes = (AllocSizes *)engine->string_table[1];
 
     if (S7T_UNLIKELY(predicate_id >= sizes->ps_index_size ||
                      subject_id > engine->max_subject_id))
@@ -462,7 +533,7 @@ S7T_HOT S7T_PURE uint32_t *s7t_get_objects(EngineState *engine, uint32_t predica
 S7T_HOT S7T_PURE int shacl_check_min_count(EngineState *engine, uint32_t subject_id,
                                            uint32_t predicate_id, uint32_t min_count)
 {
-    AllocSizes *sizes = (AllocSizes *)engine->string_table[0];
+    AllocSizes *sizes = (AllocSizes *)engine->string_table[1];
 
     if (S7T_UNLIKELY(predicate_id >= sizes->ps_index_size ||
                      subject_id > engine->max_subject_id))
@@ -499,7 +570,7 @@ S7T_HOT S7T_PURE int shacl_check_min_count(EngineState *engine, uint32_t subject
 S7T_HOT S7T_PURE int shacl_check_max_count(EngineState *engine, uint32_t subject_id,
                                            uint32_t predicate_id, uint32_t max_count)
 {
-    AllocSizes *sizes = (AllocSizes *)engine->string_table[0];
+    AllocSizes *sizes = (AllocSizes *)engine->string_table[1];
 
     if (S7T_UNLIKELY(predicate_id >= sizes->ps_index_size ||
                      subject_id > engine->max_subject_id))
@@ -535,7 +606,7 @@ S7T_HOT S7T_PURE int shacl_check_max_count(EngineState *engine, uint32_t subject
 
 S7T_HOT S7T_PURE int shacl_check_class(EngineState *engine, uint32_t subject_id, uint32_t class_id)
 {
-    AllocSizes *sizes = (AllocSizes *)engine->string_table[0];
+    AllocSizes *sizes = (AllocSizes *)engine->string_table[1];
 
     if (S7T_UNLIKELY(subject_id >= sizes->node_counts_size))
     {
