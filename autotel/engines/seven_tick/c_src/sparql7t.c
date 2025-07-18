@@ -157,6 +157,8 @@ void s7t_ask_batch(S7TEngine *e, TriplePattern *patterns, int *results, size_t c
 
         // Tick 6: Check object matches in parallel (optimized for single object case)
         int obj0 = 0, obj1 = 0, obj2 = 0, obj3 = 0;
+
+        // Check first object in each list (80/20 optimization - most cases have single object)
         if (head0 && head0->object == o0)
             obj0 = 1;
         if (head1 && head1->object == o1)
@@ -165,6 +167,60 @@ void s7t_ask_batch(S7TEngine *e, TriplePattern *patterns, int *results, size_t c
             obj2 = 1;
         if (head3 && head3->object == o3)
             obj3 = 1;
+
+        // If not found in first object, check rest of list (rare case)
+        if (!obj0 && head0)
+        {
+            ObjectNode *current = head0->next;
+            while (current)
+            {
+                if (current->object == o0)
+                {
+                    obj0 = 1;
+                    break;
+                }
+                current = current->next;
+            }
+        }
+        if (!obj1 && head1)
+        {
+            ObjectNode *current = head1->next;
+            while (current)
+            {
+                if (current->object == o1)
+                {
+                    obj1 = 1;
+                    break;
+                }
+                current = current->next;
+            }
+        }
+        if (!obj2 && head2)
+        {
+            ObjectNode *current = head2->next;
+            while (current)
+            {
+                if (current->object == o2)
+                {
+                    obj2 = 1;
+                    break;
+                }
+                current = current->next;
+            }
+        }
+        if (!obj3 && head3)
+        {
+            ObjectNode *current = head3->next;
+            while (current)
+            {
+                if (current->object == o3)
+                {
+                    obj3 = 1;
+                    break;
+                }
+                current = current->next;
+            }
+        }
 
         // Tick 7: Combine results in parallel
         results[i] = pred0 && obj0;

@@ -146,7 +146,7 @@ void cjinja_set_bool(CJinjaContext *ctx, const char *key, int value)
     cjinja_set_var(ctx, key, value ? "true" : "false");
 }
 
-static char *get_var(CJinjaContext *ctx, const char *key)
+char *get_var(CJinjaContext *ctx, const char *key)
 {
     for (size_t i = 0; i < ctx->count; i++)
     {

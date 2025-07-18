@@ -31,6 +31,8 @@ SHACL_BENCHMARK_SRC = $(VERIFICATION_DIR)/shacl_validation_benchmark.c
 SHACL_BENCHMARK_BIN = $(VERIFICATION_DIR)/shacl_validation_benchmark
 SHACL_7TICK_BENCHMARK_SRC = $(VERIFICATION_DIR)/shacl_7tick_benchmark.c
 SHACL_7TICK_BENCHMARK_BIN = $(VERIFICATION_DIR)/shacl_7tick_benchmark
+CJINJA_BENCHMARK_SRC = $(VERIFICATION_DIR)/cjinja_benchmark.c
+CJINJA_BENCHMARK_BIN = $(VERIFICATION_DIR)/cjinja_benchmark
 SHACL_IMPL_BENCHMARK_SRC = $(VERIFICATION_DIR)/shacl_implementation_benchmark.c
 SHACL_IMPL_BENCHMARK_BIN = $(VERIFICATION_DIR)/shacl_implementation_benchmark
 
@@ -53,7 +55,7 @@ compiler: $(COMPILER_BIN)
 $(COMPILER_BIN): $(COMPILER_SRCS)
 	$(CC) $(CFLAGS) -o $@ $^ -ldl
 
-verification: $(GATEKEEPER_BIN) $(SHACL_BENCHMARK_BIN) $(SHACL_7TICK_BENCHMARK_BIN) $(SHACL_IMPL_BENCHMARK_BIN)
+verification: $(GATEKEEPER_BIN) $(SHACL_BENCHMARK_BIN) $(SHACL_7TICK_BENCHMARK_BIN) $(CJINJA_BENCHMARK_BIN) $(SHACL_IMPL_BENCHMARK_BIN)
 
 $(GATEKEEPER_BIN): $(GATEKEEPER_SRC) $(RUNTIME_LIB)
 	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -l7t_runtime -ldl -Wl,-rpath,$(PWD)/$(LIB_DIR)
@@ -64,11 +66,14 @@ $(SHACL_BENCHMARK_BIN): $(SHACL_BENCHMARK_SRC) $(RUNTIME_LIB)
 $(SHACL_7TICK_BENCHMARK_BIN): $(SHACL_7TICK_BENCHMARK_SRC) $(RUNTIME_LIB)
 	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -l7t_runtime -ldl -Wl,-rpath,$(PWD)/$(LIB_DIR)
 
+$(CJINJA_BENCHMARK_BIN): $(CJINJA_BENCHMARK_SRC) $(COMPILER_DIR)/cjinja.c
+	$(CC) $(CFLAGS) -o $@ $(CJINJA_BENCHMARK_SRC) $(COMPILER_DIR)/cjinja.c -I$(COMPILER_DIR)
+
 $(SHACL_IMPL_BENCHMARK_BIN): $(SHACL_IMPL_BENCHMARK_SRC) $(RUNTIME_LIB)
 	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -l7t_runtime -ldl -Wl,-rpath,$(PWD)/$(LIB_DIR)
 
 clean:
-	rm -f $(RUNTIME_LIB) $(COMPILER_BIN) $(GATEKEEPER_BIN) $(SHACL_BENCHMARK_BIN) $(SHACL_7TICK_BENCHMARK_BIN) $(SHACL_IMPL_BENCHMARK_BIN)
+	rm -f $(RUNTIME_LIB) $(COMPILER_BIN) $(GATEKEEPER_BIN) $(SHACL_BENCHMARK_BIN) $(SHACL_7TICK_BENCHMARK_BIN) $(CJINJA_BENCHMARK_BIN) $(SHACL_IMPL_BENCHMARK_BIN)
 	rm -f /tmp/seven_t_kernel.c /tmp/kernel.so /tmp/sprint_health_data.ttl
 
 run-benchmark: all
@@ -79,6 +84,9 @@ run-shacl-benchmark: all
 
 run-shacl-7tick-benchmark: all
 	cd $(VERIFICATION_DIR) && ./shacl_7tick_benchmark
+
+run-cjinja-benchmark: all
+	cd $(VERIFICATION_DIR) && ./cjinja_benchmark
 
 run-shacl-impl-benchmark: all
 	cd $(VERIFICATION_DIR) && LD_LIBRARY_PATH=../lib ./shacl_implementation_benchmark
