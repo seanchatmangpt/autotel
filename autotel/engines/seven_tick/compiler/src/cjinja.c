@@ -1780,7 +1780,7 @@ char *cjinja_render_with_loops_optimized(const char *template_str, CJinjaContext
     return buffer;
 }
 
-// 7-TICK OPTIMIZED: Fast path for basic variable substitution only
+// 7-TICK OPTIMIZED: Ultra-fast path for basic variable substitution only
 char *cjinja_render_string_7tick(const char *template_str, CJinjaContext *ctx)
 {
     if (!template_str || !ctx)
@@ -1788,7 +1788,9 @@ char *cjinja_render_string_7tick(const char *template_str, CJinjaContext *ctx)
         return NULL;
     }
 
-    size_t buffer_size = INITIAL_BUFFER_SIZE;
+    // Pre-allocate buffer with estimated size
+    size_t template_len = strlen(template_str);
+    size_t buffer_size = template_len * 2; // Estimate 2x for variable expansion
     char *buffer = malloc(buffer_size);
     size_t buffer_pos = 0;
 
@@ -1799,6 +1801,8 @@ char *cjinja_render_string_7tick(const char *template_str, CJinjaContext *ctx)
         if (strncmp(pos, "{{", 2) == 0)
         {
             pos += 2;
+
+            // Skip whitespace efficiently
             while (*pos == ' ')
                 pos++;
 
@@ -1807,26 +1811,21 @@ char *cjinja_render_string_7tick(const char *template_str, CJinjaContext *ctx)
                 pos++;
 
             size_t var_len = pos - var_start;
-            char *var_name = malloc(var_len + 1);
-            strncpy(var_name, var_start, var_len);
-            var_name[var_len] = '\0';
 
-            char *value = get_var(ctx, var_name);
-            char *final_value = value ? strdup(value) : strdup("");
-
-            // 7-TICK: Skip all filter processing for maximum speed
-            while (*pos == ' ')
-                pos++;
-            if (*pos == '|')
+            // Fast variable lookup without malloc
+            char *value = NULL;
+            for (size_t i = 0; i < ctx->count; i++)
             {
-                // Skip filter entirely - just use original value
-                while (*pos && *pos != '}')
-                    pos++;
+                if (strlen(ctx->keys[i]) == var_len && strncmp(ctx->keys[i], var_start, var_len) == 0)
+                {
+                    value = ctx->values[i];
+                    break;
+                }
             }
 
-            while (*pos == ' ')
+            // Skip any filters or additional processing
+            while (*pos && *pos != '}')
                 pos++;
-
             if (*pos == '}')
             {
                 pos++;
@@ -1834,22 +1833,24 @@ char *cjinja_render_string_7tick(const char *template_str, CJinjaContext *ctx)
                 {
                     pos++;
 
-                    size_t value_len = strlen(final_value);
-                    while (buffer_pos + value_len >= buffer_size)
+                    // Direct copy without malloc
+                    if (value)
                     {
-                        buffer_size *= 2;
-                        buffer = realloc(buffer, buffer_size);
+                        size_t value_len = strlen(value);
+                        if (buffer_pos + value_len >= buffer_size)
+                        {
+                            buffer_size = (buffer_pos + value_len) * 2;
+                            buffer = realloc(buffer, buffer_size);
+                        }
+                        memcpy(&buffer[buffer_pos], value, value_len);
+                        buffer_pos += value_len;
                     }
-                    strcpy(&buffer[buffer_pos], final_value);
-                    buffer_pos += value_len;
                 }
             }
-
-            free(var_name);
-            free(final_value);
         }
         else
         {
+            // Direct character copy
             if (buffer_pos >= buffer_size - 1)
             {
                 buffer_size *= 2;
@@ -1863,7 +1864,7 @@ char *cjinja_render_string_7tick(const char *template_str, CJinjaContext *ctx)
     return buffer;
 }
 
-// 7-TICK OPTIMIZED: Fast path for basic conditionals only
+// 7-TICK OPTIMIZED: Ultra-fast path for basic conditionals only
 char *cjinja_render_conditionals_7tick(const char *template_str, CJinjaContext *ctx)
 {
     if (!template_str || !ctx)
@@ -1871,7 +1872,8 @@ char *cjinja_render_conditionals_7tick(const char *template_str, CJinjaContext *
         return NULL;
     }
 
-    size_t buffer_size = INITIAL_BUFFER_SIZE;
+    size_t template_len = strlen(template_str);
+    size_t buffer_size = template_len * 2;
     char *buffer = malloc(buffer_size);
     size_t buffer_pos = 0;
 
@@ -1895,43 +1897,49 @@ char *cjinja_render_conditionals_7tick(const char *template_str, CJinjaContext *
                 while (*pos && *pos != ' ' && *pos != '%')
                     pos++;
                 size_t cond_len = pos - cond_start;
-                char *condition = malloc(cond_len + 1);
-                strncpy(condition, cond_start, cond_len);
-                condition[cond_len] = '\0';
 
-                char *value = get_var(ctx, condition);
-                int condition_met = value && (strcmp(value, "true") == 0 || strlen(value) > 0);
+                // Fast boolean check
+                int condition_met = 0;
+                for (size_t i = 0; i < ctx->count; i++)
+                {
+                    if (strlen(ctx->keys[i]) == cond_len && strncmp(ctx->keys[i], cond_start, cond_len) == 0)
+                    {
+                        condition_met = ctx->values[i] && strlen(ctx->values[i]) > 0;
+                        break;
+                    }
+                }
 
+                // Skip to endif
                 while (*pos && strncmp(pos, "{% endif %}", 11) != 0)
                     pos++;
-
-                const char *body_start = pos;
-                while (*pos && strncmp(pos, "{% endif %}", 11) != 0)
-                    pos++;
-                size_t body_len = pos - body_start;
-                char *body = malloc(body_len + 1);
-                strncpy(body, body_start, body_len);
-                body[body_len] = '\0';
 
                 if (condition_met)
                 {
+                    const char *body_start = pos;
+                    while (*pos && strncmp(pos, "{% endif %}", 11) != 0)
+                        pos++;
+                    size_t body_len = pos - body_start;
+
+                    // Render body with 7-tick path
+                    char *body = malloc(body_len + 1);
+                    strncpy(body, body_start, body_len);
+                    body[body_len] = '\0';
+
                     char *rendered_body = cjinja_render_string_7tick(body, ctx);
                     if (rendered_body)
                     {
                         size_t rendered_len = strlen(rendered_body);
-                        while (buffer_pos + rendered_len >= buffer_size)
+                        if (buffer_pos + rendered_len >= buffer_size)
                         {
-                            buffer_size *= 2;
+                            buffer_size = (buffer_pos + rendered_len) * 2;
                             buffer = realloc(buffer, buffer_size);
                         }
-                        strcpy(&buffer[buffer_pos], rendered_body);
+                        memcpy(&buffer[buffer_pos], rendered_body, rendered_len);
                         buffer_pos += rendered_len;
                         free(rendered_body);
                     }
+                    free(body);
                 }
-
-                free(condition);
-                free(body);
 
                 if (strncmp(pos, "{% endif %}", 11) == 0)
                 {
@@ -1958,24 +1966,19 @@ char *cjinja_render_conditionals_7tick(const char *template_str, CJinjaContext *
                 pos++;
 
             size_t var_len = pos - var_start;
-            char *var_name = malloc(var_len + 1);
-            strncpy(var_name, var_start, var_len);
-            var_name[var_len] = '\0';
 
-            char *value = get_var(ctx, var_name);
-            char *final_value = value ? strdup(value) : strdup("");
-
-            while (*pos == ' ')
-                pos++;
-            if (*pos == '|')
+            char *value = NULL;
+            for (size_t i = 0; i < ctx->count; i++)
             {
-                while (*pos && *pos != '}')
-                    pos++;
+                if (strlen(ctx->keys[i]) == var_len && strncmp(ctx->keys[i], var_start, var_len) == 0)
+                {
+                    value = ctx->values[i];
+                    break;
+                }
             }
 
-            while (*pos == ' ')
+            while (*pos && *pos != '}')
                 pos++;
-
             if (*pos == '}')
             {
                 pos++;
@@ -1983,19 +1986,19 @@ char *cjinja_render_conditionals_7tick(const char *template_str, CJinjaContext *
                 {
                     pos++;
 
-                    size_t value_len = strlen(final_value);
-                    while (buffer_pos + value_len >= buffer_size)
+                    if (value)
                     {
-                        buffer_size *= 2;
-                        buffer = realloc(buffer, buffer_size);
+                        size_t value_len = strlen(value);
+                        if (buffer_pos + value_len >= buffer_size)
+                        {
+                            buffer_size = (buffer_pos + value_len) * 2;
+                            buffer = realloc(buffer, buffer_size);
+                        }
+                        memcpy(&buffer[buffer_pos], value, value_len);
+                        buffer_pos += value_len;
                     }
-                    strcpy(&buffer[buffer_pos], final_value);
-                    buffer_pos += value_len;
                 }
             }
-
-            free(var_name);
-            free(final_value);
         }
         else
         {

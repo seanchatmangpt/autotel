@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <time.h>
 #include <sys/time.h>
 
@@ -294,6 +295,38 @@ extern "C"
 #define TELEMETRY7T_SPAN_END(ctx, span, status) \
   telemetry7t_end_span(ctx, span, status);      \
   telemetry7t_free_span(span)
+
+  // Global context functions
+  void telemetry7t_global_init(void);
+  void telemetry7t_enable(void);
+  void telemetry7t_disable(void);
+  int telemetry7t_is_enabled(void);
+  Telemetry7TContext *telemetry7t_get_global_context(void);
+
+  // Span management functions
+  Telemetry7TSpan *telemetry7t_span_create(const char *name, const char *operation, uint8_t kind);
+  void telemetry7t_span_start(Telemetry7TSpan *span);
+  void telemetry7t_span_end(Telemetry7TSpan *span, uint8_t status);
+  Telemetry7TSpan *telemetry7t_get_current_span_global(void);
+
+  // High-performance span functions
+  Telemetry7TSpan *telemetry7t_span_begin(const char *name, const char *operation, uint8_t kind);
+  void telemetry7t_span_finish(Telemetry7TSpan *span, uint8_t status);
+
+  // Specialized span functions
+  Telemetry7TSpan *telemetry7t_shacl_span_begin(const char *constraint_type);
+  Telemetry7TSpan *telemetry7t_template_span_begin(const char *template_type);
+  Telemetry7TSpan *telemetry7t_pattern_span_begin(const char *pattern_type);
+
+  // Utility functions
+  void telemetry7t_span_add_performance_metrics(Telemetry7TSpan *span);
+  void telemetry7t_span_add_7t_metrics(Telemetry7TSpan *span, const char *operation_type);
+  void telemetry7t_span_print(Telemetry7TSpan *span);
+  void telemetry7t_span_export_json(Telemetry7TSpan *span, char *buffer, size_t buffer_size);
+
+  // Benchmark functions
+  void telemetry7t_benchmark(void);
+  void telemetry7t_example_usage(void);
 
 #ifdef __cplusplus
 }

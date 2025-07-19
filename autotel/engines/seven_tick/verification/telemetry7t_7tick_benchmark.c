@@ -2,14 +2,33 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/time.h>
-#include <x86intrin.h> // For CPU cycle counting
 #include "../c_src/telemetry7t_7tick.h"
 
 // CPU cycle counting for precise 7-tick measurement
+// Use architecture-specific implementations
+#ifdef __x86_64__
+#include <x86intrin.h>
 static inline uint64_t get_cpu_cycles()
 {
   return __rdtsc();
 }
+#elif defined(__aarch64__)
+// ARM64 implementation using system timer
+static inline uint64_t get_cpu_cycles()
+{
+  uint64_t val;
+  __asm__ volatile("mrs %0, PMCCNTR_EL0" : "=r"(val));
+  return val;
+}
+#else
+// Fallback to nanosecond timing
+static inline uint64_t get_cpu_cycles()
+{
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return ts.tv_sec * 1000000000ULL + ts.tv_nsec;
+}
+#endif
 
 // High-precision nanosecond timing
 static inline uint64_t get_nanoseconds()

@@ -64,6 +64,7 @@ typedef char *(*CJinjaFilter)(const char *input, const char *args);
 // Public API - Core functionality
 CJinjaEngine *cjinja_create(const char *template_dir);
 void cjinja_destroy(CJinjaEngine *engine);
+void cjinja_destroy_engine(CJinjaEngine *engine);
 
 CJinjaContext *cjinja_create_context(void);
 void cjinja_destroy_context(CJinjaContext *ctx);

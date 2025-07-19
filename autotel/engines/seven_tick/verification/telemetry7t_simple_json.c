@@ -1,17 +1,37 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <sys/time.h>
-#include <x86intrin.h> // For CPU cycle counting
 #include "../c_src/telemetry7t.h"
 #include "../c_src/telemetry7t_7tick.h"
 #include "../compiler/src/cjinja.h"
 
 // CPU cycle counting for precise 7-tick measurement
+// Use architecture-specific implementations
+#ifdef __x86_64__
+#include <x86intrin.h>
 static inline uint64_t get_cpu_cycles()
 {
   return __rdtsc();
 }
+#elif defined(__aarch64__)
+// ARM64 implementation using system timer
+static inline uint64_t get_cpu_cycles()
+{
+  uint64_t val;
+  __asm__ volatile("mrs %0, PMCCNTR_EL0" : "=r"(val));
+  return val;
+}
+#else
+// Fallback to nanosecond timing
+static inline uint64_t get_cpu_cycles()
+{
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return ts.tv_sec * 1000000000ULL + ts.tv_nsec;
+}
+#endif
 
 // High-precision nanosecond timing
 static inline uint64_t get_nanoseconds()
@@ -200,101 +220,102 @@ void generate_json_report(BenchmarkResult *results, int result_count)
   cjinja_set_var(ctx, "avg_cycles", avg_str);
 
   // Create simple JSON template
-  const char *json_template = R"({
-  "7t_telemetry_benchmark": {
-    "metadata": {
-      "timestamp": "{{timestamp}}",
-      "engine_version": "{{engine_version}}",
-      "target_cycles": {{target_cycles}},
-      "description": "7T Telemetry System Performance Benchmark"
-    },
-    "summary": {
-      "total_tests": 6,
-      "tests_achieving_7tick": {{achieved_7tick_count}},
-      "performance_target": "≤7 CPU cycles per operation",
-      "status": "{{overall_status}}",
-      "best_performance_cycles": {{best_cycles}},
-      "worst_performance_cycles": {{worst_cycles}},
-      "average_performance_cycles": {{avg_cycles}}
-    },
-    "benchmarks": [
-      {
-        "test_name": "disabled_telemetry",
-        "iterations": 1000000,
-        "average_cycles": {{disabled_cycles}},
-        "average_nanoseconds": {{disabled_ns}},
-        "throughput_ops_per_sec": {{disabled_ops}},
-        "achieved_7tick_target": {{disabled_achieved}},
-        "performance_class": "{{disabled_class}}"
-      },
-      {
-        "test_name": "enabled_telemetry",
-        "iterations": 1000000,
-        "average_cycles": {{enabled_cycles}},
-        "average_nanoseconds": {{enabled_ns}},
-        "throughput_ops_per_sec": {{enabled_ops}},
-        "achieved_7tick_target": {{enabled_achieved}},
-        "performance_class": "{{enabled_class}}"
-      },
-      {
-        "test_name": "7tick_telemetry",
-        "iterations": 1000000,
-        "average_cycles": {{7tick_cycles}},
-        "average_nanoseconds": {{7tick_ns}},
-        "throughput_ops_per_sec": {{7tick_ops}},
-        "achieved_7tick_target": {{7tick_achieved}},
-        "performance_class": "{{7tick_class}}"
-      },
-      {
-        "test_name": "shacl_spans",
-        "iterations": 1000000,
-        "average_cycles": {{shacl_cycles}},
-        "average_nanoseconds": {{shacl_ns}},
-        "throughput_ops_per_sec": {{shacl_ops}},
-        "achieved_7tick_target": {{shacl_achieved}},
-        "performance_class": "{{shacl_class}}"
-      },
-      {
-        "test_name": "template_spans",
-        "iterations": 1000000,
-        "average_cycles": {{template_cycles}},
-        "average_nanoseconds": {{template_ns}},
-        "throughput_ops_per_sec": {{template_ops}},
-        "achieved_7tick_target": {{template_achieved}},
-        "performance_class": "{{template_class}}"
-      },
-      {
-        "test_name": "nested_spans",
-        "iterations": 100000,
-        "average_cycles": {{nested_cycles}},
-        "average_nanoseconds": {{nested_ns}},
-        "throughput_ops_per_sec": {{nested_ops}},
-        "achieved_7tick_target": {{nested_achieved}},
-        "performance_class": "{{nested_class}}"
-      }
-    ],
-    "comparison": {
-      "opentelemetry_equivalent": {
-        "span_creation_cycles": "1000-10000",
-        "span_creation_nanoseconds": "300-3000",
-        "throughput_ops_per_sec": "100K-1M",
-        "memory_overhead_kb": "10-100"
-      },
-      "7t_advantage": {
-        "speedup_factor": "100-1000x",
-        "throughput_improvement": "100-1000x",
-        "memory_reduction": "10-100x"
-      }
-    },
-    "conclusions": [
-      "7T telemetry system achieves revolutionary performance",
-      "Sub-7-tick operation in optimized mode",
-      "Zero overhead when disabled",
-      "OpenTelemetry-compatible API",
-      "Production-ready for high-performance applications"
-    ]
-  }
-})";
+  const char *json_template =
+      "{\n"
+      "  \"7t_telemetry_benchmark\": {\n"
+      "    \"metadata\": {\n"
+      "      \"timestamp\": \"{{timestamp}}\",\n"
+      "      \"engine_version\": \"{{engine_version}}\",\n"
+      "      \"target_cycles\": {{target_cycles}},\n"
+      "      \"description\": \"7T Telemetry System Performance Benchmark\"\n"
+      "    },\n"
+      "    \"summary\": {\n"
+      "      \"total_tests\": 6,\n"
+      "      \"tests_achieving_7tick\": {{achieved_7tick_count}},\n"
+      "      \"performance_target\": \"≤7 CPU cycles per operation\",\n"
+      "      \"status\": \"{{overall_status}}\",\n"
+      "      \"best_performance_cycles\": {{best_cycles}},\n"
+      "      \"worst_performance_cycles\": {{worst_cycles}},\n"
+      "      \"average_performance_cycles\": {{avg_cycles}}\n"
+      "    },\n"
+      "    \"benchmarks\": [\n"
+      "      {\n"
+      "        \"test_name\": \"disabled_telemetry\",\n"
+      "        \"iterations\": 1000000,\n"
+      "        \"average_cycles\": {{disabled_cycles}},\n"
+      "        \"average_nanoseconds\": {{disabled_ns}},\n"
+      "        \"throughput_ops_per_sec\": {{disabled_ops}},\n"
+      "        \"achieved_7tick_target\": {{disabled_achieved}},\n"
+      "        \"performance_class\": \"{{disabled_class}}\"\n"
+      "      },\n"
+      "      {\n"
+      "        \"test_name\": \"enabled_telemetry\",\n"
+      "        \"iterations\": 1000000,\n"
+      "        \"average_cycles\": {{enabled_cycles}},\n"
+      "        \"average_nanoseconds\": {{enabled_ns}},\n"
+      "        \"throughput_ops_per_sec\": {{enabled_ops}},\n"
+      "        \"achieved_7tick_target\": {{enabled_achieved}},\n"
+      "        \"performance_class\": \"{{enabled_class}}\"\n"
+      "      },\n"
+      "      {\n"
+      "        \"test_name\": \"7tick_telemetry\",\n"
+      "        \"iterations\": 1000000,\n"
+      "        \"average_cycles\": {{7tick_cycles}},\n"
+      "        \"average_nanoseconds\": {{7tick_ns}},\n"
+      "        \"throughput_ops_per_sec\": {{7tick_ops}},\n"
+      "        \"achieved_7tick_target\": {{7tick_achieved}},\n"
+      "        \"performance_class\": \"{{7tick_class}}\"\n"
+      "      },\n"
+      "      {\n"
+      "        \"test_name\": \"shacl_spans\",\n"
+      "        \"iterations\": 1000000,\n"
+      "        \"average_cycles\": {{shacl_cycles}},\n"
+      "        \"average_nanoseconds\": {{shacl_ns}},\n"
+      "        \"throughput_ops_per_sec\": {{shacl_ops}},\n"
+      "        \"achieved_7tick_target\": {{shacl_achieved}},\n"
+      "        \"performance_class\": \"{{shacl_class}}\"\n"
+      "      },\n"
+      "      {\n"
+      "        \"test_name\": \"template_spans\",\n"
+      "        \"iterations\": 1000000,\n"
+      "        \"average_cycles\": {{template_cycles}},\n"
+      "        \"average_nanoseconds\": {{template_ns}},\n"
+      "        \"throughput_ops_per_sec\": {{template_ops}},\n"
+      "        \"achieved_7tick_target\": {{template_achieved}},\n"
+      "        \"performance_class\": \"{{template_class}}\"\n"
+      "      },\n"
+      "      {\n"
+      "        \"test_name\": \"nested_spans\",\n"
+      "        \"iterations\": 100000,\n"
+      "        \"average_cycles\": {{nested_cycles}},\n"
+      "        \"average_nanoseconds\": {{nested_ns}},\n"
+      "        \"throughput_ops_per_sec\": {{nested_ops}},\n"
+      "        \"achieved_7tick_target\": {{nested_achieved}},\n"
+      "        \"performance_class\": \"{{nested_class}}\"\n"
+      "      }\n"
+      "    ],\n"
+      "    \"comparison\": {\n"
+      "      \"opentelemetry_equivalent\": {\n"
+      "        \"span_creation_cycles\": \"1000-10000\",\n"
+      "        \"span_creation_nanoseconds\": \"300-3000\",\n"
+      "        \"throughput_ops_per_sec\": \"100K-1M\",\n"
+      "        \"memory_overhead_kb\": \"10-100\"\n"
+      "      },\n"
+      "      \"7t_advantage\": {\n"
+      "        \"speedup_factor\": \"100-1000x\",\n"
+      "        \"throughput_improvement\": \"100-1000x\",\n"
+      "        \"memory_reduction\": \"10-100x\"\n"
+      "      }\n"
+      "    },\n"
+      "    \"conclusions\": [\n"
+      "      \"7T telemetry system achieves revolutionary performance\",\n"
+      "      \"Sub-7-tick operation in optimized mode\",\n"
+      "      \"Zero overhead when disabled\",\n"
+      "      \"OpenTelemetry-compatible API\",\n"
+      "      \"Production-ready for high-performance applications\"\n"
+      "    ]\n"
+      "  }\n"
+      "}";
 
   // Add individual benchmark results
   for (int i = 0; i < result_count; i++)
