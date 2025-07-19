@@ -17,7 +17,7 @@ static int cmd_build_init(CNSContext* ctx, int argc, char** argv) {
         // Create build directory
         if (mkdir("build", 0755) != 0) {
             cns_cli_error("Failed to create build directory");
-            return CNS_ERROR_IO;
+            return CNS_ERR_IO;
         }
     }
     
@@ -34,7 +34,7 @@ static int cmd_build_init(CNSContext* ctx, int argc, char** argv) {
     
     if (result != 0) {
         cns_cli_error("CMake configuration failed");
-        return CNS_ERROR;
+        return CNS_ERR_INTERNAL;
     }
     
     cns_cli_success("Build system initialized");
@@ -52,7 +52,7 @@ static int cmd_build_all(CNSContext* ctx, int argc, char** argv) {
     struct stat st;
     if (stat("build", &st) != 0) {
         cns_cli_error("Build directory not found. Run 'cns build init' first");
-        return CNS_ERROR_IO;
+        return CNS_ERR_IO;
     }
     
     // Run ninja build
@@ -61,7 +61,7 @@ static int cmd_build_all(CNSContext* ctx, int argc, char** argv) {
     
     if (result != 0) {
         cns_cli_error("Build failed");
-        return CNS_ERROR;
+        return CNS_ERR_INTERNAL;
     }
     
     cns_cli_success("Build completed successfully");
@@ -80,7 +80,7 @@ static int cmd_build_clean(CNSContext* ctx, int argc, char** argv) {
     
     if (result != 0) {
         cns_cli_error("Clean failed");
-        return CNS_ERROR;
+        return CNS_ERR_INTERNAL;
     }
     
     cns_cli_success("Build directory cleaned");
@@ -98,7 +98,7 @@ static int cmd_build_debug(CNSContext* ctx, int argc, char** argv) {
     if (stat("build", &st) != 0) {
         if (mkdir("build", 0755) != 0) {
             cns_cli_error("Failed to create build directory");
-            return CNS_ERROR_IO;
+            return CNS_ERR_IO;
         }
     }
     
@@ -115,7 +115,7 @@ static int cmd_build_debug(CNSContext* ctx, int argc, char** argv) {
     
     if (result != 0) {
         cns_cli_error("Debug configuration failed");
-        return CNS_ERROR;
+        return CNS_ERR_INTERNAL;
     }
     
     cns_cli_success("Debug build configured");

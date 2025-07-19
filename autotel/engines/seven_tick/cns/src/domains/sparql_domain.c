@@ -1,4 +1,3 @@
-#include "cns/commands/base.h"
 
 CNSDomain cns_sparql_domain = {
     .name = "sparql",

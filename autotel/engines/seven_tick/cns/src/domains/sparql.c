@@ -11,7 +11,7 @@ static int cmd_sparql_query(CNSContext *ctx, int argc, char **argv)
   {
     printf("Usage: cns sparql query <pattern>\n");
     printf("Example: cns sparql query '?s ?p ?o'\n");
-    return CNS_ERROR_ARGS;
+    return CNS_ERR_INTERNAL_ARGS;
   }
 
   printf("🔍 SPARQL Query Processing\n");
@@ -22,7 +22,7 @@ static int cmd_sparql_query(CNSContext *ctx, int argc, char **argv)
   if (!engine)
   {
     printf("❌ Failed to create SPARQL engine\n");
-    return CNS_ERROR_MEMORY;
+    return CNS_ERR_INTERNAL_MEMORY;
   }
 
   // Add some test data
@@ -46,7 +46,7 @@ static int cmd_sparql_add(CNSContext *ctx, int argc, char **argv)
   {
     printf("Usage: cns sparql add <subject> <predicate> <object>\n");
     printf("Example: cns sparql add 'Alice' 'worksAt' 'TechCorp'\n");
-    return CNS_ERROR_ARGS;
+    return CNS_ERR_INTERNAL_ARGS;
   }
 
   printf("➕ Adding Triple\n");
@@ -59,7 +59,7 @@ static int cmd_sparql_add(CNSContext *ctx, int argc, char **argv)
   if (!engine)
   {
     printf("❌ Failed to create SPARQL engine\n");
-    return CNS_ERROR_MEMORY;
+    return CNS_ERR_INTERNAL_MEMORY;
   }
 
   // Convert string inputs to IDs (simplified)
@@ -89,7 +89,7 @@ static int cmd_sparql_benchmark(CNSContext *ctx, int argc, char **argv)
   if (!engine)
   {
     printf("❌ Failed to create SPARQL engine\n");
-    return CNS_ERROR_MEMORY;
+    return CNS_ERR_INTERNAL_MEMORY;
   }
 
   // Add test data

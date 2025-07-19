@@ -5,7 +5,7 @@
 #ifndef CNS_CORE_MEMORY_H
 #define CNS_CORE_MEMORY_H
 
-#include "../../../include/s7t.h"
+#include "../../../../include/s7t.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>

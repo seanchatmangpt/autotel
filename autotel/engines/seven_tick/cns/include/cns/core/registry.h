@@ -5,7 +5,7 @@
 #ifndef CNS_CORE_REGISTRY_H
 #define CNS_CORE_REGISTRY_H
 
-#include "../../../include/s7t.h"
+#include "../../../../include/s7t.h"
 #include "../commands/base.h"
 
 /*═══════════════════════════════════════════════════════════════

@@ -73,7 +73,7 @@ static int cmd_bench_all(CNSContext* ctx, int argc, char** argv) {
     if (stat("build/cns_bench", &st) != 0) {
         cns_cli_error("Benchmark binary not found. Run 'cns build all' first");
         cns_span_end(_span, CNS_SPAN_STATUS_ERROR);
-        return CNS_ERROR_IO;
+        return CNS_ERR_IO;
     }
     
     cns_cli_info("Running all benchmarks...");

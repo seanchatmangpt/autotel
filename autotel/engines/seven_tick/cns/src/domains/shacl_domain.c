@@ -1,4 +1,4 @@
-#include "cns/commands/base.h"
+#include "cns/types.h"
 
 CNSDomain cns_shacl_domain = {
     .name = "shacl",

@@ -145,7 +145,7 @@ static int cmd_deploy(CNSContext* ctx, int argc, char** argv) {
         cns_cli_info("Running gatekeeper validation...");
         if (system("./cns gate run") != 0) {
             cns_cli_error("Gatekeeper failed - cannot deploy");
-            return CNS_ERROR;
+            return CNS_ERR_INTERNAL;
         }
     }
     
@@ -157,7 +157,7 @@ static int cmd_deploy(CNSContext* ctx, int argc, char** argv) {
         result = deploy_docker(version, dry_run);
     } else {
         cns_cli_error("Unknown deployment target: %s", target);
-        return CNS_ERROR_ARGS;
+        return CNS_ERR_INTERNAL_ARGS;
     }
     
     if (result == CNS_OK) {

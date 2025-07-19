@@ -33,7 +33,7 @@ static int cmd_test_all(CNSContext* ctx, int argc, char** argv) {
     if (stat("build/cns_tests", &st) != 0) {
         cns_cli_error("Test binary not found. Run 'cns build all' first");
         cns_span_end(_span, CNS_SPAN_STATUS_ERROR);
-        return CNS_ERROR_IO;
+        return CNS_ERR_IO;
     }
     
     cns_cli_info("Running all tests...");
@@ -59,7 +59,7 @@ static int cmd_test_all(CNSContext* ctx, int argc, char** argv) {
     if (result != 0) {
         cns_cli_error("Tests failed");
         cns_span_end(_span, CNS_SPAN_STATUS_ERROR);
-        return CNS_ERROR;
+        return CNS_ERR_INTERNAL;
     }
     
     cns_cli_success("All tests passed");
@@ -77,7 +77,7 @@ static int cmd_test_unit(CNSContext* ctx, int argc, char** argv) {
     if (stat("build/cns_tests", &st) != 0) {
         cns_cli_error("Test binary not found. Run 'cns build all' first");
         cns_span_end(_span, CNS_SPAN_STATUS_ERROR);
-        return CNS_ERROR_IO;
+        return CNS_ERR_IO;
     }
     
     cns_cli_info("Running unit tests...");
@@ -102,7 +102,7 @@ static int cmd_test_unit(CNSContext* ctx, int argc, char** argv) {
     if (result != 0) {
         cns_cli_error("Unit tests failed");
         cns_span_end(_span, CNS_SPAN_STATUS_ERROR);
-        return CNS_ERROR;
+        return CNS_ERR_INTERNAL;
     }
     
     cns_cli_success("Unit tests passed");
@@ -135,7 +135,7 @@ static int cmd_test_coverage(CNSContext* ctx, int argc, char** argv) {
     if (result != 0) {
         cns_cli_error("Coverage generation failed");
         cns_span_end(_span, CNS_SPAN_STATUS_ERROR);
-        return CNS_ERROR;
+        return CNS_ERR_INTERNAL;
     }
     
     cns_cli_success("Coverage report generated");

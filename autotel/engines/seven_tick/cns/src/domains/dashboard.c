@@ -11,7 +11,7 @@ static int cmd_dashboard_up(CNSContext* ctx, int argc, char** argv) {
     // Check for Docker
     if (system("docker --version > /dev/null 2>&1") != 0) {
         cns_cli_error("Docker not found. Please install Docker first");
-        return CNS_ERROR;
+        return CNS_ERR_INTERNAL;
     }
     
     // Start Prometheus

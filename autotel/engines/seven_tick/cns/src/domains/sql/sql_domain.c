@@ -60,13 +60,13 @@ static int cmd_sql_init(CNSContext* ctx, int argc, char** argv) {
 static int cmd_sql_create(CNSContext* ctx, int argc, char** argv) {
     if (!g_sql_engine.initialized) {
         cns_cli_error("SQL engine not initialized. Run 'cns sql init' first.\n");
-        return CNS_ERROR;
+        return CNS_ERR_INTERNAL;
     }
     
     if (argc < 2) {
         cns_cli_error("Usage: cns sql create <table_name> <col1:type> [col2:type ...]\n");
         cns_cli_info("Types: int32, int64, float32, float64, id, date, time, bool\n");
-        return CNS_ERROR_ARGS;
+        return CNS_ERR_INTERNAL_ARGS;
     }
     
     s7t_span_t span;
@@ -77,7 +77,7 @@ static int cmd_sql_create(CNSContext* ctx, int argc, char** argv) {
     if (g_sql_engine.table_count >= S7T_SQL_MAX_TABLES) {
         cns_cli_error("Maximum table limit reached (%d)\n", S7T_SQL_MAX_TABLES);
         s7t_span_end(&span);
-        return CNS_ERROR_RESOURCE;
+        return CNS_ERR_INTERNAL_RESOURCE;
     }
     
     // Get table slot
@@ -91,7 +91,7 @@ static int cmd_sql_create(CNSContext* ctx, int argc, char** argv) {
         if (!colon) {
             cns_cli_error("Invalid column definition: %s\n", col_def);
             s7t_span_end(&span);
-            return CNS_ERROR_ARGS;
+            return CNS_ERR_INTERNAL_ARGS;
         }
         
         *colon = '\0';
@@ -111,14 +111,14 @@ static int cmd_sql_create(CNSContext* ctx, int argc, char** argv) {
         else {
             cns_cli_error("Unknown type: %s\n", type_str);
             s7t_span_end(&span);
-            return CNS_ERROR_ARGS;
+            return CNS_ERR_INTERNAL_ARGS;
         }
         
         // Add column
         if (table->column_count >= S7T_SQL_MAX_COLUMNS) {
             cns_cli_error("Maximum column limit reached (%d)\n", S7T_SQL_MAX_COLUMNS);
             s7t_span_end(&span);
-            return CNS_ERROR_RESOURCE;
+            return CNS_ERR_INTERNAL_RESOURCE;
         }
         
         s7t_column_init(&table->columns[table->column_count], col_name, type, &g_sql_engine.arena);
@@ -141,12 +141,12 @@ static int cmd_sql_create(CNSContext* ctx, int argc, char** argv) {
 static int cmd_sql_insert(CNSContext* ctx, int argc, char** argv) {
     if (!g_sql_engine.initialized) {
         cns_cli_error("SQL engine not initialized. Run 'cns sql init' first.\n");
-        return CNS_ERROR;
+        return CNS_ERR_INTERNAL;
     }
     
     if (argc < 3) {
         cns_cli_error("Usage: cns sql insert <table_name> <val1> [val2 ...]\n");
-        return CNS_ERROR_ARGS;
+        return CNS_ERR_INTERNAL_ARGS;
     }
     
     s7t_span_t span;
@@ -166,7 +166,7 @@ static int cmd_sql_insert(CNSContext* ctx, int argc, char** argv) {
     if (!table) {
         cns_cli_error("Table not found: %s\n", table_name);
         s7t_span_end(&span);
-        return CNS_ERROR_NOT_FOUND;
+        return CNS_ERR_INTERNAL_NOT_FOUND;
     }
     
     // Check value count
@@ -174,14 +174,14 @@ static int cmd_sql_insert(CNSContext* ctx, int argc, char** argv) {
     if (value_count != table->column_count) {
         cns_cli_error("Expected %u values, got %u\n", table->column_count, value_count);
         s7t_span_end(&span);
-        return CNS_ERROR_ARGS;
+        return CNS_ERR_INTERNAL_ARGS;
     }
     
     // Check row limit
     if (table->row_count >= S7T_SQL_MAX_ROWS) {
         cns_cli_error("Table row limit reached (%d)\n", S7T_SQL_MAX_ROWS);
         s7t_span_end(&span);
-        return CNS_ERROR_RESOURCE;
+        return CNS_ERR_INTERNAL_RESOURCE;
     }
     
     // Insert values
@@ -254,13 +254,13 @@ static int cmd_sql_insert(CNSContext* ctx, int argc, char** argv) {
 static int cmd_sql_select(CNSContext* ctx, int argc, char** argv) {
     if (!g_sql_engine.initialized) {
         cns_cli_error("SQL engine not initialized. Run 'cns sql init' first.\n");
-        return CNS_ERROR;
+        return CNS_ERR_INTERNAL;
     }
     
     if (argc < 2) {
         cns_cli_error("Usage: cns sql select <query>\n");
         cns_cli_info("Example: cns sql select \"* FROM table WHERE col > 10\"\n");
-        return CNS_ERROR_ARGS;
+        return CNS_ERR_INTERNAL_ARGS;
     }
     
     s7t_span_t span;
@@ -274,7 +274,7 @@ static int cmd_sql_select(CNSContext* ctx, int argc, char** argv) {
     if (!from_pos) {
         cns_cli_error("Invalid query: missing FROM clause\n");
         s7t_span_end(&span);
-        return CNS_ERROR_ARGS;
+        return CNS_ERR_INTERNAL_ARGS;
     }
     
     char table_name[32];
@@ -292,7 +292,7 @@ static int cmd_sql_select(CNSContext* ctx, int argc, char** argv) {
     if (!table) {
         cns_cli_error("Table not found: %s\n", table_name);
         s7t_span_end(&span);
-        return CNS_ERROR_NOT_FOUND;
+        return CNS_ERR_INTERNAL_NOT_FOUND;
     }
     
     // Simple WHERE clause parsing
@@ -413,7 +413,7 @@ static int cmd_sql_select(CNSContext* ctx, int argc, char** argv) {
 static int cmd_sql_bench(CNSContext* ctx, int argc, char** argv) {
     if (!g_sql_engine.initialized) {
         cns_cli_error("SQL engine not initialized. Run 'cns sql init' first.\n");
-        return CNS_ERROR;
+        return CNS_ERR_INTERNAL;
     }
     
     int iterations = 1000;
@@ -671,12 +671,12 @@ static int cmd_sql_bench(CNSContext* ctx, int argc, char** argv) {
 static int cmd_sql_explain(CNSContext* ctx, int argc, char** argv) {
     if (!g_sql_engine.initialized) {
         cns_cli_error("SQL engine not initialized. Run 'cns sql init' first.\n");
-        return CNS_ERROR;
+        return CNS_ERR_INTERNAL;
     }
     
     if (argc < 2) {
         cns_cli_error("Usage: cns sql explain <query>\n");
-        return CNS_ERROR_ARGS;
+        return CNS_ERR_INTERNAL_ARGS;
     }
     
     const char* query = argv[1];
@@ -743,7 +743,7 @@ static int cmd_sql_explain(CNSContext* ctx, int argc, char** argv) {
 static int cmd_sql_show(CNSContext* ctx, int argc, char** argv) {
     if (!g_sql_engine.initialized) {
         cns_cli_error("SQL engine not initialized. Run 'cns sql init' first.\n");
-        return CNS_ERROR;
+        return CNS_ERR_INTERNAL;
     }
     
     if (g_sql_engine.table_count == 0) {

@@ -46,7 +46,7 @@ static CNSArgument parse_args[] = {
 static int cmd_parse(CNSContext* ctx, int argc, char** argv) {
     if (argc < 1) {
         cns_cli_error("Missing ontology file");
-        return CNS_ERROR_ARGS;
+        return CNS_ERR_INTERNAL_ARGS;
     }
     
     const char* input_file = argv[0];
@@ -55,7 +55,7 @@ static int cmd_parse(CNSContext* ctx, int argc, char** argv) {
     struct stat st;
     if (stat(input_file, &st) != 0) {
         cns_cli_error("File not found: %s", input_file);
-        return CNS_ERROR_IO;
+        return CNS_ERR_IO;
     }
     
     cns_cli_info("Parsing ontology: %s", input_file);

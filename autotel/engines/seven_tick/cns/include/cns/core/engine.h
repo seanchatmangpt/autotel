@@ -5,7 +5,7 @@
 #ifndef CNS_CORE_ENGINE_H
 #define CNS_CORE_ENGINE_H
 
-#include "../../../include/s7t.h"
+#include "../../../../include/s7t.h"
 #include "registry.h"
 #include "memory.h"
 #include "perf.h"

@@ -5,7 +5,7 @@
 #ifndef CNS_BENCH_FRAMEWORK_H
 #define CNS_BENCH_FRAMEWORK_H
 
-#include "../../../include/s7t.h"
+#include "../../../../include/s7t.h"
 #include "../core/perf.h"
 #include <stdint.h>
 #include <stdbool.h>

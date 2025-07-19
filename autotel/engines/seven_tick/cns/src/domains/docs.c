@@ -65,7 +65,7 @@ static int cmd_docs_validate(CNSContext* ctx, int argc, char** argv) {
         return CNS_OK;
     } else {
         cns_cli_error("Documentation validation failed");
-        return CNS_ERROR;
+        return CNS_ERR_INTERNAL;
     }
 }
 
@@ -115,7 +115,7 @@ static int cmd_docs_serve(CNSContext* ctx, int argc, char** argv) {
     struct stat st;
     if (stat("docs/html/index.html", &st) != 0) {
         cns_cli_error("No HTML docs found. Run 'cns docs generate' first");
-        return CNS_ERROR_IO;
+        return CNS_ERR_IO;
     }
     
     // Start simple HTTP server
