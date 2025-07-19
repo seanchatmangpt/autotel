@@ -37,15 +37,23 @@ CJINJA_80_20_BENCHMARK_SRC = $(VERIFICATION_DIR)/cjinja_80_20_benchmark.c
 CJINJA_80_20_BENCHMARK_BIN = $(VERIFICATION_DIR)/cjinja_80_20_benchmark
 SHACL_IMPL_BENCHMARK_SRC = $(VERIFICATION_DIR)/shacl_implementation_benchmark.c
 SHACL_IMPL_BENCHMARK_BIN = $(VERIFICATION_DIR)/shacl_implementation_benchmark
+SPARQL_7TICK_BENCHMARK_SRC = $(VERIFICATION_DIR)/sparql_7tick_benchmark.c
+SPARQL_7TICK_BENCHMARK_BIN = $(VERIFICATION_DIR)/sparql_7tick_benchmark
 
 # Telemetry7T targets
 TELEMETRY7T_SRC = c_src/telemetry7t.c
 TELEMETRY7T_BENCHMARK_SRC = verification/telemetry7t_benchmark.c
 TELEMETRY7T_BENCHMARK_BIN = verification/telemetry7t_benchmark
+TELEMETRY7T_7TICK_BENCHMARK_SRC = verification/telemetry7t_7tick_benchmark.c
+TELEMETRY7T_7TICK_BENCHMARK_BIN = verification/telemetry7t_7tick_benchmark
 
 # PM7T Process Mining Library
 PM7T_OBJS = c_src/pm7t.o
 PM7T_LIB = libpm7t.so
+
+# Optimized 7T Engine
+OPTIMIZED_OBJS = c_src/sparql7t_optimized.o
+OPTIMIZED_LIB = libsparql7t_optimized.so
 
 .PHONY: all runtime compiler verification clean production
 
@@ -66,7 +74,7 @@ compiler: $(COMPILER_BIN)
 $(COMPILER_BIN): $(COMPILER_SRCS)
 	$(CC) $(CFLAGS) -o $@ $^ -ldl
 
-verification: $(GATEKEEPER_BIN) $(SHACL_BENCHMARK_BIN) $(SHACL_7TICK_BENCHMARK_BIN) $(CJINJA_BENCHMARK_BIN) $(CJINJA_80_20_BENCHMARK_BIN) $(SHACL_IMPL_BENCHMARK_BIN) $(TELEMETRY7T_BENCHMARK_BIN)
+verification: $(GATEKEEPER_BIN) $(SHACL_BENCHMARK_BIN) $(SHACL_7TICK_BENCHMARK_BIN) $(CJINJA_BENCHMARK_BIN) $(CJINJA_80_20_BENCHMARK_BIN) $(SHACL_IMPL_BENCHMARK_BIN) $(TELEMETRY7T_BENCHMARK_BIN) $(TELEMETRY7T_7TICK_BENCHMARK_BIN)
 
 $(GATEKEEPER_BIN): $(GATEKEEPER_SRC) $(RUNTIME_LIB)
 	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -l7t_runtime -ldl -Wl,-rpath,$(PWD)/$(LIB_DIR)
@@ -89,11 +97,21 @@ $(SHACL_IMPL_BENCHMARK_BIN): $(SHACL_IMPL_BENCHMARK_SRC) $(RUNTIME_LIB)
 $(TELEMETRY7T_BENCHMARK_BIN): $(TELEMETRY7T_BENCHMARK_SRC) $(TELEMETRY7T_SRC)
 	$(CC) $(CFLAGS) -o $@ $^ -lpthread
 
+$(TELEMETRY7T_7TICK_BENCHMARK_BIN): $(TELEMETRY7T_7TICK_BENCHMARK_SRC)
+	$(CC) $(CFLAGS) -o $@ $<
+
 $(PM7T_LIB): $(PM7T_OBJS)
 	$(CC) -shared -o $@ $(PM7T_OBJS) -lm
 
 c_src/pm7t.o: c_src/pm7t.c c_src/pm7t.h
 	$(CC) $(CFLAGS) -fPIC -c $< -o $@
+
+# Optimized 7T Engine targets
+$(OPTIMIZED_LIB): $(OPTIMIZED_OBJS)
+	$(CC) -shared -o $@ $(OPTIMIZED_OBJS) -lm
+
+c_src/sparql7t_optimized.o: c_src/sparql7t_optimized.c c_src/sparql7t_optimized.h
+	$(CC) $(CFLAGS) -O3 -march=native -fPIC -c $< -o $@
 
 # Process mining demo
 process_mining_demo: examples/process_mining_demo.c $(PM7T_LIB)
@@ -103,12 +121,20 @@ process_mining_demo: examples/process_mining_demo.c $(PM7T_LIB)
 pm7t_benchmarks: benchmarks/pm7t_benchmarks.c $(PM7T_LIB)
 	$(CC) $(CFLAGS) -O3 -march=native -o $@ $< -L. -lpm7t -lm
 
+# Optimized benchmarks
+optimized_benchmarks: benchmarks/optimized_benchmarks.c $(OPTIMIZED_LIB)
+	$(CC) $(CFLAGS) -O3 -march=native -o $@ $< -L. -lsparql7t_optimized -lm
+
 # Run benchmarks
 benchmark: pm7t_benchmarks
 	./pm7t_benchmarks
 
+# Run optimized benchmarks
+benchmark_optimized: optimized_benchmarks
+	./optimized_benchmarks
+
 clean:
-	rm -f $(RUNTIME_LIB) $(COMPILER_BIN) $(GATEKEEPER_BIN) $(SHACL_BENCHMARK_BIN) $(SHACL_7TICK_BENCHMARK_BIN) $(CJINJA_BENCHMARK_BIN) $(SHACL_IMPL_BENCHMARK_BIN) $(TELEMETRY7T_BENCHMARK_BIN) $(PM7T_OBJS) $(PM7T_LIB) process_mining_demo pm7t_benchmarks
+	rm -f $(RUNTIME_LIB) $(COMPILER_BIN) $(GATEKEEPER_BIN) $(SHACL_BENCHMARK_BIN) $(SHACL_7TICK_BENCHMARK_BIN) $(CJINJA_BENCHMARK_BIN) $(SHACL_IMPL_BENCHMARK_BIN) $(TELEMETRY7T_BENCHMARK_BIN) $(PM7T_OBJS) $(PM7T_LIB) $(OPTIMIZED_OBJS) $(OPTIMIZED_LIB) process_mining_demo pm7t_benchmarks optimized_benchmarks
 	rm -f /tmp/seven_t_kernel.c /tmp/kernel.so /tmp/sprint_health_data.ttl
 
 run-benchmark: all
@@ -134,3 +160,6 @@ run-shacl-7tick-benchmark: all
 
 run-telemetry7t-benchmark: all
 	./verification/telemetry7t_benchmark
+
+run-telemetry7t-7tick-benchmark: all
+	./verification/telemetry7t_7tick_benchmark
