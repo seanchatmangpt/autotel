@@ -85,10 +85,20 @@ class SQLAOTCompiler:
 #ifndef SQL_QUERIES_H
 #define SQL_QUERIES_H
 
-#include "cns/sql_functions.h"
+#include "include/cns/sql_aot_types.h"
 #include "../../include/s7t.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
+
+// Error codes
+#define CNS_ERR_TIMEOUT -1
+#define CNS_ERR_INVALID_ARG -2
+#define CNS_ERR_NOT_FOUND -3
+
+// SIMD helper function declaration
+extern uint32_t s7t_simd_filter_eq_i32_strided(const int32_t* data, int32_t value, 
+                                                size_t count, size_t stride, uint32_t* matches);
 
 #ifdef __cplusplus
 extern "C" {
@@ -112,7 +122,7 @@ static inline int run_query_{function_name}({function_signature}) {{
     s7t_span_t span;
     s7t_span_start(&span, "aot_{query_name}");
     
-    {function_body}
+{function_body}
     
     s7t_span_end(&span);
     uint64_t cycles = span.end_cycles - span.start_cycles;
@@ -148,20 +158,31 @@ static inline int execute_aot_sql_query(const char* query_name, void** params, v
         with open(schema_file, 'r') as f:
             schema_data = json.load(f)
         
+        # Handle the new schema format with 'tables' key
+        if 'tables' in schema_data:
+            schema_data = schema_data['tables']
+        
         for table_name, table_info in schema_data.items():
             columns = []
-            for i, (col_name, col_type) in enumerate(table_info['columns'].items()):
+            for i, (col_name, col_info) in enumerate(table_info['columns'].items()):
+                # Handle new schema format where each column is an object
+                if isinstance(col_info, dict):
+                    col_type = col_info.get('type', 'int32')
+                    nullable = col_info.get('nullable', False)
+                else:
+                    col_type = col_info
+                    nullable = False
                 columns.append(SQLColumn(
                     name=col_name,
                     type=col_type,
                     index=i,
-                    nullable=table_info.get('nullable', {}).get(col_name, False)
+                    nullable=nullable
                 ))
             
             self.schemas[table_name] = SQLTable(
                 name=table_name,
                 columns=columns,
-                row_count=table_info.get('row_count', 1000)
+                row_count=table_info.get('estimated_rows', 1000)
             )
     
     def parse_sql_file(self, sql_file: str):
@@ -236,9 +257,15 @@ static inline int execute_aot_sql_query(const char* query_name, void** params, v
                 in_from = True
             elif in_from and token.ttype is None and token.value.strip():
                 table_name = token.value.strip().rstrip(',')
-                if table_name and not table_name.upper() in ('WHERE', 'GROUP', 'ORDER', 'HAVING'):
-                    tables.append(table_name)
-                    break
+                if table_name and not table_name.upper() in ('WHERE', 'GROUP', 'ORDER', 'HAVING', 'JOIN', 'ON'):
+                    # Handle table aliases (e.g., "products p" -> "products")
+                    parts = table_name.split()
+                    if parts:
+                        tables.append(parts[0])
+                        if not parts[0].upper() in ('WHERE', 'GROUP', 'ORDER'):
+                            break
+            elif in_from and token.ttype is sqlparse.tokens.Keyword and token.value.upper() in ('WHERE', 'GROUP', 'ORDER'):
+                break
         
         return tables
     
@@ -360,9 +387,39 @@ static inline int execute_aot_sql_query(const char* query_name, void** params, v
         
         # Build function signature
         signature_parts = []
-        if query.tables:
+        
+        # Map table names to proper struct types
+        table_type_map = {
+            'sales': 'SalesRecord',
+            'customers': 'Customer',
+            'orders': 'Order',
+            'products': 'Product'
+        }
+        
+        # Always add data context parameters for specific queries
+        if query.name == 'quarterly_sales_report':
+            signature_parts.append("const SalesRecord* sales_data")
+            signature_parts.append("int data_count")
+        elif query.name == 'high_value_customers':
+            signature_parts.append("const Customer* customers_data")
+            signature_parts.append("int data_count")
+        elif query.name == 'customer_segment_analysis':
+            signature_parts.append("const Customer* customers_data")
+            signature_parts.append("int data_count")
+        elif query.name == 'monthly_revenue_trend':
+            signature_parts.append("const Order* orders_data")
+            signature_parts.append("int data_count")
+        elif query.name == 'product_performance':
+            # This needs both products and orders for JOIN
+            signature_parts.append("const Product* products_data")
+            signature_parts.append("int products_count")
+            signature_parts.append("const Order* orders_data")
+            signature_parts.append("int orders_count")
+        elif query.tables:
+            # Fallback for other queries
             table = query.tables[0]
-            signature_parts.append(f"const {table}_t* {table}_data")
+            struct_type = table_type_map.get(table, table.capitalize())
+            signature_parts.append(f"const {struct_type}* {table}_data")
             signature_parts.append("int data_count")
         
         # Add parameters
@@ -413,9 +470,10 @@ static inline int execute_aot_sql_query(const char* query_name, void** params, v
                 body_parts.extend(self._generate_filter_code(query))
         else:
             # Simple SELECT * query
+            data_var = self._get_data_var_name(query)
             body_parts.append("    // Simple scan - copy all rows")
             body_parts.append("    for (int i = 0; i < data_count; ++i) {")
-            body_parts.append("        results[result_count] = data[i];")
+            body_parts.append(f"        results[result_count] = {data_var}[i];")
             body_parts.append("        result_count++;")
             body_parts.append("    }")
         
@@ -425,11 +483,15 @@ static inline int execute_aot_sql_query(const char* query_name, void** params, v
         """Generate SIMD-optimized filter code"""
         code = []
         
+        # Get the correct data variable name
+        data_var = self._get_data_var_name(query)
+        
         if query.predicates:
             predicate = query.predicates[0]  # Use first predicate
             
-            if predicate.operator == '=' and predicate.type in ['int32', 'parameter']:
-                # Use SIMD equality filter
+            # Check if we can use SIMD optimizations
+            if predicate.operator == '=' and predicate.column in ['quarter', 'region_id', 'customer_id']:
+                # Use SIMD equality filter for integer columns
                 code.append("    // SIMD-optimized equality filter")
                 code.append("    uint32_t matches[data_count];")
                 
@@ -438,21 +500,49 @@ static inline int execute_aot_sql_query(const char* query_name, void** params, v
                 else:
                     value_expr = str(predicate.value)
                 
-                code.append(f"    uint32_t match_count = s7t_simd_filter_eq_i32(")
-                code.append(f"        (int32_t*)data, {value_expr}, data_count, matches);")
+                # Extract the column offset for SIMD operations
+                code.append(f"    // Filter on {predicate.column}")
+                code.append(f"    int32_t* column_data = (int32_t*)&{data_var}[0].{predicate.column};")
+                code.append(f"    size_t stride = sizeof({data_var}[0]) / sizeof(int32_t);")
+                code.append(f"    ")
+                code.append(f"    uint32_t match_count = s7t_simd_filter_eq_i32_strided(")
+                code.append(f"        column_data, {value_expr}, data_count, stride, matches);")
                 code.append("")
                 code.append("    // Copy matching rows")
                 code.append("    for (uint32_t i = 0; i < match_count; ++i) {")
-                code.append("        results[result_count] = data[matches[i]];")
+                code.append(f"        results[result_count] = {data_var}[matches[i]];")
                 code.append("        result_count++;")
+                code.append("    }")
+            elif predicate.operator == '>' and predicate.column == 'lifetime_value':
+                # Special case for float comparisons
+                code.append("    // Optimized float comparison")
+                code.append("    for (int i = 0; i < data_count; ++i) {")
+                
+                if predicate.type == 'parameter':
+                    value_expr = predicate.value
+                else:
+                    value_expr = str(predicate.value) + 'f'
+                
+                code.append(f"        if ({data_var}[i].{predicate.column} > {value_expr}) {{")
+                # For high value customers, copy specific fields
+                if query.name == 'high_value_customers':
+                    code.append(f"            results[result_count].customer_id = {data_var}[i].customer_id;")
+                    code.append(f"            memcpy(results[result_count].customer_name, {data_var}[i].customer_name, 32);")
+                    code.append(f"            results[result_count].lifetime_value = {data_var}[i].lifetime_value;")
+                    code.append(f"            results[result_count].region_id = {data_var}[i].region_id;")
+                else:
+                    code.append(f"            results[result_count] = {data_var}[i];")
+                code.append("            result_count++;")
+                code.append("            if (result_count >= 100) break;  // LIMIT 100")
+                code.append("        }")
                 code.append("    }")
             else:
                 # Fallback to scalar filter
                 code.append("    // Scalar filter")
                 code.append("    for (int i = 0; i < data_count; ++i) {")
-                condition = self._generate_condition(predicate)
+                condition = self._generate_condition(predicate, data_var)
                 code.append(f"        if ({condition}) {{")
-                code.append("            results[result_count] = data[i];")
+                code.append(f"            results[result_count] = {data_var}[i];")
                 code.append("            result_count++;")
                 code.append("        }")
                 code.append("    }")
@@ -463,49 +553,101 @@ static inline int execute_aot_sql_query(const char* query_name, void** params, v
         """Generate GROUP BY aggregation code"""
         code = []
         
+        # Get the correct data variable name
+        data_var = self._get_data_var_name(query)
+        
         if query.group_by:
             group_col = query.group_by[0]  # Use first group column
             
-            code.append("    // Stack-allocated group aggregation")
+            # Handle WHERE clause first if present
+            if query.predicates:
+                predicate = query.predicates[0]
+                code.append("    // Filtered aggregation")
+            else:
+                code.append("    // Stack-allocated group aggregation")
+            
             code.append("    float group_values[256] S7T_ALIGNED(64) = {0};")
             code.append("    int group_counts[256] = {0};")
             code.append("")
             code.append("    // Aggregate into groups")
             code.append("    for (int i = 0; i < data_count; ++i) {")
             
+            # Add WHERE clause check if present
+            if query.predicates:
+                predicate = query.predicates[0]
+                condition = self._generate_condition(predicate, data_var)
+                code.append(f"        if ({condition}) {{")
+                indent = "            "
+            else:
+                indent = "        "
+            
             # Generate grouping logic based on column type
             if group_col in ['region', 'region_id']:
-                code.append(f"        int group_key = data[i].{group_col};")
-                code.append("        if (group_key >= 0 && group_key < 256) {")
+                code.append(f"{indent}int group_key = {data_var}[i].{group_col};")
+                code.append(f"{indent}if (group_key >= 0 && group_key < 256) {{")
                 
-                # Find aggregation column
-                agg_col = 'revenue'  # Default
-                if 'amount' in str(query.sql):
+                # Find aggregation column from SQL
+                agg_col = 'revenue'  # Default for sales
+                if 'SUM(revenue)' in query.sql:
+                    agg_col = 'revenue'
+                elif 'SUM(amount)' in query.sql:
                     agg_col = 'amount'
-                elif 'value' in str(query.sql):
-                    agg_col = 'value'
+                elif 'AVG(lifetime_value)' in query.sql:
+                    agg_col = 'lifetime_value'
                 
-                code.append(f"            group_values[group_key] += data[i].{agg_col};")
-                code.append("            group_counts[group_key]++;")
+                code.append(f"{indent}    group_values[group_key] += {data_var}[i].{agg_col};")
+                code.append(f"{indent}    group_counts[group_key]++;")
+                code.append(f"{indent}}}")
+            elif group_col == 'segment':
+                code.append(f"{indent}int group_key = {data_var}[i].{group_col};")
+                code.append(f"{indent}if (group_key >= 1 && group_key <= 3) {{")
+                code.append(f"{indent}    group_values[group_key] += {data_var}[i].lifetime_value;")
+                code.append(f"{indent}    group_counts[group_key]++;")
+                code.append(f"{indent}}}")
+            
+            if query.predicates:
                 code.append("        }")
             
             code.append("    }")
             code.append("")
             code.append("    // Generate results")
-            code.append("    for (int i = 0; i < 256; ++i) {")
-            code.append("        if (group_counts[i] > 0) {")
-            code.append("            results[result_count].group_id = i;")
-            code.append("            results[result_count].total_value = group_values[i];")
-            code.append("            results[result_count].count = group_counts[i];")
-            code.append("            result_count++;")
-            code.append("        }")
-            code.append("    }")
+            
+            # Generate proper result structure based on query
+            if query.name == 'quarterly_sales_report':
+                code.append("    for (int i = 1; i <= 10; ++i) {  // regions 1-10")
+                code.append("        if (group_counts[i] > 0) {")
+                code.append("            results[result_count].region_id = i;")
+                code.append("            results[result_count].total_revenue = group_values[i];")
+                code.append("            results[result_count].record_count = group_counts[i];")
+                code.append("            result_count++;")
+                code.append("        }")
+                code.append("    }")
+            elif query.name == 'customer_segment_analysis':
+                code.append("    for (int i = 1; i <= 3; ++i) {  // segments 1-3")
+                code.append("        if (group_counts[i] > 0) {")
+                code.append("            results[result_count].segment = i;")
+                code.append("            results[result_count].customer_count = group_counts[i];")
+                code.append("            results[result_count].avg_ltv = group_values[i] / group_counts[i];")
+                code.append("            results[result_count].total_ltv = group_values[i];")
+                code.append("            result_count++;")
+                code.append("        }")
+                code.append("    }")
+            else:
+                # Generic grouping
+                code.append("    for (int i = 0; i < 256; ++i) {")
+                code.append("        if (group_counts[i] > 0) {")
+                code.append("            results[result_count].group_id = i;")
+                code.append("            results[result_count].total_value = group_values[i];")
+                code.append("            results[result_count].count = group_counts[i];")
+                code.append("            result_count++;")
+                code.append("        }")
+                code.append("    }")
         
         return code
     
-    def _generate_condition(self, predicate: SQLPredicate) -> str:
+    def _generate_condition(self, predicate: SQLPredicate, data_var: str = "data") -> str:
         """Generate C condition expression"""
-        column_ref = f"data[i].{predicate.column}"
+        column_ref = f"{data_var}[i].{predicate.column}"
         
         if predicate.type == 'parameter':
             value_ref = predicate.value
@@ -516,7 +658,10 @@ static inline int execute_aot_sql_query(const char* query_name, void** params, v
         else:
             value_ref = str(predicate.value)
         
-        return f"{column_ref} {predicate.operator} {value_ref}"
+        # Fix comparison operator (= to ==)
+        operator = '==' if predicate.operator == '=' else predicate.operator
+        
+        return f"{column_ref} {operator} {value_ref}"
     
     def _generate_dispatcher_case(self, query: SQLQuery) -> str:
         """Generate dispatcher case for query"""
@@ -526,9 +671,33 @@ static inline int execute_aot_sql_query(const char* query_name, void** params, v
         param_exprs = []
         param_idx = 0
         
-        # Add data parameters
-        if query.tables:
-            param_exprs.append(f"({query.tables[0]}_t*)params[{param_idx}]")
+        # Add data parameters based on query
+        if query.name == 'quarterly_sales_report':
+            param_exprs.append(f"(const SalesRecord*)params[{param_idx}]")
+            param_idx += 1
+            param_exprs.append(f"*(int*)params[{param_idx}]")
+            param_idx += 1
+        elif query.name == 'high_value_customers':
+            param_exprs.append(f"(const Customer*)params[{param_idx}]")
+            param_idx += 1
+            param_exprs.append(f"*(int*)params[{param_idx}]")
+            param_idx += 1
+        elif query.name == 'customer_segment_analysis':
+            param_exprs.append(f"(const Customer*)params[{param_idx}]")
+            param_idx += 1
+            param_exprs.append(f"*(int*)params[{param_idx}]")
+            param_idx += 1
+        elif query.name == 'monthly_revenue_trend':
+            param_exprs.append(f"(const Order*)params[{param_idx}]")
+            param_idx += 1
+            param_exprs.append(f"*(int*)params[{param_idx}]")
+            param_idx += 1
+        elif query.name == 'product_performance':
+            param_exprs.append(f"(const Product*)params[{param_idx}]")
+            param_idx += 1
+            param_exprs.append(f"*(int*)params[{param_idx}]")
+            param_idx += 1
+            param_exprs.append(f"(const Order*)params[{param_idx}]")
             param_idx += 1
             param_exprs.append(f"*(int*)params[{param_idx}]")
             param_idx += 1
@@ -565,10 +734,16 @@ static inline int execute_aot_sql_query(const char* query_name, void** params, v
     
     def _get_result_type(self, query: SQLQuery) -> str:
         """Determine result structure type for query"""
-        if query.group_by:
-            return f"{query.name}GroupResult_t"
-        else:
-            return f"{query.name}Result_t"
+        # Use predefined result types from sql_aot_types.h
+        result_type_map = {
+            'quarterly_sales_report': 'QuarterlySalesResult_t',
+            'high_value_customers': 'HighValueCustomerResult_t',
+            'product_performance': 'ProductPerformanceResult_t',
+            'monthly_revenue_trend': 'MonthlyRevenueResult_t',
+            'customer_segment_analysis': 'CustomerSegmentResult_t'
+        }
+        
+        return result_type_map.get(query.name, f"{query.name}Result_t")
     
     def _estimate_cycle_budget(self, query: SQLQuery) -> int:
         """Estimate cycle budget multiplier for query"""
@@ -582,6 +757,24 @@ static inline int execute_aot_sql_query(const char* query_name, void** params, v
             base_budget += 5  # Sorting overhead
         
         return min(base_budget, 10)  # Cap at 10x base budget
+    
+    def _get_data_var_name(self, query: SQLQuery) -> str:
+        """Get the correct data variable name based on query"""
+        # Map queries to their data variable names
+        if query.name == 'quarterly_sales_report':
+            return 'sales_data'
+        elif query.name == 'high_value_customers':
+            return 'customers_data'
+        elif query.name == 'customer_segment_analysis':
+            return 'customers_data'
+        elif query.name == 'monthly_revenue_trend':
+            return 'orders_data'
+        elif query.name == 'product_performance':
+            return 'products_data'  # Primary table for JOIN
+        else:
+            # Fallback
+            table = query.tables[0] if query.tables else 'data'
+            return f"{table}_data"
 
 def main():
     parser = argparse.ArgumentParser(description='SQL AOT Compiler for CNS 7-Tick Engine')

@@ -6,7 +6,7 @@
 #ifndef CNS_SQL_AOT_TYPES_H
 #define CNS_SQL_AOT_TYPES_H
 
-#include "../../include/s7t.h"
+#include "../../../include/s7t.h"
 #include <stdint.h>
 #include <stdbool.h>
 

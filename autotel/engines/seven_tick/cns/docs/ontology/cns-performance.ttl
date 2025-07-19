@@ -1,0 +1,297 @@
+@prefix cns: <https://schema.chatman.ai/cns#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix perf: <https://schema.chatman.ai/performance#> .
+@prefix time: <http://www.w3.org/2006/time#> .
+
+#################################################################
+# CNS Performance Ontology
+# Focus: Performance characteristics, metrics, and optimization
+#################################################################
+
+# ============================================================================
+# PERFORMANCE CLASSES
+# ============================================================================
+
+perf:PerformanceMetric a rdfs:Class ;
+    rdfs:label "Performance Metric" ;
+    rdfs:comment "A measurable performance characteristic" ;
+    rdfs:subClassOf owl:Thing .
+
+perf:Benchmark a rdfs:Class ;
+    rdfs:label "Benchmark" ;
+    rdfs:comment "A performance benchmark test" ;
+    rdfs:subClassOf owl:Thing .
+
+perf:OptimizationStrategy a rdfs:Class ;
+    rdfs:label "Optimization Strategy" ;
+    rdfs:comment "A strategy for performance optimization" ;
+    rdfs:subClassOf owl:Thing .
+
+perf:PerformanceConstraint a rdfs:Class ;
+    rdfs:label "Performance Constraint" ;
+    rdfs:comment "A performance requirement or constraint" ;
+    rdfs:subClassOf owl:Thing .
+
+perf:CycleMeasurement a rdfs:Class ;
+    rdfs:label "Cycle Measurement" ;
+    rdfs:comment "CPU cycle measurement data" ;
+    rdfs:subClassOf perf:PerformanceMetric .
+
+# ============================================================================
+# PERFORMANCE METRICS
+# ============================================================================
+
+perf:Latency a perf:PerformanceMetric ;
+    rdfs:label "Latency" ;
+    rdfs:comment "Time to complete an operation" ;
+    perf:unit "nanoseconds" ;
+    perf:measurementType "time" .
+
+perf:Throughput a perf:PerformanceMetric ;
+    rdfs:label "Throughput" ;
+    rdfs:comment "Operations per second" ;
+    perf:unit "ops/sec" ;
+    perf:measurementType "rate" .
+
+perf:MemoryUsage a perf:PerformanceMetric ;
+    rdfs:label "Memory Usage" ;
+    rdfs:comment "Memory consumption" ;
+    perf:unit "bytes" ;
+    perf:measurementType "memory" .
+
+perf:CacheHitRate a perf:PerformanceMetric ;
+    rdfs:label "Cache Hit Rate" ;
+    rdfs:comment "Percentage of cache hits" ;
+    perf:unit "percent" ;
+    perf:measurementType "ratio" .
+
+perf:BranchMispredictionRate a perf:PerformanceMetric ;
+    rdfs:label "Branch Misprediction Rate" ;
+    rdfs:comment "Percentage of branch mispredictions" ;
+    perf:unit "percent" ;
+    perf:measurementType "ratio" .
+
+# ============================================================================
+# 7-TICK PERFORMANCE CONSTRAINTS
+# ============================================================================
+
+perf:SevenTickConstraint a perf:PerformanceConstraint ;
+    rdfs:label "7-Tick Performance Constraint" ;
+    rdfs:comment "Operations must complete within 7 CPU cycles" ;
+    perf:maxCycles 7 ;
+    perf:maxTime "10"^^xsd:integer ;
+    perf:timeUnit "ns" ;
+    perf:priority "critical" .
+
+perf:L1TierConstraint a perf:PerformanceConstraint ;
+    rdfs:label "L1 Tier Constraint" ;
+    rdfs:comment "Critical path operations under 10ns" ;
+    perf:maxCycles 7 ;
+    perf:maxTime "10"^^xsd:integer ;
+    perf:timeUnit "ns" ;
+    perf:priority "critical" .
+
+perf:L2TierConstraint a perf:PerformanceConstraint ;
+    rdfs:label "L2 Tier Constraint" ;
+    rdfs:comment "Important operations under 100ns" ;
+    perf:maxCycles 100 ;
+    perf:maxTime "100"^^xsd:integer ;
+    perf:timeUnit "ns" ;
+    perf:priority "high" .
+
+perf:L3TierConstraint a perf:PerformanceConstraint ;
+    rdfs:label "L3 Tier Constraint" ;
+    rdfs:comment "Complex operations under 1μs" ;
+    perf:maxCycles 1000 ;
+    perf:maxTime "1000"^^xsd:integer ;
+    perf:timeUnit "ns" ;
+    perf:priority "medium" .
+
+# ============================================================================
+# OPTIMIZATION STRATEGIES
+# ============================================================================
+
+perf:MemoryOptimization a perf:OptimizationStrategy ;
+    rdfs:label "Memory Optimization" ;
+    rdfs:comment "Optimization of memory access patterns" ;
+    perf:targetMetric perf:Latency ;
+    perf:targetMetric perf:MemoryUsage ;
+    perf:technique "Cache-friendly data structures" ;
+    perf:technique "Memory pooling" ;
+    perf:technique "Stack allocation" .
+
+perf:AlgorithmOptimization a perf:OptimizationStrategy ;
+    rdfs:label "Algorithm Optimization" ;
+    rdfs:comment "Optimization of algorithms and data structures" ;
+    perf:targetMetric perf:Latency ;
+    perf:targetMetric perf:Throughput ;
+    perf:technique "Hash-based lookup" ;
+    perf:technique "SIMD operations" ;
+    perf:technique "Branch reduction" .
+
+perf:CompilerOptimization a perf:OptimizationStrategy ;
+    rdfs:label "Compiler Optimization" ;
+    rdfs:comment "Compiler-level optimizations" ;
+    perf:targetMetric perf:Latency ;
+    perf:technique "Function inlining" ;
+    perf:technique "Loop unrolling" ;
+    perf:technique "Profile-guided optimization" .
+
+perf:PlatformOptimization a perf:OptimizationStrategy ;
+    rdfs:label "Platform Optimization" ;
+    rdfs:comment "Platform-specific optimizations" ;
+    perf:targetMetric perf:Latency ;
+    perf:technique "AVX2/NEON instructions" ;
+    perf:technique "Cache alignment" ;
+    perf:technique "NUMA awareness" .
+
+# ============================================================================
+# BENCHMARK DEFINITIONS
+# ============================================================================
+
+perf:LatencyBenchmark a perf:Benchmark ;
+    rdfs:label "Latency Benchmark" ;
+    rdfs:comment "Benchmark measuring operation latency" ;
+    perf:metric perf:Latency ;
+    perf:iterations 1000000 ;
+    perf:warmupIterations 1000 ;
+    perf:targetConstraint perf:SevenTickConstraint .
+
+perf:ThroughputBenchmark a perf:Benchmark ;
+    rdfs:label "Throughput Benchmark" ;
+    rdfs:comment "Benchmark measuring operation throughput" ;
+    perf:metric perf:Throughput ;
+    perf:duration "60"^^xsd:integer ;
+    perf:durationUnit "seconds" ;
+    perf:targetConstraint perf:L2TierConstraint .
+
+perf:MemoryBenchmark a perf:Benchmark ;
+    rdfs:label "Memory Benchmark" ;
+    rdfs:comment "Benchmark measuring memory usage" ;
+    perf:metric perf:MemoryUsage ;
+    perf:iterations 100000 ;
+    perf:targetConstraint perf:L3TierConstraint .
+
+# ============================================================================
+# PERFORMANCE PROPERTIES
+# ============================================================================
+
+perf:hasMetric a rdf:Property ;
+    rdfs:label "has metric" ;
+    rdfs:comment "Links a component to its performance metrics" ;
+    rdfs:domain cns:Component ;
+    rdfs:range perf:PerformanceMetric .
+
+perf:hasConstraint a rdf:Property ;
+    rdfs:label "has constraint" ;
+    rdfs:comment "Links a component to its performance constraints" ;
+    rdfs:domain cns:Component ;
+    rdfs:range perf:PerformanceConstraint .
+
+perf:usesStrategy a rdf:Property ;
+    rdfs:label "uses strategy" ;
+    rdfs:comment "Links a component to optimization strategies it uses" ;
+    rdfs:domain cns:Component ;
+    rdfs:range perf:OptimizationStrategy .
+
+perf:measuredBy a rdf:Property ;
+    rdfs:label "measured by" ;
+    rdfs:comment "Links a component to benchmarks that measure it" ;
+    rdfs:domain cns:Component ;
+    rdfs:range perf:Benchmark .
+
+perf:targetMetric a rdf:Property ;
+    rdfs:label "target metric" ;
+    rdfs:comment "Links an optimization strategy to metrics it targets" ;
+    rdfs:domain perf:OptimizationStrategy ;
+    rdfs:range perf:PerformanceMetric .
+
+perf:technique a rdf:Property ;
+    rdfs:label "technique" ;
+    rdfs:comment "Links an optimization strategy to specific techniques" ;
+    rdfs:domain perf:OptimizationStrategy ;
+    rdfs:range rdfs:Literal .
+
+# ============================================================================
+# PERFORMANCE RELATIONSHIPS
+# ============================================================================
+
+cns:SPARQLEngine perf:hasMetric perf:Latency ;
+    perf:hasMetric perf:Throughput ;
+    perf:hasConstraint perf:L1TierConstraint ;
+    perf:usesStrategy perf:MemoryOptimization ;
+    perf:usesStrategy perf:AlgorithmOptimization ;
+    perf:measuredBy perf:LatencyBenchmark ;
+    perf:measuredBy perf:ThroughputBenchmark .
+
+cns:SHACLEngine perf:hasMetric perf:Latency ;
+    perf:hasMetric perf:MemoryUsage ;
+    perf:hasConstraint perf:L2TierConstraint ;
+    perf:usesStrategy perf:MemoryOptimization ;
+    perf:measuredBy perf:LatencyBenchmark ;
+    perf:measuredBy perf:MemoryBenchmark .
+
+cns:CJinjaEngine perf:hasMetric perf:Latency ;
+    perf:hasMetric perf:Throughput ;
+    perf:hasConstraint perf:L2TierConstraint ;
+    perf:usesStrategy perf:MemoryOptimization ;
+    perf:usesStrategy perf:AlgorithmOptimization ;
+    perf:measuredBy perf:LatencyBenchmark ;
+    perf:measuredBy perf:ThroughputBenchmark .
+
+cns:TelemetryEngine perf:hasMetric perf:Latency ;
+    perf:hasMetric perf:MemoryUsage ;
+    perf:hasConstraint perf:L1TierConstraint ;
+    perf:usesStrategy perf:MemoryOptimization ;
+    perf:measuredBy perf:LatencyBenchmark ;
+    perf:measuredBy perf:MemoryBenchmark .
+
+# ============================================================================
+# SHACL SHAPES FOR PERFORMANCE VALIDATION
+# ============================================================================
+
+perf:PerformanceConstraintShape a sh:NodeShape ;
+    sh:targetClass perf:PerformanceConstraint ;
+    sh:property [
+        sh:path perf:maxCycles ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:minInclusive 1 ;
+        sh:message "Every performance constraint must have a maximum cycle count" ;
+    ] ;
+    sh:property [
+        sh:path perf:maxTime ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:minInclusive 1 ;
+        sh:message "Every performance constraint must have a maximum time" ;
+    ] ;
+    sh:property [
+        sh:path perf:timeUnit ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "Every performance constraint must have a time unit" ;
+    ] .
+
+perf:BenchmarkShape a sh:NodeShape ;
+    sh:targetClass perf:Benchmark ;
+    sh:property [
+        sh:path perf:metric ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Every benchmark must measure at least one metric" ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "Every benchmark must have a label" ;
+    ] . 

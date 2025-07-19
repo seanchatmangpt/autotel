@@ -1,0 +1,349 @@
+@prefix cns: <https://schema.chatman.ai/cns#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix arch: <https://schema.chatman.ai/architecture#> .
+@prefix perf: <https://schema.chatman.ai/performance#> .
+
+#################################################################
+# CNS Architecture Ontology
+# Focus: System structure, components, and architectural patterns
+#################################################################
+
+# ============================================================================
+# ARCHITECTURE CLASSES
+# ============================================================================
+
+arch:ArchitectureLayer a rdfs:Class ;
+    rdfs:label "Architecture Layer" ;
+    rdfs:comment "A layer in the CNS architecture" ;
+    rdfs:subClassOf owl:Thing .
+
+arch:ComponentInterface a rdfs:Class ;
+    rdfs:label "Component Interface" ;
+    rdfs:comment "An interface that components implement" ;
+    rdfs:subClassOf owl:Thing .
+
+arch:DataFlow a rdfs:Class ;
+    rdfs:label "Data Flow" ;
+    rdfs:comment "A data flow between components" ;
+    rdfs:subClassOf owl:Thing .
+
+arch:ArchitecturalPattern a rdfs:Class ;
+    rdfs:label "Architectural Pattern" ;
+    rdfs:comment "An architectural pattern used in CNS" ;
+    rdfs:subClassOf owl:Thing .
+
+arch:DeploymentModel a rdfs:Class ;
+    rdfs:label "Deployment Model" ;
+    rdfs:comment "A deployment model for CNS components" ;
+    rdfs:subClassOf owl:Thing .
+
+# ============================================================================
+# ARCHITECTURE LAYERS
+# ============================================================================
+
+arch:CLILayer a arch:ArchitectureLayer ;
+    rdfs:label "CLI Layer" ;
+    rdfs:comment "Command-line interface layer" ;
+    arch:layerNumber 1 ;
+    arch:responsibility "User interaction and command parsing" ;
+    arch:components cns:CommandParser ;
+    arch:components cns:ArgumentValidator ;
+    arch:components cns:HelpSystem .
+
+arch:DomainLayer a arch:ArchitectureLayer ;
+    rdfs:label "Domain Layer" ;
+    rdfs:comment "Domain-specific engines layer" ;
+    arch:layerNumber 2 ;
+    arch:responsibility "Domain-specific functionality" ;
+    arch:components cns:SPARQLEngine ;
+    arch:components cns:SHACLEngine ;
+    arch:components cns:CJinjaEngine ;
+    arch:components cns:TelemetryEngine .
+
+arch:CoreLayer a arch:ArchitectureLayer ;
+    rdfs:label "Core Layer" ;
+    rdfs:comment "Core system functionality layer" ;
+    arch:layerNumber 3 ;
+    arch:responsibility "Core system operations" ;
+    arch:components cns:CommandDispatch ;
+    arch:components cns:MemoryManager ;
+    arch:components cns:PerformanceMonitor .
+
+arch:PerformanceLayer a arch:ArchitectureLayer ;
+    rdfs:label "Performance Layer" ;
+    rdfs:comment "Performance optimization layer" ;
+    arch:layerNumber 4 ;
+    arch:responsibility "Performance monitoring and optimization" ;
+    arch:components cns:CycleCounter ;
+    arch:components cns:BenchmarkRunner ;
+    arch:components cns:OptimizationEngine .
+
+arch:PlatformLayer a arch:ArchitectureLayer ;
+    rdfs:label "Platform Layer" ;
+    rdfs:comment "Platform-specific optimizations layer" ;
+    arch:layerNumber 5 ;
+    arch:responsibility "Platform-specific optimizations" ;
+    arch:components cns:SIMDEngine ;
+    arch:components cns:CacheManager ;
+    arch:components cns:MemoryAllocator .
+
+# ============================================================================
+# COMPONENT INTERFACES
+# ============================================================================
+
+arch:CommandInterface a arch:ComponentInterface ;
+    rdfs:label "Command Interface" ;
+    rdfs:comment "Interface for command execution" ;
+    arch:method "execute" ;
+    arch:method "validate" ;
+    arch:method "help" .
+
+arch:EngineInterface a arch:ComponentInterface ;
+    rdfs:label "Engine Interface" ;
+    rdfs:comment "Interface for engine components" ;
+    arch:method "initialize" ;
+    arch:method "process" ;
+    arch:method "cleanup" .
+
+arch:PerformanceInterface a arch:ComponentInterface ;
+    rdfs:label "Performance Interface" ;
+    rdfs:comment "Interface for performance monitoring" ;
+    arch:method "startMeasurement" ;
+    arch:method "endMeasurement" ;
+    arch:method "getMetrics" .
+
+arch:MemoryInterface a arch:ComponentInterface ;
+    rdfs:label "Memory Interface" ;
+    rdfs:comment "Interface for memory management" ;
+    arch:method "allocate" ;
+    arch:method "free" ;
+    arch:method "getUsage" .
+
+# ============================================================================
+# ARCHITECTURAL PATTERNS
+# ============================================================================
+
+arch:DomainDrivenDesign a arch:ArchitecturalPattern ;
+    rdfs:label "Domain-Driven Design" ;
+    rdfs:comment "Domain-oriented architecture pattern" ;
+    arch:principle "Domain separation" ;
+    arch:principle "Clear boundaries" ;
+    arch:principle "Ubiquitous language" .
+
+arch:LayeredArchitecture a arch:ArchitecturalPattern ;
+    rdfs:label "Layered Architecture" ;
+    rdfs:comment "Layered system architecture" ;
+    arch:principle "Separation of concerns" ;
+    arch:principle "Dependency direction" ;
+    arch:principle "Interface contracts" .
+
+arch:Microservices a arch:ArchitecturalPattern ;
+    rdfs:label "Microservices" ;
+    rdfs:comment "Microservices-style component architecture" ;
+    arch:principle "Service independence" ;
+    arch:principle "Clear interfaces" ;
+    arch:principle "Loose coupling" .
+
+arch:EventDriven a arch:ArchitecturalPattern ;
+    rdfs:label "Event-Driven Architecture" ;
+    rdfs:comment "Event-driven communication pattern" ;
+    arch:principle "Asynchronous communication" ;
+    arch:principle "Event sourcing" ;
+    arch:principle "Loose coupling" .
+
+# ============================================================================
+# DEPLOYMENT MODELS
+# ============================================================================
+
+arch:MonolithicDeployment a arch:DeploymentModel ;
+    rdfs:label "Monolithic Deployment" ;
+    rdfs:comment "Single binary deployment" ;
+    arch:deploymentType "static" ;
+    arch:scalingModel "vertical" ;
+    arch:complexity "low" .
+
+arch:ModularDeployment a arch:DeploymentModel ;
+    rdfs:label "Modular Deployment" ;
+    rdfs:comment "Modular component deployment" ;
+    arch:deploymentType "dynamic" ;
+    arch:scalingModel "horizontal" ;
+    arch:complexity "medium" .
+
+arch:DistributedDeployment a arch:DeploymentModel ;
+    rdfs:label "Distributed Deployment" ;
+    rdfs:comment "Distributed component deployment" ;
+    arch:deploymentType "distributed" ;
+    arch:scalingModel "elastic" ;
+    arch:complexity "high" .
+
+# ============================================================================
+# DATA FLOWS
+# ============================================================================
+
+arch:CommandFlow a arch:DataFlow ;
+    rdfs:label "Command Flow" ;
+    rdfs:comment "Flow of commands through the system" ;
+    arch:source arch:CLILayer ;
+    arch:target arch:DomainLayer ;
+    arch:dataType "command" ;
+    arch:flowType "synchronous" .
+
+arch:TelemetryFlow a arch:DataFlow ;
+    rdfs:label "Telemetry Flow" ;
+    rdfs:comment "Flow of telemetry data" ;
+    arch:source arch:PerformanceLayer ;
+    arch:target arch:TelemetryEngine ;
+    arch:dataType "metrics" ;
+    arch:flowType "asynchronous" .
+
+arch:MemoryFlow a arch:DataFlow ;
+    rdfs:label "Memory Flow" ;
+    rdfs:comment "Flow of memory allocation/deallocation" ;
+    arch:source arch:CoreLayer ;
+    arch:target arch:PlatformLayer ;
+    arch:dataType "memory" ;
+    arch:flowType "synchronous" .
+
+# ============================================================================
+# ARCHITECTURE PROPERTIES
+# ============================================================================
+
+arch:layerNumber a rdf:Property ;
+    rdfs:label "layer number" ;
+    rdfs:comment "The layer number in the architecture" ;
+    rdfs:domain arch:ArchitectureLayer ;
+    rdfs:range xsd:integer .
+
+arch:responsibility a rdf:Property ;
+    rdfs:label "responsibility" ;
+    rdfs:comment "The responsibility of a layer or component" ;
+    rdfs:domain owl:Thing ;
+    rdfs:range rdfs:Literal .
+
+arch:components a rdf:Property ;
+    rdfs:label "components" ;
+    rdfs:comment "Components in a layer" ;
+    rdfs:domain arch:ArchitectureLayer ;
+    rdfs:range cns:Component .
+
+arch:implements a rdf:Property ;
+    rdfs:label "implements" ;
+    rdfs:comment "Links a component to interfaces it implements" ;
+    rdfs:domain cns:Component ;
+    rdfs:range arch:ComponentInterface .
+
+arch:usesPattern a rdf:Property ;
+    rdfs:label "uses pattern" ;
+    rdfs:comment "Links a component to architectural patterns it uses" ;
+    rdfs:domain cns:Component ;
+    rdfs:range arch:ArchitecturalPattern .
+
+arch:deployedAs a rdf:Property ;
+    rdfs:label "deployed as" ;
+    rdfs:comment "Links a component to its deployment model" ;
+    rdfs:domain cns:Component ;
+    rdfs:range arch:DeploymentModel .
+
+arch:source a rdf:Property ;
+    rdfs:label "source" ;
+    rdfs:comment "Source of a data flow" ;
+    rdfs:domain arch:DataFlow ;
+    rdfs:range owl:Thing .
+
+arch:target a rdf:Property ;
+    rdfs:label "target" ;
+    rdfs:comment "Target of a data flow" ;
+    rdfs:domain arch:DataFlow ;
+    rdfs:range owl:Thing .
+
+arch:dataType a rdf:Property ;
+    rdfs:label "data type" ;
+    rdfs:comment "Type of data in a flow" ;
+    rdfs:domain arch:DataFlow ;
+    rdfs:range rdfs:Literal .
+
+arch:flowType a rdf:Property ;
+    rdfs:label "flow type" ;
+    rdfs:comment "Type of data flow" ;
+    rdfs:domain arch:DataFlow ;
+    rdfs:range rdfs:Literal .
+
+# ============================================================================
+# ARCHITECTURE RELATIONSHIPS
+# ============================================================================
+
+cns:SPARQLEngine arch:implements arch:EngineInterface ;
+    arch:usesPattern arch:DomainDrivenDesign ;
+    arch:deployedAs arch:MonolithicDeployment .
+
+cns:SHACLEngine arch:implements arch:EngineInterface ;
+    arch:usesPattern arch:DomainDrivenDesign ;
+    arch:deployedAs arch:MonolithicDeployment .
+
+cns:CJinjaEngine arch:implements arch:EngineInterface ;
+    arch:usesPattern arch:DomainDrivenDesign ;
+    arch:deployedAs arch:MonolithicDeployment .
+
+cns:TelemetryEngine arch:implements arch:PerformanceInterface ;
+    arch:usesPattern arch:EventDriven ;
+    arch:deployedAs arch:ModularDeployment .
+
+# ============================================================================
+# SHACL SHAPES FOR ARCHITECTURE VALIDATION
+# ============================================================================
+
+arch:ArchitectureLayerShape a sh:NodeShape ;
+    sh:targetClass arch:ArchitectureLayer ;
+    sh:property [
+        sh:path arch:layerNumber ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:minInclusive 1 ;
+        sh:message "Every architecture layer must have a layer number" ;
+    ] ;
+    sh:property [
+        sh:path arch:responsibility ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "Every architecture layer must have a responsibility" ;
+    ] ;
+    sh:property [
+        sh:path arch:components ;
+        sh:minCount 1 ;
+        sh:message "Every architecture layer must have at least one component" ;
+    ] .
+
+arch:DataFlowShape a sh:NodeShape ;
+    sh:targetClass arch:DataFlow ;
+    sh:property [
+        sh:path arch:source ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Every data flow must have a source" ;
+    ] ;
+    sh:property [
+        sh:path arch:target ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Every data flow must have a target" ;
+    ] ;
+    sh:property [
+        sh:path arch:dataType ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "Every data flow must have a data type" ;
+    ] ;
+    sh:property [
+        sh:path arch:flowType ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "Every data flow must have a flow type" ;
+    ] . 

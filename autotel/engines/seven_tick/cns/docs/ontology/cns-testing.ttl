@@ -1,0 +1,513 @@
+@prefix cns: <https://schema.chatman.ai/cns#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix test: <https://schema.chatman.ai/testing#> .
+@prefix perf: <https://schema.chatman.ai/performance#> .
+
+#################################################################
+# CNS Testing Ontology
+# Focus: Testing frameworks, test types, assertions, and validation
+#################################################################
+
+# ============================================================================
+# TESTING CLASSES
+# ============================================================================
+
+test:TestFramework a rdfs:Class ;
+    rdfs:label "Test Framework" ;
+    rdfs:comment "A testing framework for CNS components" ;
+    rdfs:subClassOf owl:Thing .
+
+test:TestCase a rdfs:Class ;
+    rdfs:label "Test Case" ;
+    rdfs:comment "An individual test case" ;
+    rdfs:subClassOf owl:Thing .
+
+test:TestSuite a rdfs:Class ;
+    rdfs:label "Test Suite" ;
+    rdfs:comment "A collection of related test cases" ;
+    rdfs:subClassOf owl:Thing .
+
+test:Assertion a rdfs:Class ;
+    rdfs:label "Assertion" ;
+    rdfs:comment "A test assertion or validation check" ;
+    rdfs:subClassOf owl:Thing .
+
+test:TestResult a rdfs:Class ;
+    rdfs:label "Test Result" ;
+    rdfs:comment "The result of a test execution" ;
+    rdfs:subClassOf owl:Thing .
+
+test:MockObject a rdfs:Class ;
+    rdfs:label "Mock Object" ;
+    rdfs:comment "A mock or stub object for testing" ;
+    rdfs:subClassOf owl:Thing .
+
+test:PerformanceTest a rdfs:Class ;
+    rdfs:label "Performance Test" ;
+    rdfs:comment "A test that measures performance characteristics" ;
+    rdfs:subClassOf test:TestCase .
+
+# ============================================================================
+# TEST FRAMEWORKS
+# ============================================================================
+
+test:CNSUnitTestFramework a test:TestFramework ;
+    rdfs:label "CNS Unit Test Framework" ;
+    rdfs:comment "High-performance unit testing framework for CNS" ;
+    test:cycleBudget 1000 ;
+    test:memoryBudget "10KB" ;
+    test:supportsAssertions test:BasicAssertion ;
+    test:supportsAssertions test:PerformanceAssertion ;
+    test:supportsAssertions test:StringAssertion .
+
+test:SevenTTestFramework a test:TestFramework ;
+    rdfs:label "7T Test Framework" ;
+    rdfs:comment "7-tick optimized testing framework" ;
+    test:cycleBudget 7 ;
+    test:memoryBudget "1KB" ;
+    test:supportsAssertions test:PerformanceAssertion ;
+    test:supportsAssertions test:CycleAssertion .
+
+# ============================================================================
+# TEST TYPES
+# ============================================================================
+
+test:UnitTest a test:TestCase ;
+    rdfs:label "Unit Test" ;
+    rdfs:comment "Tests individual functions or components" ;
+    test:scope "function" ;
+    test:isolation "high" ;
+    test:cycleBudget 1000 ;
+    test:category "core" .
+
+test:IntegrationTest a test:TestCase ;
+    rdfs:label "Integration Test" ;
+    rdfs:comment "Tests interactions between components" ;
+    test:scope "component" ;
+    test:isolation "medium" ;
+    test:cycleBudget 10000 ;
+    test:category "integration" .
+
+test:PerformanceTest a test:TestCase ;
+    rdfs:label "Performance Test" ;
+    rdfs:comment "Tests performance characteristics" ;
+    test:scope "system" ;
+    test:isolation "low" ;
+    test:cycleBudget 100000 ;
+    test:category "performance" .
+
+test:StressTest a test:TestCase ;
+    rdfs:label "Stress Test" ;
+    rdfs:comment "Tests system behavior under high load" ;
+    test:scope "system" ;
+    test:isolation "low" ;
+    test:cycleBudget 1000000 ;
+    test:category "stress" .
+
+test:RegressionTest a test:TestCase ;
+    rdfs:label "Regression Test" ;
+    rdfs:comment "Tests to prevent regression of functionality" ;
+    test:scope "feature" ;
+    test:isolation "high" ;
+    test:cycleBudget 5000 ;
+    test:category "regression" .
+
+# ============================================================================
+# ASSERTION TYPES
+# ============================================================================
+
+test:BasicAssertion a test:Assertion ;
+    rdfs:label "Basic Assertion" ;
+    rdfs:comment "Basic condition assertion" ;
+    test:macro "TEST_ASSERT" ;
+    test:cycleCost 5 ;
+    test:usage "General condition checking" .
+
+test:EqualityAssertion a test:Assertion ;
+    rdfs:label "Equality Assertion" ;
+    rdfs:comment "Equality comparison assertion" ;
+    test:macro "TEST_ASSERT_EQ" ;
+    test:cycleCost 3 ;
+    test:usage "Value comparison" .
+
+test:StringAssertion a test:Assertion ;
+    rdfs:label "String Assertion" ;
+    rdfs:comment "String comparison assertion" ;
+    test:macro "TEST_ASSERT_STR_EQ" ;
+    test:cycleCost 10 ;
+    test:usage "String comparison" .
+
+test:PerformanceAssertion a test:Assertion ;
+    rdfs:label "Performance Assertion" ;
+    rdfs:comment "Performance constraint assertion" ;
+    test:macro "TEST_ASSERT_PERFORMANCE" ;
+    test:cycleCost 50 ;
+    test:usage "Performance validation" .
+
+test:CycleAssertion a test:Assertion ;
+    rdfs:label "Cycle Assertion" ;
+    rdfs:comment "CPU cycle constraint assertion" ;
+    test:macro "ASSERT_PERFORMANCE" ;
+    test:cycleCost 20 ;
+    test:usage "7-tick compliance" .
+
+# ============================================================================
+# TEST SUITES
+# ============================================================================
+
+test:CoreTestSuite a test:TestSuite ;
+    rdfs:label "Core Test Suite" ;
+    rdfs:comment "Core CNS functionality tests" ;
+    test:includes test:ParserTest ;
+    test:includes test:EngineTest ;
+    test:includes test:CommandTest ;
+    test:category "core" ;
+    test:priority "high" .
+
+test:PerformanceTestSuite a test:TestSuite ;
+    rdfs:label "Performance Test Suite" ;
+    rdfs:comment "Performance and optimization tests" ;
+    test:includes test:BenchmarkTest ;
+    test:includes test:OptimizationTest ;
+    test:category "performance" ;
+    test:priority "high" .
+
+test:IntegrationTestSuite a test:TestSuite ;
+    rdfs:label "Integration Test Suite" ;
+    rdfs:comment "Multi-command workflow tests" ;
+    test:includes test:WorkflowTest ;
+    test:includes test:PipelineTest ;
+    test:category "integration" ;
+    test:priority "medium" .
+
+test:StressTestSuite a test:TestSuite ;
+    rdfs:label "Stress Test Suite" ;
+    rdfs:comment "High-load scenario tests" ;
+    test:includes test:LoadTest ;
+    test:includes test:ConcurrencyTest ;
+    test:category "stress" ;
+    test:priority "low" .
+
+# ============================================================================
+# SPECIFIC TEST CASES
+# ============================================================================
+
+test:ParserTest a test:TestCase ;
+    rdfs:label "Parser Test" ;
+    rdfs:comment "Tests command parsing functionality" ;
+    test:framework test:CNSUnitTestFramework ;
+    test:cycleBudget 200 ;
+    test:assertions test:BasicAssertion ;
+    test:assertions test:EqualityAssertion ;
+    test:category "core" .
+
+test:EngineTest a test:TestCase ;
+    rdfs:label "Engine Test" ;
+    rdfs:comment "Tests CNS engine functionality" ;
+    test:framework test:CNSUnitTestFramework ;
+    test:cycleBudget 500 ;
+    test:assertions test:BasicAssertion ;
+    test:assertions test:PerformanceAssertion ;
+    test:category "core" .
+
+test:CommandTest a test:TestCase ;
+    rdfs:label "Command Test" ;
+    rdfs:comment "Tests command execution" ;
+    test:framework test:CNSUnitTestFramework ;
+    test:cycleBudget 1000 ;
+    test:assertions test:BasicAssertion ;
+    test:assertions test:EqualityAssertion ;
+    test:category "core" .
+
+test:BenchmarkTest a test:TestCase ;
+    rdfs:label "Benchmark Test" ;
+    rdfs:comment "Tests benchmarking functionality" ;
+    test:framework test:CNSUnitTestFramework ;
+    test:cycleBudget 10000 ;
+    test:assertions test:PerformanceAssertion ;
+    test:category "performance" .
+
+test:OptimizationTest a test:TestCase ;
+    rdfs:label "Optimization Test" ;
+    rdfs:comment "Tests optimization algorithms" ;
+    test:framework test:CNSUnitTestFramework ;
+    test:cycleBudget 5000 ;
+    test:assertions test:PerformanceAssertion ;
+    test:category "performance" .
+
+test:WorkflowTest a test:TestCase ;
+    rdfs:label "Workflow Test" ;
+    rdfs:comment "Tests multi-command workflows" ;
+    test:framework test:CNSUnitTestFramework ;
+    test:cycleBudget 5000 ;
+    test:assertions test:BasicAssertion ;
+    test:category "integration" .
+
+test:PipelineTest a test:TestCase ;
+    rdfs:label "Pipeline Test" ;
+    rdfs:comment "Tests command pipelines" ;
+    test:framework test:CNSUnitTestFramework ;
+    test:cycleBudget 3000 ;
+    test:assertions test:BasicAssertion ;
+    test:category "integration" .
+
+test:LoadTest a test:TestCase ;
+    rdfs:label "Load Test" ;
+    rdfs:comment "Tests system under load" ;
+    test:framework test:CNSUnitTestFramework ;
+    test:cycleBudget 100000 ;
+    test:assertions test:PerformanceAssertion ;
+    test:category "stress" .
+
+test:ConcurrencyTest a test:TestCase ;
+    rdfs:label "Concurrency Test" ;
+    rdfs:comment "Tests concurrent operations" ;
+    test:framework test:CNSUnitTestFramework ;
+    test:cycleBudget 50000 ;
+    test:assertions test:BasicAssertion ;
+    test:category "stress" .
+
+# ============================================================================
+# MOCK OBJECTS
+# ============================================================================
+
+test:FileSystemMock a test:MockObject ;
+    rdfs:label "File System Mock" ;
+    rdfs:comment "Mock file system operations" ;
+    test:mocks "file operations" ;
+    test:cycleCost 1 ;
+    test:usage "File operation testing" .
+
+test:NetworkMock a test:MockObject ;
+    rdfs:label "Network Mock" ;
+    rdfs:comment "Mock network operations" ;
+    test:mocks "network operations" ;
+    test:cycleCost 5 ;
+    test:usage "Network operation testing" .
+
+test:MemoryMock a test:MockObject ;
+    rdfs:label "Memory Mock" ;
+    rdfs:comment "Mock memory operations" ;
+    test:mocks "memory operations" ;
+    test:cycleCost 2 ;
+    test:usage "Memory operation testing" .
+
+# ============================================================================
+# TEST RESULTS
+# ============================================================================
+
+test:PassResult a test:TestResult ;
+    rdfs:label "Pass Result" ;
+    rdfs:comment "Test passed successfully" ;
+    test:status "PASS" ;
+    test:severity "info" .
+
+test:FailResult a test:TestResult ;
+    rdfs:label "Fail Result" ;
+    rdfs:comment "Test failed" ;
+    test:status "FAIL" ;
+    test:severity "error" .
+
+test:SkipResult a test:TestResult ;
+    rdfs:label "Skip Result" ;
+    rdfs:comment "Test was skipped" ;
+    test:status "SKIP" ;
+    test:severity "warning" .
+
+test:TimeoutResult a test:TestResult ;
+    rdfs:label "Timeout Result" ;
+    rdfs:comment "Test timed out" ;
+    test:status "TIMEOUT" ;
+    test:severity "error" .
+
+# ============================================================================
+# TESTING PROPERTIES
+# ============================================================================
+
+test:cycleBudget a rdf:Property ;
+    rdfs:label "cycle budget" ;
+    rdfs:comment "Maximum CPU cycles allowed for a test" ;
+    rdfs:domain test:TestCase ;
+    rdfs:range xsd:integer .
+
+test:memoryBudget a rdf:Property ;
+    rdfs:label "memory budget" ;
+    rdfs:comment "Maximum memory usage allowed for a test" ;
+    rdfs:domain test:TestCase ;
+    rdfs:range rdfs:Literal .
+
+test:framework a rdf:Property ;
+    rdfs:label "framework" ;
+    rdfs:comment "Testing framework used by a test" ;
+    rdfs:domain test:TestCase ;
+    rdfs:range test:TestFramework .
+
+test:assertions a rdf:Property ;
+    rdfs:label "assertions" ;
+    rdfs:comment "Assertions used by a test" ;
+    rdfs:domain test:TestCase ;
+    rdfs:range test:Assertion .
+
+test:category a rdf:Property ;
+    rdfs:label "category" ;
+    rdfs:comment "Category of a test" ;
+    rdfs:domain test:TestCase ;
+    rdfs:range rdfs:Literal .
+
+test:priority a rdf:Property ;
+    rdfs:label "priority" ;
+    rdfs:comment "Priority of a test" ;
+    rdfs:domain test:TestCase ;
+    rdfs:range rdfs:Literal .
+
+test:scope a rdf:Property ;
+    rdfs:label "scope" ;
+    rdfs:comment "Scope of a test" ;
+    rdfs:domain test:TestCase ;
+    rdfs:range rdfs:Literal .
+
+test:isolation a rdf:Property ;
+    rdfs:label "isolation" ;
+    rdfs:comment "Isolation level of a test" ;
+    rdfs:domain test:TestCase ;
+    rdfs:range rdfs:Literal .
+
+test:includes a rdf:Property ;
+    rdfs:label "includes" ;
+    rdfs:comment "Test cases included in a test suite" ;
+    rdfs:domain test:TestSuite ;
+    rdfs:range test:TestCase .
+
+test:supportsAssertions a rdf:Property ;
+    rdfs:label "supports assertions" ;
+    rdfs:comment "Assertions supported by a framework" ;
+    rdfs:domain test:TestFramework ;
+    rdfs:range test:Assertion .
+
+test:macro a rdf:Property ;
+    rdfs:label "macro" ;
+    rdfs:comment "C macro for an assertion" ;
+    rdfs:domain test:Assertion ;
+    rdfs:range rdfs:Literal .
+
+test:cycleCost a rdf:Property ;
+    rdfs:label "cycle cost" ;
+    rdfs:comment "CPU cycle cost of an assertion" ;
+    rdfs:domain test:Assertion ;
+    rdfs:range xsd:integer .
+
+test:usage a rdf:Property ;
+    rdfs:label "usage" ;
+    rdfs:comment "Usage description for an assertion" ;
+    rdfs:domain test:Assertion ;
+    rdfs:range rdfs:Literal .
+
+test:mocks a rdf:Property ;
+    rdfs:label "mocks" ;
+    rdfs:comment "What a mock object mocks" ;
+    rdfs:domain test:MockObject ;
+    rdfs:range rdfs:Literal .
+
+test:status a rdf:Property ;
+    rdfs:label "status" ;
+    rdfs:comment "Status of a test result" ;
+    rdfs:domain test:TestResult ;
+    rdfs:range rdfs:Literal .
+
+test:severity a rdf:Property ;
+    rdfs:label "severity" ;
+    rdfs:comment "Severity of a test result" ;
+    rdfs:domain test:TestResult ;
+    rdfs:range rdfs:Literal .
+
+# ============================================================================
+# TESTING RELATIONSHIPS
+# ============================================================================
+
+cns:SPARQLEngine test:hasTest test:ParserTest ;
+    test:hasTest test:EngineTest ;
+    test:hasTest test:PerformanceTest .
+
+cns:SHACLEngine test:hasTest test:ParserTest ;
+    test:hasTest test:EngineTest ;
+    test:hasTest test:IntegrationTest .
+
+cns:CJinjaEngine test:hasTest test:ParserTest ;
+    test:hasTest test:EngineTest ;
+    test:hasTest test:PerformanceTest .
+
+cns:TelemetryEngine test:hasTest test:ParserTest ;
+    test:hasTest test:EngineTest ;
+    test:hasTest test:IntegrationTest .
+
+# ============================================================================
+# SHACL SHAPES FOR TESTING VALIDATION
+# ============================================================================
+
+test:TestCaseShape a sh:NodeShape ;
+    sh:targetClass test:TestCase ;
+    sh:property [
+        sh:path test:cycleBudget ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:minInclusive 1 ;
+        sh:message "Every test case must have a cycle budget" ;
+    ] ;
+    sh:property [
+        sh:path test:category ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "Every test case must have a category" ;
+    ] ;
+    sh:property [
+        sh:path test:framework ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Every test case must have a framework" ;
+    ] .
+
+test:AssertionShape a sh:NodeShape ;
+    sh:targetClass test:Assertion ;
+    sh:property [
+        sh:path test:macro ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "Every assertion must have a macro" ;
+    ] ;
+    sh:property [
+        sh:path test:cycleCost ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:minInclusive 1 ;
+        sh:message "Every assertion must have a cycle cost" ;
+    ] .
+
+test:TestSuiteShape a sh:NodeShape ;
+    sh:targetClass test:TestSuite ;
+    sh:property [
+        sh:path test:category ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "Every test suite must have a category" ;
+    ] ;
+    sh:property [
+        sh:path test:priority ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "Every test suite must have a priority" ;
+    ] ;
+    sh:property [
+        sh:path test:includes ;
+        sh:minCount 1 ;
+        sh:message "Every test suite must include at least one test case" ;
+    ] . 

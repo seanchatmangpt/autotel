@@ -1,0 +1,36 @@
+## {{ benchmark_name }} Benchmark Results
+
+**Test Configuration:**
+- Iterations: {{ iterations }}
+- Threads: {{ thread_count }}
+- Date: {{ test_date }}
+
+**Performance Results:**
+
+{% for result in results %}
+### {{ result.operation_name }}
+- Average Time: {{ result.avg_time }}ms
+- Min Time: {{ result.min_time }}ms  
+- Max Time: {{ result.max_time }}ms
+- Operations/sec: {{ result.ops_per_sec }}
+- Success Rate: {{ result.success_rate }}%
+
+{% if result.avg_time > 7 %}
+⚠️  **7-TICK VIOLATION**: {{ result.operation_name }} exceeds 7-tick limit
+{% else %}
+✅ **7-TICK COMPLIANT**: {{ result.operation_name }}
+{% endif %}
+
+{% endfor %}
+
+**Overall Summary:**
+- Total Tests: {{ total_tests }}
+- Passed: {{ tests_passed }}
+- Failed: {{ tests_failed }}
+- 7-Tick Compliant: {{ tick_compliant_count }}/{{ total_tests }}
+
+{% if overall_compliant %}
+🎉 **BENCHMARK PASSED**: All operations are 7-tick compliant
+{% else %}
+❌ **BENCHMARK FAILED**: Some operations exceed 7-tick limit
+{% endif %}

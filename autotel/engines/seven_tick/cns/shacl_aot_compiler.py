@@ -225,7 +225,7 @@ static inline void shacl_measure_validation(CNSSparqlEngine* engine, uint32_t no
         """Generate 80/20 benchmark harness for SHACL validation"""
         
         benchmark_template = """
-#include "shacl_validators.h"
+#include "shacl_validators_optimized.h"
 #include "cns/engines/sparql.h"
 #include "cns/engines/shacl.h"
 #include <stdio.h>

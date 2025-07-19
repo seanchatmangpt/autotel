@@ -1,0 +1,157 @@
+# CNS Linker Benchmark Makefile
+# Comprehensive benchmarking for CNS linking performance
+
+CC = gcc
+CXX = g++
+CFLAGS = -O3 -march=native -Wall -Wextra -std=c11 -D_GNU_SOURCE
+CXXFLAGS = -O3 -march=native -Wall -Wextra -std=c++17
+LDFLAGS = -lpthread -lm -ldl
+
+# Detect architecture for SIMD optimizations
+ARCH := $(shell uname -m)
+ifeq ($(ARCH),x86_64)
+    CFLAGS += -mavx2 -mfma
+else ifeq ($(ARCH),arm64)
+    CFLAGS += -march=armv8-a+simd
+endif
+
+# Benchmark targets
+BENCHMARKS = cns_linker_benchmark cns_linker_dynamic_benchmark cns_linker_stress_test
+
+# Source files
+LINKER_BENCH_SRC = cns_linker_benchmark.c
+DYNAMIC_BENCH_SRC = cns_linker_dynamic_benchmark.c
+STRESS_TEST_SRC = cns_linker_stress_test.c
+
+# Default target
+all: $(BENCHMARKS)
+
+# Build individual benchmarks
+cns_linker_benchmark: $(LINKER_BENCH_SRC)
+	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
+
+cns_linker_dynamic_benchmark: $(DYNAMIC_BENCH_SRC)
+	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
+
+cns_linker_stress_test: $(STRESS_TEST_SRC)
+	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
+
+# Run benchmarks
+.PHONY: run-static
+run-static: cns_linker_benchmark
+	@echo "Running static linker benchmark..."
+	@./cns_linker_benchmark 1000 10 1000
+
+.PHONY: run-dynamic
+run-dynamic: cns_linker_dynamic_benchmark
+	@echo "Running dynamic linker benchmark..."
+	@./cns_linker_dynamic_benchmark 1000
+
+.PHONY: run-stress
+run-stress: cns_linker_stress_test
+	@echo "Running linker stress test..."
+	@./cns_linker_stress_test
+
+.PHONY: run-all
+run-all: all
+	@echo "══════════════════════════════════════════════════════════"
+	@echo "CNS LINKER COMPREHENSIVE BENCHMARK SUITE"
+	@echo "══════════════════════════════════════════════════════════"
+	@echo
+	@echo "1. Static Linking Performance:"
+	@echo "------------------------------"
+	@./cns_linker_benchmark 1000 10 1000
+	@echo
+	@echo "2. Dynamic Linking Performance:"
+	@echo "-------------------------------"
+	@./cns_linker_dynamic_benchmark 1000
+	@echo
+	@echo "3. Stress Test Results:"
+	@echo "-----------------------"
+	@if [ -f cns_linker_stress_test ]; then ./cns_linker_stress_test; fi
+
+# Profile targets
+.PHONY: profile
+profile: CFLAGS += -pg -g
+profile: clean all
+	@echo "Running profiled benchmarks..."
+	@./cns_linker_benchmark 100 5 500
+	@gprof cns_linker_benchmark gmon.out > linker_profile.txt
+	@echo "Profile saved to linker_profile.txt"
+
+# Valgrind memory check
+.PHONY: memcheck
+memcheck: all
+	@echo "Running memory checks..."
+	valgrind --leak-check=full --show-leak-kinds=all ./cns_linker_benchmark 10 5 100
+
+# Performance analysis with perf
+.PHONY: perf
+perf: all
+	@echo "Running performance analysis..."
+	perf record -g ./cns_linker_benchmark 1000 10 1000
+	perf report
+
+# Generate assembly for analysis
+.PHONY: asm
+asm: $(LINKER_BENCH_SRC)
+	$(CC) $(CFLAGS) -S -o cns_linker_benchmark.s $<
+	@echo "Assembly output saved to cns_linker_benchmark.s"
+
+# Compare with system linker
+.PHONY: compare
+compare: all
+	@echo "Comparing CNS linker with system linker..."
+	@time -p ./cns_linker_benchmark 1000 10 1000
+	@echo
+	@echo "System linker baseline (ld):"
+	@time -p ld --version > /dev/null
+
+# Optimization report
+.PHONY: opt-report
+opt-report: CFLAGS += -fopt-info-vec-all=optimization_report.txt
+opt-report: clean all
+	@echo "Optimization report saved to optimization_report.txt"
+
+# Clean
+.PHONY: clean
+clean:
+	rm -f $(BENCHMARKS) *.o *.s gmon.out perf.data* *.txt
+
+# Install (for CI/CD integration)
+.PHONY: install
+install: all
+	@mkdir -p ../bin
+	@cp $(BENCHMARKS) ../bin/
+	@echo "Benchmarks installed to ../bin/"
+
+# CI/CD target
+.PHONY: ci
+ci: clean all run-all
+	@echo
+	@echo "CI/CD Summary:"
+	@echo "=============="
+	@./cns_linker_benchmark 100 5 500 | grep "Overall 7-tick compliant"
+	@./cns_linker_dynamic_benchmark 100 | grep "Overall 7-tick compliant"
+
+# Help
+.PHONY: help
+help:
+	@echo "CNS Linker Benchmark Makefile"
+	@echo "============================"
+	@echo "Targets:"
+	@echo "  all          - Build all benchmarks"
+	@echo "  run-static   - Run static linker benchmark"
+	@echo "  run-dynamic  - Run dynamic linker benchmark"
+	@echo "  run-stress   - Run stress test"
+	@echo "  run-all      - Run all benchmarks"
+	@echo "  profile      - Build with profiling and generate report"
+	@echo "  memcheck     - Run valgrind memory check"
+	@echo "  perf         - Run perf performance analysis"
+	@echo "  asm          - Generate assembly output"
+	@echo "  compare      - Compare with system linker"
+	@echo "  opt-report   - Generate compiler optimization report"
+	@echo "  clean        - Remove build artifacts"
+	@echo "  install      - Install benchmarks to ../bin/"
+	@echo "  ci           - Run CI/CD benchmark suite"
+	@echo "  help         - Show this help message"

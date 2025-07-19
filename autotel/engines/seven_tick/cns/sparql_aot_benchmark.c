@@ -8,6 +8,7 @@
 #include <string.h>
 #include <time.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 // Include our AOT compiled queries and kernels
 #include "sparql_queries.h"

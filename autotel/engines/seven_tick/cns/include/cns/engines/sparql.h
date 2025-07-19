@@ -5,8 +5,10 @@
 #include <stddef.h>
 
 // Conditional SIMD includes for x86/x64 only
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
+#elif defined(__aarch64__) || defined(__arm64__)
+#include <arm_neon.h>
 #endif
 
 // Branch prediction hints for optimal performance

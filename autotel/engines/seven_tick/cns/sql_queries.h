@@ -7,10 +7,20 @@
 #ifndef SQL_QUERIES_H
 #define SQL_QUERIES_H
 
-#include "cns/sql_functions.h"
-#include "../../include/s7t.h"
+#include "include/cns/sql_aot_types.h"
+#include "s7t_minimal.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
+
+// Error codes
+#define CNS_ERR_TIMEOUT -1
+#define CNS_ERR_INVALID_ARG -2
+#define CNS_ERR_NOT_FOUND -3
+
+// SIMD helper function declaration
+extern uint32_t s7t_simd_filter_eq_i32_strided(const int32_t* data, int32_t value, 
+                                                size_t count, size_t stride, uint32_t* matches);
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,33 +30,35 @@ extern "C" {
 
 /**
  * @brief COMPILED SQL QUERY: quarterly_sales_report
- * @param int32_t quarter_num
+ * @param const SalesRecord* sales_data, int data_count, int32_t quarter_num
  * @return Number of result rows or error code
  */
-static inline int run_query_quarterly_sales_report(int32_t quarter_num, quarterly_sales_reportGroupResult_t* results) {
+static inline int run_query_quarterly_sales_report(const SalesRecord* sales_data, int data_count, int32_t quarter_num, QuarterlySalesResult_t* results) {
     s7t_span_t span;
     s7t_span_start(&span, "aot_quarterly_sales_report");
     
-        int result_count = 0;
-    // Stack-allocated group aggregation
+    int result_count = 0;
+    // Filtered aggregation
     float group_values[256] S7T_ALIGNED(64) = {0};
     int group_counts[256] = {0};
 
     // Aggregate into groups
     for (int i = 0; i < data_count; ++i) {
-        int group_key = data[i].region_id;
-        if (group_key >= 0 && group_key < 256) {
-            group_values[group_key] += data[i].revenue;
-            group_counts[group_key]++;
+        if (sales_data[i].quarter == quarter_num) {
+            int group_key = sales_data[i].region_id;
+            if (group_key >= 0 && group_key < 256) {
+                group_values[group_key] += sales_data[i].revenue;
+                group_counts[group_key]++;
+            }
         }
     }
 
     // Generate results
-    for (int i = 0; i < 256; ++i) {
+    for (int i = 1; i <= 10; ++i) {  // regions 1-10
         if (group_counts[i] > 0) {
-            results[result_count].group_id = i;
-            results[result_count].total_value = group_values[i];
-            results[result_count].count = group_counts[i];
+            results[result_count].region_id = i;
+            results[result_count].total_revenue = group_values[i];
+            results[result_count].record_count = group_counts[i];
             result_count++;
         }
     }
@@ -65,19 +77,23 @@ static inline int run_query_quarterly_sales_report(int32_t quarter_num, quarterl
 
 /**
  * @brief COMPILED SQL QUERY: high_value_customers
- * @param float min_value
+ * @param const Customer* customers_data, int data_count, float min_value
  * @return Number of result rows or error code
  */
-static inline int run_query_high_value_customers(float min_value, high_value_customersResult_t* results) {
+static inline int run_query_high_value_customers(const Customer* customers_data, int data_count, float min_value, HighValueCustomerResult_t* results) {
     s7t_span_t span;
     s7t_span_start(&span, "aot_high_value_customers");
     
-        int result_count = 0;
-    // Scalar filter
+    int result_count = 0;
+    // Optimized float comparison
     for (int i = 0; i < data_count; ++i) {
-        if (data[i].lifetime_value > min_value) {
-            results[result_count] = data[i];
+        if (customers_data[i].lifetime_value > min_value) {
+            results[result_count].customer_id = customers_data[i].customer_id;
+            memcpy(results[result_count].customer_name, customers_data[i].customer_name, 32);
+            results[result_count].lifetime_value = customers_data[i].lifetime_value;
+            results[result_count].region_id = customers_data[i].region_id;
             result_count++;
+            if (result_count >= 100) break;  // LIMIT 100
         }
     }
     
@@ -95,14 +111,14 @@ static inline int run_query_high_value_customers(float min_value, high_value_cus
 
 /**
  * @brief COMPILED SQL QUERY: product_performance
- * @param const char* category_name
+ * @param const Product* products_data, int products_count, const Order* orders_data, int orders_count, const char* category_name
  * @return Number of result rows or error code
  */
-static inline int run_query_product_performance(const char* category_name, product_performanceGroupResult_t* results) {
+static inline int run_query_product_performance(const Product* products_data, int products_count, const Order* orders_data, int orders_count, const char* category_name, ProductPerformanceResult_t* results) {
     s7t_span_t span;
     s7t_span_start(&span, "aot_product_performance");
     
-        int result_count = 0;
+    int result_count = 0;
     // Stack-allocated group aggregation
     float group_values[256] S7T_ALIGNED(64) = {0};
     int group_counts[256] = {0};
@@ -135,20 +151,22 @@ static inline int run_query_product_performance(const char* category_name, produ
 
 /**
  * @brief COMPILED SQL QUERY: monthly_revenue_trend
- * @param int32_t start_year, int32_t start_month
+ * @param const Order* orders_data, int data_count, int32_t start_year, int32_t start_month
  * @return Number of result rows or error code
  */
-static inline int run_query_monthly_revenue_trend(int32_t start_year, int32_t start_month, monthly_revenue_trendGroupResult_t* results) {
+static inline int run_query_monthly_revenue_trend(const Order* orders_data, int data_count, int32_t start_year, int32_t start_month, MonthlyRevenueResult_t* results) {
     s7t_span_t span;
     s7t_span_start(&span, "aot_monthly_revenue_trend");
     
-        int result_count = 0;
-    // Stack-allocated group aggregation
+    int result_count = 0;
+    // Filtered aggregation
     float group_values[256] S7T_ALIGNED(64) = {0};
     int group_counts[256] = {0};
 
     // Aggregate into groups
     for (int i = 0; i < data_count; ++i) {
+        if (orders_data[i].year >= start_year) {
+        }
     }
 
     // Generate results
@@ -175,28 +193,36 @@ static inline int run_query_monthly_revenue_trend(int32_t start_year, int32_t st
 
 /**
  * @brief COMPILED SQL QUERY: customer_segment_analysis
- * @param int32_t region_filter
+ * @param const Customer* customers_data, int data_count, int32_t region_filter
  * @return Number of result rows or error code
  */
-static inline int run_query_customer_segment_analysis(int32_t region_filter, customer_segment_analysisGroupResult_t* results) {
+static inline int run_query_customer_segment_analysis(const Customer* customers_data, int data_count, int32_t region_filter, CustomerSegmentResult_t* results) {
     s7t_span_t span;
     s7t_span_start(&span, "aot_customer_segment_analysis");
     
-        int result_count = 0;
-    // Stack-allocated group aggregation
+    int result_count = 0;
+    // Filtered aggregation
     float group_values[256] S7T_ALIGNED(64) = {0};
     int group_counts[256] = {0};
 
     // Aggregate into groups
     for (int i = 0; i < data_count; ++i) {
+        if (customers_data[i].region_id == region_filter) {
+            int group_key = customers_data[i].segment;
+            if (group_key >= 1 && group_key <= 3) {
+                group_values[group_key] += customers_data[i].lifetime_value;
+                group_counts[group_key]++;
+            }
+        }
     }
 
     // Generate results
-    for (int i = 0; i < 256; ++i) {
+    for (int i = 1; i <= 3; ++i) {  // segments 1-3
         if (group_counts[i] > 0) {
-            results[result_count].group_id = i;
-            results[result_count].total_value = group_values[i];
-            results[result_count].count = group_counts[i];
+            results[result_count].segment = i;
+            results[result_count].customer_count = group_counts[i];
+            results[result_count].avg_ltv = group_values[i] / group_counts[i];
+            results[result_count].total_ltv = group_values[i];
             result_count++;
         }
     }
@@ -224,19 +250,19 @@ static inline int execute_aot_sql_query(const char* query_name, void** params, v
     if (!query_name || !results) return CNS_ERR_INVALID_ARG;
     
     if (strcmp(query_name, "quarterly_sales_report") == 0) {
-        return run_query_quarterly_sales_report(*(int32_t*)params[0], (quarterly_sales_reportGroupResult_t*)results);
+        return run_query_quarterly_sales_report((const SalesRecord*)params[0], *(int*)params[1], *(int32_t*)params[2], (QuarterlySalesResult_t*)results);
     }
     if (strcmp(query_name, "high_value_customers") == 0) {
-        return run_query_high_value_customers(*(float*)params[0], (high_value_customersResult_t*)results);
+        return run_query_high_value_customers((const Customer*)params[0], *(int*)params[1], *(float*)params[2], (HighValueCustomerResult_t*)results);
     }
     if (strcmp(query_name, "product_performance") == 0) {
-        return run_query_product_performance(*(const char**)params[0], (product_performanceGroupResult_t*)results);
+        return run_query_product_performance((const Product*)params[0], *(int*)params[1], (const Order*)params[2], *(int*)params[3], *(const char**)params[4], (ProductPerformanceResult_t*)results);
     }
     if (strcmp(query_name, "monthly_revenue_trend") == 0) {
-        return run_query_monthly_revenue_trend(*(int32_t*)params[0], *(int32_t*)params[1], (monthly_revenue_trendGroupResult_t*)results);
+        return run_query_monthly_revenue_trend((const Order*)params[0], *(int*)params[1], *(int32_t*)params[2], *(int32_t*)params[3], (MonthlyRevenueResult_t*)results);
     }
     if (strcmp(query_name, "customer_segment_analysis") == 0) {
-        return run_query_customer_segment_analysis(*(int32_t*)params[0], (customer_segment_analysisGroupResult_t*)results);
+        return run_query_customer_segment_analysis((const Customer*)params[0], *(int*)params[1], *(int32_t*)params[2], (CustomerSegmentResult_t*)results);
     }
     
     return CNS_ERR_NOT_FOUND;  // Query not found

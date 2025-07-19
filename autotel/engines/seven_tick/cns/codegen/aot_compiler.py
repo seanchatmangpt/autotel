@@ -129,26 +129,59 @@ def parse_sql_queries(sql_file_path):
     
     queries = []
     
-    # Simple regex to find named queries (comments followed by SQL)
-    # Format: -- query_name: description
-    # SELECT ...
-    pattern = r'--\s*(\w+):\s*([^\n]*)\n([^;]+;)'
+    # Split content into sections separated by double newlines
+    sections = re.split(r'\n\s*\n', content)
     
-    for match in re.finditer(pattern, content, re.MULTILINE | re.DOTALL):
-        query_name = match.group(1)
-        description = match.group(2).strip()
-        sql_text = match.group(3).strip()
+    for section in sections:
+        section = section.strip()
+        if not section or not 'NAME:' in section:
+            continue
+            
+        # Extract query name
+        name_match = re.search(r'--\s*NAME:\s*(\w+)', section)
+        if not name_match:
+            continue
+            
+        query_name = name_match.group(1)
+        print(f"    - Processing query: {query_name}")
         
-        # Extract parameters (simple heuristic looking for :param syntax)
-        params = re.findall(r':(\w+)', sql_text)
+        # Extract parameters
+        params = []
+        param_matches = re.findall(r'--\s*PARAM:\s*(\w+)\s*\((\w+)\)', section)
+        for param_name, param_type in param_matches:
+            params.append({
+                "name": param_name,
+                "type": param_type
+            })
+        
+        # Extract SQL (everything that's not a comment and ends with semicolon)
+        sql_lines = []
+        for line in section.split('\n'):
+            line = line.strip()
+            if line and not line.startswith('--'):
+                sql_lines.append(line)
+        
+        sql_text = ' '.join(sql_lines)
+        if sql_text.endswith(';'):
+            sql_text = sql_text[:-1]  # Remove trailing semicolon for storage
+        
+        # Also check for parameters in SQL text that might not be documented
+        sql_params = re.findall(r':(\w+)', sql_text)
+        for sql_param in sql_params:
+            if not any(p["name"] == sql_param for p in params):
+                params.append({
+                    "name": sql_param,
+                    "type": "unknown"
+                })
         
         queries.append({
             "name": query_name,
-            "description": description,
-            "params": list(set(params)),  # Remove duplicates
+            "description": f"Query: {query_name}",
+            "params": params,
             "sql": sql_text
         })
     
+    print(f"    - Successfully parsed {len(queries)} queries")
     return {"queries": queries}
 
 def generate_ontology_ids_header(ontology_ir, output_dir):
@@ -357,13 +390,24 @@ typedef struct {
         params = query["params"]
         
         # Generate parameter struct
-        if params:
+        if params and len(params) > 0:
             header_content += f"""
 /* Parameters for {query_name} */
 typedef struct {{
 """
             for param in params:
-                header_content += f"    const char* {param};\n"
+                # Map parameter types to C types
+                param_name = param["name"] if isinstance(param, dict) else param
+                param_type = param.get("type", "string") if isinstance(param, dict) else "string"
+                
+                if param_type == "int":
+                    c_type = "int"
+                elif param_type == "float":
+                    c_type = "double"
+                else:
+                    c_type = "const char*"
+                
+                header_content += f"    {c_type} {param_name};\n"
             
             header_content += f"}} {query_name}_params_t;\n"
         

@@ -185,16 +185,17 @@ static void test_transitive_reasoning(void)
   if (engine)
   {
     uint32_t ancestor = 10;
-    uint32_t alice = 100;
-    uint32_t bob = 101;
-    uint32_t charlie = 102;
+    uint32_t alice = 20;
+    uint32_t bob = 21;
+    uint32_t charlie = 22;
 
     // Set up transitive property
     TEST_EQUAL(cns_owl_set_transitive(engine, ancestor), 0, "Setting transitive property should succeed");
 
     // Add transitive chain: Alice -> Bob -> Charlie
-    TEST_EQUAL(cns_owl_add_axiom(engine, alice, ancestor, bob, OWL_DOMAIN), 0, "Adding Alice ancestor of Bob should succeed");
-    TEST_EQUAL(cns_owl_add_axiom(engine, bob, ancestor, charlie, OWL_DOMAIN), 0, "Adding Bob ancestor of Charlie should succeed");
+    // Using 0 as axiom type for property assertions (not a class/property characteristic)
+    TEST_EQUAL(cns_owl_add_axiom(engine, alice, ancestor, bob, 0), 0, "Adding Alice ancestor of Bob should succeed");
+    TEST_EQUAL(cns_owl_add_axiom(engine, bob, ancestor, charlie, 0), 0, "Adding Bob ancestor of Charlie should succeed");
 
     // Materialize inferences to enable transitive reasoning
     cns_owl_materialize_inferences_80_20(engine);

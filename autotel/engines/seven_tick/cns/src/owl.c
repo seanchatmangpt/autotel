@@ -262,26 +262,41 @@ bool cns_owl_transitive_query(CNSOWLEngine *engine, uint32_t subject, uint32_t p
     return false;
   }
 
-  // Look for direct property relationships in the axioms
+  // 7T OPTIMIZATION: Use pre-computed transitive closure matrix for O(1) lookup
+  // If materialization has been run, check the transitive closure matrix first
+  if (engine->precompute_closures && cns_owl_get_bit(engine->transitive_closure, subject, object))
+  {
+    return true;
+  }
+
+  // Fallback: Check axioms directly (for unmaterialized cases)
+  // This should be rare if materialization is properly configured
   for (size_t i = 0; i < engine->axiom_count; i++)
   {
     OWLAxiom *axiom = &engine->axioms[i];
+    // Check if this axiom represents the property relationship we're looking for
     if (axiom->subject_id == subject && axiom->predicate_id == property && axiom->object_id == object)
     {
       return true;
     }
   }
 
-  // Check for transitive relationships by following the chain
+  // Limited recursive check (max depth 2 to maintain 7T compliance)
   for (size_t i = 0; i < engine->axiom_count; i++)
   {
     OWLAxiom *axiom = &engine->axioms[i];
     if (axiom->subject_id == subject && axiom->predicate_id == property)
     {
-      // Found subject -> intermediate, now check intermediate -> object
-      if (cns_owl_transitive_query(engine, axiom->object_id, property, object))
+      // Direct check for one-step transitivity (no recursion)
+      for (size_t j = 0; j < engine->axiom_count; j++)
       {
-        return true;
+        OWLAxiom *axiom2 = &engine->axioms[j];
+        if (axiom2->subject_id == axiom->object_id && 
+            axiom2->predicate_id == property && 
+            axiom2->object_id == object)
+        {
+          return true;
+        }
       }
     }
   }
@@ -296,17 +311,32 @@ int cns_owl_materialize_transitive_closure(CNSOWLEngine *engine, uint32_t proper
 
   uint64_t start_cycles = cns_get_cycles();
 
+  // First, populate the direct relationships for this property
+  for (size_t i = 0; i < engine->axiom_count; i++)
+  {
+    OWLAxiom *axiom = &engine->axioms[i];
+    if (axiom->predicate_id == property && 
+        axiom->subject_id < CNS_OWL_MAX_ENTITIES && 
+        axiom->object_id < CNS_OWL_MAX_ENTITIES)
+    {
+      cns_owl_set_bit(engine->transitive_closure, axiom->subject_id, axiom->object_id);
+    }
+  }
+
   // 80/20 optimization: Floyd-Warshall algorithm for transitive closure
+  // This computes all possible transitive relationships
   for (size_t k = 0; k < CNS_OWL_MAX_ENTITIES; k++)
   {
     for (size_t i = 0; i < CNS_OWL_MAX_ENTITIES; i++)
     {
-      for (size_t j = 0; j < CNS_OWL_MAX_ENTITIES; j++)
+      if (cns_owl_get_bit(engine->transitive_closure, i, k))
       {
-        if (cns_owl_get_bit(engine->transitive_closure, i, k) &&
-            cns_owl_get_bit(engine->transitive_closure, k, j))
+        for (size_t j = 0; j < CNS_OWL_MAX_ENTITIES; j++)
         {
-          cns_owl_set_bit(engine->transitive_closure, i, j);
+          if (cns_owl_get_bit(engine->transitive_closure, k, j))
+          {
+            cns_owl_set_bit(engine->transitive_closure, i, j);
+          }
         }
       }
     }

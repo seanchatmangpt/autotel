@@ -16,7 +16,9 @@ DOMAIN_SRCS = src/domains/bench_domain.c src/domains/build_domain.c \
               src/domains/profile_domain.c src/domains/release_domain.c \
               src/domains/shacl_domain.c src/domains/sigma_domain.c \
               src/domains/sparql_domain.c src/domains/telemetry_domain.c \
-              src/domains/test_domain.c
+              src/domains/test_domain.c src/domains/owl_domain.c \
+              src/domains/sql_domain.c src/domains/weaver_domain.c \
+              src/domains/ml_domain.c src/domains/benchmark_domain.c
 # Only include basic command stubs (exclude benchmark which has undefined functions)
 COMMAND_SRCS = src/cmd_spin.c src/cmd_think.c src/cmd_reflect.c src/cmd_learn.c src/cmd_adapt.c \
                src/cmd_stubs.c

@@ -1,0 +1,107 @@
+# Makefile for AOT Compiler 80/20 Benchmark Suite
+
+CC = clang
+CFLAGS = -O3 -march=native -mtune=native -ffast-math -funroll-loops \
+         -I. -Iinclude -Wall -Wextra -pedantic \
+         -DNDEBUG -DBENCHMARK_MODE
+LDFLAGS = -lm -lpthread
+
+# Platform-specific optimizations
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+
+ifeq ($(UNAME_S),Darwin)
+    # macOS specific flags
+    CFLAGS += -framework Accelerate
+    ifeq ($(UNAME_M),arm64)
+        CFLAGS += -mcpu=apple-m1
+    endif
+endif
+
+ifeq ($(UNAME_S),Linux)
+    # Linux specific flags
+    CFLAGS += -D_GNU_SOURCE
+    ifeq ($(UNAME_M),x86_64)
+        CFLAGS += -mavx2 -mfma
+    endif
+endif
+
+# Main benchmark executable
+aot_benchmark: aot_benchmark_80_20.c
+	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
+
+# Run benchmark with different configurations
+.PHONY: benchmark
+benchmark: aot_benchmark
+	@echo "=== Running AOT Compiler 80/20 Benchmark ==="
+	@echo "Testing compilation speed, execution performance, memory usage..."
+	@./aot_benchmark 1000
+
+# Quick benchmark (fewer iterations)
+.PHONY: quick
+quick: aot_benchmark
+	@echo "=== Quick AOT Benchmark (100 iterations) ==="
+	@./aot_benchmark 100
+
+# Detailed benchmark with profiling
+.PHONY: profile
+profile: CFLAGS += -g -pg
+profile: aot_benchmark
+	@echo "=== Profiling AOT Benchmark ==="
+	@./aot_benchmark 500
+	@gprof aot_benchmark gmon.out > profile_report.txt
+	@echo "Profile report saved to profile_report.txt"
+
+# Memory analysis with valgrind
+.PHONY: memcheck
+memcheck: CFLAGS += -g -O0
+memcheck: aot_benchmark
+	@echo "=== Memory Analysis ==="
+	valgrind --leak-check=full --show-leak-kinds=all \
+	         --track-origins=yes --verbose \
+	         ./aot_benchmark 10 2>&1 | tee memcheck_report.txt
+
+# Generate report
+.PHONY: report
+report: benchmark
+	@echo "=== Generating Comprehensive Report ==="
+	@echo "Report saved to: aot_benchmark_report.md"
+	@echo ""
+	@echo "Key Metrics:"
+	@grep -E "(Tests passed|Weighted average|Business coverage)" aot_benchmark_report.md
+
+# Clean build artifacts
+.PHONY: clean
+clean:
+	rm -f aot_benchmark gmon.out
+	rm -f profile_report.txt memcheck_report.txt
+	rm -f aot_benchmark_report.md
+	rm -f *.ttl *.sql *.rq *.h
+
+# Integration test with actual AOT compiler
+.PHONY: integration
+integration: aot_benchmark
+	@echo "=== Integration Test with AOT Compiler ==="
+	@if [ -f codegen/aot_compiler.py ]; then \
+		echo "Testing with real AOT compiler..."; \
+		./aot_benchmark 100; \
+	else \
+		echo "WARNING: AOT compiler not found at codegen/aot_compiler.py"; \
+		echo "Running benchmark in simulation mode..."; \
+		./aot_benchmark 100; \
+	fi
+
+# Help
+.PHONY: help
+help:
+	@echo "AOT Compiler 80/20 Benchmark Makefile"
+	@echo ""
+	@echo "Targets:"
+	@echo "  make benchmark   - Run full benchmark suite (1000 iterations)"
+	@echo "  make quick       - Quick benchmark (100 iterations)"
+	@echo "  make profile     - Run with profiling enabled"
+	@echo "  make memcheck    - Run memory analysis with valgrind"
+	@echo "  make report      - Generate and display benchmark report"
+	@echo "  make integration - Test with actual AOT compiler"
+	@echo "  make clean       - Remove all build artifacts"
+	@echo "  make help        - Display this help message"

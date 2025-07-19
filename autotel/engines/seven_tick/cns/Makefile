@@ -25,7 +25,7 @@ endif
 
 # Source files
 CORE_SRCS = src/core/cli.c src/cns_parser.c src/performance_optimizations.c
-DOMAIN_SRCS = src/domains/sparql.c src/domains/shacl.c src/domains/cjinja.c src/domains/telemetry.c src/domains/bench.c src/domains/build.c src/domains/dashboard.c src/domains/deploy.c src/domains/docs.c src/domains/gate.c src/domains/parse.c src/domains/profile.c src/domains/release.c src/domains/sigma.c src/domains/ml.c src/domains/benchmark.c
+DOMAIN_SRCS = src/domains/sparql.c src/domains/shacl.c src/domains/cjinja.c src/domains/telemetry.c src/domains/bench.c src/domains/build.c src/domains/dashboard.c src/domains/deploy.c src/domains/docs.c src/domains/gate.c src/domains/parse.c src/domains/profile.c src/domains/release.c src/domains/sigma.c src/domains/ml.c src/domains/benchmark.c src/domains/owl_domain.c src/domains/sql_domain.c src/domains/weaver_domain.c
 ENGINE_SRCS = src/engines/sparql.c src/engines/shacl.c src/engines/cjinja.c src/engines/telemetry.c
 # SQL_SRCS = src/domains/sql/sql_domain.c src/domains/sql/sql_parser.c src/domains/sql/sql_execute.c
 # COMMAND_SRCS = src/cmd_spin.c src/cmd_think.c src/cmd_reflect.c src/cmd_learn.c src/cmd_adapt.c \

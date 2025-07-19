@@ -1,0 +1,63 @@
+# SHACL AOT Optimized Benchmark Makefile
+CC = clang
+CFLAGS = -O3 -march=native -flto -ffast-math -Wall -Wextra -std=c11
+CFLAGS += -DWITH_OPENTELEMETRY -DS7T_DEBUG=1
+CFLAGS += -funroll-loops -ftree-vectorize -fomit-frame-pointer
+LDFLAGS = -flto -lm -lpthread
+
+# Architecture-specific optimizations
+ifeq ($(shell uname -m),x86_64)
+    CFLAGS += -mavx2 -mfma -msse4.2
+endif
+
+ifeq ($(shell uname -m),arm64)
+    CFLAGS += -mcpu=apple-m1
+endif
+
+# Include paths
+INCLUDES = -Iinclude -I../include -I../../c_src
+
+# Sources
+BENCHMARK_SRC = shacl_aot_optimized_benchmark.c
+BENCHMARK_TARGET = shacl_aot_optimized_benchmark
+
+# CNS dependencies
+CORE_SRCS = src/engines/sparql.c src/engines/shacl.c
+CORE_OBJS = $(CORE_SRCS:.c=.o)
+
+all: $(BENCHMARK_TARGET)
+
+$(BENCHMARK_TARGET): $(BENCHMARK_SRC) $(CORE_OBJS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS)
+	@echo "✅ Built SHACL AOT optimized benchmark"
+
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+
+# Run quick benchmark
+bench-quick: $(BENCHMARK_TARGET)
+	@echo "🚀 Running SHACL AOT optimized quick benchmark..."
+	./$(BENCHMARK_TARGET) 1000
+
+# Run full benchmark  
+bench: $(BENCHMARK_TARGET)
+	@echo "🚀 Running SHACL AOT optimized benchmark..."
+	./$(BENCHMARK_TARGET) 10000
+
+# Run with validation
+bench-validate: $(BENCHMARK_TARGET)
+	@echo "🔍 Running SHACL AOT optimized validation benchmark..."
+	./$(BENCHMARK_TARGET) 50000 > shacl_aot_optimized_results.json
+
+# Compare with original
+bench-compare: $(BENCHMARK_TARGET)
+	@echo "📊 Comparing optimized vs original..."
+	@echo "=== ORIGINAL ==="
+	-./shacl_aot_benchmark 1000 | grep "Overall average"
+	@echo "=== OPTIMIZED ==="
+	./$(BENCHMARK_TARGET) 1000 | grep "Overall average"
+
+clean:
+	rm -f $(BENCHMARK_TARGET) $(CORE_OBJS) shacl_aot_optimized_results.json
+
+.PHONY: all bench-quick bench bench-validate bench-compare clean

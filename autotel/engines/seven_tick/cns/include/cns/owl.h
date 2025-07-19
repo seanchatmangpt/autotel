@@ -139,6 +139,10 @@ void cns_owl_set_precompute_closures(CNSOWLEngine *engine, bool enable);
 // ============================================================================
 
 // Bit-vector operations for 7T compliance
+// SIMD-optimized bit operations for 7-tick performance
+#ifdef __AVX2__
+#include <immintrin.h>
+
 static inline uint64_t cns_owl_get_bit(uint64_t *matrix, size_t row, size_t col)
 {
   return (matrix[row] >> col) & 1ULL;
@@ -148,6 +152,69 @@ static inline void cns_owl_set_bit(uint64_t *matrix, size_t row, size_t col)
 {
   matrix[row] |= (1ULL << col);
 }
+
+// SIMD-optimized bit vector operations
+static inline void cns_owl_simd_or_bits(uint64_t *dest, const uint64_t *src1, const uint64_t *src2, size_t count)
+{
+  size_t simd_count = count / 4;  // Process 4 uint64_t at a time with AVX2
+  size_t remainder = count % 4;
+  
+  for (size_t i = 0; i < simd_count; i++) {
+    __m256i v1 = _mm256_load_si256((__m256i*)(src1 + i * 4));
+    __m256i v2 = _mm256_load_si256((__m256i*)(src2 + i * 4));
+    __m256i result = _mm256_or_si256(v1, v2);
+    _mm256_store_si256((__m256i*)(dest + i * 4), result);
+  }
+  
+  // Handle remainder
+  for (size_t i = simd_count * 4; i < count; i++) {
+    dest[i] = src1[i] | src2[i];
+  }
+}
+
+static inline void cns_owl_simd_and_bits(uint64_t *dest, const uint64_t *src1, const uint64_t *src2, size_t count)
+{
+  size_t simd_count = count / 4;
+  size_t remainder = count % 4;
+  
+  for (size_t i = 0; i < simd_count; i++) {
+    __m256i v1 = _mm256_load_si256((__m256i*)(src1 + i * 4));
+    __m256i v2 = _mm256_load_si256((__m256i*)(src2 + i * 4));
+    __m256i result = _mm256_and_si256(v1, v2);
+    _mm256_store_si256((__m256i*)(dest + i * 4), result);
+  }
+  
+  for (size_t i = simd_count * 4; i < count; i++) {
+    dest[i] = src1[i] & src2[i];
+  }
+}
+
+#else
+// Fallback implementations for non-AVX2 systems
+static inline uint64_t cns_owl_get_bit(uint64_t *matrix, size_t row, size_t col)
+{
+  return (matrix[row] >> col) & 1ULL;
+}
+
+static inline void cns_owl_set_bit(uint64_t *matrix, size_t row, size_t col)
+{
+  matrix[row] |= (1ULL << col);
+}
+
+static inline void cns_owl_simd_or_bits(uint64_t *dest, const uint64_t *src1, const uint64_t *src2, size_t count)
+{
+  for (size_t i = 0; i < count; i++) {
+    dest[i] = src1[i] | src2[i];
+  }
+}
+
+static inline void cns_owl_simd_and_bits(uint64_t *dest, const uint64_t *src1, const uint64_t *src2, size_t count)
+{
+  for (size_t i = 0; i < count; i++) {
+    dest[i] = src1[i] & src2[i];
+  }
+}
+#endif
 
 static inline void cns_owl_clear_bit(uint64_t *matrix, size_t row, size_t col)
 {

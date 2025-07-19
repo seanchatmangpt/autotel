@@ -1,0 +1,66 @@
+# SHACL AOT 7-Tick Benchmark Makefile
+CC = clang
+CFLAGS = -O3 -march=native -flto -ffast-math -Wall -Wextra -std=c11
+CFLAGS += -DWITH_OPENTELEMETRY -DS7T_DEBUG=1
+CFLAGS += -funroll-loops -ftree-vectorize -fomit-frame-pointer
+CFLAGS += -finline-functions -finline-limit=10000
+LDFLAGS = -flto -lm -lpthread
+
+# Architecture-specific optimizations
+ifeq ($(shell uname -m),x86_64)
+    CFLAGS += -mavx2 -mfma -msse4.2
+endif
+
+ifeq ($(shell uname -m),arm64)
+    CFLAGS += -mcpu=apple-m1
+endif
+
+# Include paths
+INCLUDES = -Iinclude -I../include -I../../c_src
+
+# Sources
+BENCHMARK_SRC = shacl_7tick_benchmark.c
+BENCHMARK_TARGET = shacl_7tick_benchmark
+
+# CNS dependencies
+CORE_SRCS = src/engines/sparql.c src/engines/shacl.c
+CORE_OBJS = $(CORE_SRCS:.c=.o)
+
+all: $(BENCHMARK_TARGET)
+
+$(BENCHMARK_TARGET): $(BENCHMARK_SRC) $(CORE_OBJS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS)
+	@echo "✅ Built SHACL AOT 7-tick benchmark"
+
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+
+# Run quick benchmark
+bench-quick: $(BENCHMARK_TARGET)
+	@echo "🚀 Running SHACL 7-tick quick benchmark..."
+	./$(BENCHMARK_TARGET) 1000
+
+# Run full benchmark  
+bench: $(BENCHMARK_TARGET)
+	@echo "🚀 Running SHACL 7-tick benchmark..."
+	./$(BENCHMARK_TARGET) 10000
+
+# Run extended benchmark
+bench-extended: $(BENCHMARK_TARGET)
+	@echo "🚀 Running SHACL 7-tick extended benchmark..."
+	./$(BENCHMARK_TARGET) 100000
+
+# Compare all versions
+bench-compare-all: $(BENCHMARK_TARGET)
+	@echo "📊 Comparing all SHACL implementations..."
+	@echo "\n=== ORIGINAL ==="
+	-./shacl_aot_benchmark 1000 2>/dev/null | grep -E "(Overall average|7-Tick compliant)"
+	@echo "\n=== OPTIMIZED ==="
+	-./shacl_aot_optimized_benchmark 1000 2>/dev/null | grep -E "(Overall average|7-Tick compliant)"
+	@echo "\n=== 7-TICK ==="
+	./$(BENCHMARK_TARGET) 1000 | grep -E "(Overall average|7-Tick compliant)"
+
+clean:
+	rm -f $(BENCHMARK_TARGET) $(CORE_OBJS)
+
+.PHONY: all bench-quick bench bench-extended bench-compare-all clean

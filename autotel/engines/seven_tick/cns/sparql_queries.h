@@ -1,8 +1,10 @@
 #ifndef SPARQL_QUERIES_AOT_H
 #define SPARQL_QUERIES_AOT_H
 
+#include <string.h>
 #include "cns/engines/sparql.h"
 #include "ontology_ids.h"
+#include "sparql_id_mappings.h"
 
 // Result structure for compiled queries
 typedef struct {

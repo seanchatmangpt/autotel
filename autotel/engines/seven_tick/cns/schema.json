@@ -1,64 +1,341 @@
 {
-  "customers": {
-    "columns": {
-      "customer_id": "int32",
-      "customer_name": "string",
-      "email": "string",
-      "region_id": "int32",
-      "segment": "int32",
-      "lifetime_value": "float32"
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CNS SQL AOT Schema Definition",
+  "description": "Schema definition for SQL tables used in AOT compilation",
+  "version": "1.0.0",
+  
+  "tables": {
+    "customers": {
+      "description": "Customer master data",
+      "estimated_rows": 100000,
+      "columns": {
+        "customer_id": {
+          "type": "int32",
+          "primary_key": true,
+          "nullable": false,
+          "description": "Unique customer identifier"
+        },
+        "customer_name": {
+          "type": "char",
+          "length": 32,
+          "nullable": false,
+          "description": "Customer full name"
+        },
+        "email": {
+          "type": "char",
+          "length": 64,
+          "nullable": false,
+          "description": "Customer email address"
+        },
+        "region_id": {
+          "type": "int16",
+          "nullable": false,
+          "description": "Customer region identifier",
+          "index": true
+        },
+        "segment": {
+          "type": "int16",
+          "nullable": false,
+          "description": "Customer segment (1=Enterprise, 2=SMB, 3=Consumer)",
+          "values": [1, 2, 3],
+          "index": true
+        },
+        "lifetime_value": {
+          "type": "float",
+          "nullable": false,
+          "description": "Customer lifetime value in USD"
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_customers_region",
+          "columns": ["region_id"]
+        },
+        {
+          "name": "idx_customers_segment",
+          "columns": ["segment"]
+        },
+        {
+          "name": "idx_customers_ltv",
+          "columns": ["lifetime_value"]
+        }
+      ]
     },
-    "row_count": 10000,
-    "nullable": {
-      "email": true
+    
+    "orders": {
+      "description": "Order transaction data",
+      "estimated_rows": 1000000,
+      "columns": {
+        "order_id": {
+          "type": "int32",
+          "primary_key": true,
+          "nullable": false,
+          "description": "Unique order identifier"
+        },
+        "customer_id": {
+          "type": "int32",
+          "nullable": false,
+          "description": "Reference to customer",
+          "foreign_key": "customers.customer_id"
+        },
+        "amount": {
+          "type": "float",
+          "nullable": false,
+          "description": "Total order amount in USD"
+        },
+        "product_id": {
+          "type": "int32",
+          "nullable": false,
+          "description": "Primary product in order",
+          "foreign_key": "products.product_id"
+        },
+        "order_date": {
+          "type": "char",
+          "length": 11,
+          "nullable": false,
+          "description": "Order date (YYYY-MM-DD format)"
+        },
+        "status": {
+          "type": "int16",
+          "nullable": false,
+          "description": "Order status (1=pending, 2=shipped, 3=delivered, 4=cancelled)",
+          "values": [1, 2, 3, 4],
+          "index": true
+        },
+        "quarter": {
+          "type": "int16",
+          "nullable": false,
+          "description": "Quarter number (1-4)",
+          "index": true
+        },
+        "year": {
+          "type": "int16",
+          "nullable": false,
+          "description": "Order year",
+          "index": true
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_orders_customer",
+          "columns": ["customer_id"]
+        },
+        {
+          "name": "idx_orders_date",
+          "columns": ["year", "quarter"]
+        },
+        {
+          "name": "idx_orders_status",
+          "columns": ["status"]
+        }
+      ]
+    },
+    
+    "products": {
+      "description": "Product catalog",
+      "estimated_rows": 10000,
+      "columns": {
+        "product_id": {
+          "type": "int32",
+          "primary_key": true,
+          "nullable": false,
+          "description": "Unique product identifier"
+        },
+        "product_name": {
+          "type": "char",
+          "length": 64,
+          "nullable": false,
+          "description": "Product name"
+        },
+        "category": {
+          "type": "char",
+          "length": 32,
+          "nullable": false,
+          "description": "Product category",
+          "index": true
+        },
+        "price": {
+          "type": "float",
+          "nullable": false,
+          "description": "Product unit price in USD"
+        },
+        "supplier_id": {
+          "type": "int16",
+          "nullable": false,
+          "description": "Supplier identifier"
+        },
+        "margin_percent": {
+          "type": "float",
+          "nullable": false,
+          "description": "Product profit margin percentage"
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_products_category",
+          "columns": ["category"]
+        },
+        {
+          "name": "idx_products_supplier",
+          "columns": ["supplier_id"]
+        }
+      ]
+    },
+    
+    "sales": {
+      "description": "Aggregated sales data by region and quarter",
+      "estimated_rows": 50000,
+      "columns": {
+        "sale_id": {
+          "type": "int32",
+          "primary_key": true,
+          "nullable": false,
+          "description": "Unique sales record identifier"
+        },
+        "region_id": {
+          "type": "int16",
+          "nullable": false,
+          "description": "Sales region identifier",
+          "index": true
+        },
+        "quarter": {
+          "type": "int16",
+          "nullable": false,
+          "description": "Quarter number (1-4)",
+          "index": true
+        },
+        "revenue": {
+          "type": "float",
+          "nullable": false,
+          "description": "Total revenue for region/quarter"
+        },
+        "year": {
+          "type": "int16",
+          "nullable": false,
+          "description": "Sales year",
+          "index": true
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_sales_region_quarter",
+          "columns": ["region_id", "quarter", "year"]
+        }
+      ]
+    },
+    
+    "order_items": {
+      "description": "Line items for orders (for join queries)",
+      "estimated_rows": 3000000,
+      "columns": {
+        "order_item_id": {
+          "type": "int32",
+          "primary_key": true,
+          "nullable": false,
+          "description": "Unique order item identifier"
+        },
+        "order_id": {
+          "type": "int32",
+          "nullable": false,
+          "description": "Reference to order",
+          "foreign_key": "orders.order_id",
+          "index": true
+        },
+        "product_id": {
+          "type": "int32",
+          "nullable": false,
+          "description": "Reference to product",
+          "foreign_key": "products.product_id",
+          "index": true
+        },
+        "quantity": {
+          "type": "int16",
+          "nullable": false,
+          "description": "Item quantity"
+        },
+        "sales_amount": {
+          "type": "float",
+          "nullable": false,
+          "description": "Total sales amount for this line item"
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_order_items_order",
+          "columns": ["order_id"]
+        },
+        {
+          "name": "idx_order_items_product",
+          "columns": ["product_id"]
+        }
+      ]
     }
   },
-  "orders": {
-    "columns": {
-      "order_id": "int32",
-      "customer_id": "int32",
-      "amount": "float32",
-      "product_id": "int32",
-      "order_date": "string",
-      "status": "int32",
-      "quarter": "int32",
-      "year": "int32"
+  
+  "optimization_hints": {
+    "cache_alignment": {
+      "customers": 64,
+      "orders": 32,
+      "products": 64,
+      "sales": 32
     },
-    "row_count": 30000,
-    "nullable": {}
+    "common_access_patterns": [
+      {
+        "pattern": "filter_by_quarter",
+        "tables": ["sales", "orders"],
+        "columns": ["quarter", "year"]
+      },
+      {
+        "pattern": "customer_analysis",
+        "tables": ["customers"],
+        "columns": ["lifetime_value", "segment", "region_id"]
+      },
+      {
+        "pattern": "product_performance",
+        "tables": ["products", "order_items"],
+        "columns": ["category", "product_id"]
+      }
+    ],
+    "simd_friendly_columns": [
+      "customers.lifetime_value",
+      "orders.amount",
+      "products.price",
+      "sales.revenue"
+    ]
   },
-  "products": {
-    "columns": {
-      "product_id": "int32",
-      "product_name": "string",
-      "category": "string",
-      "price": "float32",
-      "supplier_id": "int32",
-      "margin_percent": "float32"
+  
+  "query_patterns": {
+    "quarterly_sales_report": {
+      "tables": ["sales"],
+      "filters": ["quarter"],
+      "aggregations": ["SUM(revenue)"],
+      "group_by": ["region_id"]
     },
-    "row_count": 500,
-    "nullable": {}
-  },
-  "sales": {
-    "columns": {
-      "sale_id": "int32",
-      "region_id": "int32",
-      "quarter": "int32",
-      "revenue": "float32",
-      "year": "int32"
+    "high_value_customers": {
+      "tables": ["customers"],
+      "filters": ["lifetime_value > ?"],
+      "order_by": ["lifetime_value DESC"],
+      "limit": 100
     },
-    "row_count": 1000,
-    "nullable": {}
-  },
-  "order_items": {
-    "columns": {
-      "item_id": "int32",
-      "order_id": "int32",
-      "product_id": "int32",
-      "quantity": "int32",
-      "sales_amount": "float32"
+    "product_performance": {
+      "tables": ["products", "order_items"],
+      "join": "products.product_id = order_items.product_id",
+      "filters": ["category = ?"],
+      "aggregations": ["SUM(sales_amount)"],
+      "group_by": ["product_id", "product_name"]
     },
-    "row_count": 50000,
-    "nullable": {}
+    "monthly_revenue_trend": {
+      "tables": ["orders"],
+      "filters": ["year >= ?", "status = 3"],
+      "aggregations": ["SUM(amount)"],
+      "group_by": ["year", "month"],
+      "note": "month field not in Order struct - may need to extract from order_date"
+    },
+    "customer_segment_analysis": {
+      "tables": ["customers"],
+      "filters": ["region_id = ?"],
+      "aggregations": ["COUNT(*)", "AVG(lifetime_value)"],
+      "group_by": ["segment"]
+    }
   }
 }

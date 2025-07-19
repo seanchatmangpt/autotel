@@ -19,6 +19,9 @@ extern CNSDomain cns_cjinja_domain;
 extern CNSDomain cns_telemetry_domain;
 extern CNSDomain cns_ml_domain;
 extern CNSDomain cns_benchmark_domain;
+extern CNSDomain cns_owl_domain;
+extern CNSDomain cns_sql_domain;
+extern CNSDomain cns_weaver_domain;
 
 int main(int argc, char **argv)
 {
@@ -46,6 +49,9 @@ int main(int argc, char **argv)
     cns_cli_register_domain(&cns_telemetry_domain);
     cns_cli_register_domain(&cns_ml_domain);
     cns_cli_register_domain(&cns_benchmark_domain);
+    cns_cli_register_domain(&cns_owl_domain);
+    cns_cli_register_domain(&cns_sql_domain);
+    cns_cli_register_domain(&cns_weaver_domain);
 
     // Run CLI
     int result = cns_cli_run(argc, argv);
