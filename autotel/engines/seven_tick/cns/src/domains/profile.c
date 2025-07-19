@@ -47,7 +47,7 @@ static CNSOption profile_options[] = {
 static int cmd_profile(CNSContext* ctx, int argc, char** argv) {
     if (argc < 1) {
         cns_cli_error("Missing profile target");
-        return CNS_ERR_INTERNAL_ARGS;
+        return CNS_ERR_INVALID_ARG;
     }
     
     const char* target = argv[0];

@@ -119,7 +119,7 @@ void cns_sparql_ask_batch(CNSSparqlEngine *engine, CNSTriplePattern *patterns, i
   }
 }
 
-// SIMD-optimized batch operations
+// SIMD-optimized batch operations (x86/x64 only)
 void cns_sparql_simd_ask_batch(CNSSparqlEngine *engine, CNSTriplePattern *patterns, int *results, size_t count)
 {
   if (UNLIKELY(!engine || !patterns || !results))
@@ -127,6 +127,7 @@ void cns_sparql_simd_ask_batch(CNSSparqlEngine *engine, CNSTriplePattern *patter
     return;
   }
 
+#ifdef __x86_64__
   size_t simd_count = count & ~7; // Process 8 at a time for AVX2
 
   for (size_t i = 0; i < simd_count; i += 8)
@@ -158,6 +159,10 @@ void cns_sparql_simd_ask_batch(CNSSparqlEngine *engine, CNSTriplePattern *patter
   {
     results[i] = cns_sparql_ask_pattern(engine, patterns[i].s, patterns[i].p, patterns[i].o);
   }
+#else
+  // Fallback to non-SIMD implementation for non-x86 architectures
+  cns_sparql_ask_batch(engine, patterns, results, count);
+#endif
 }
 
 // Memory usage tracking

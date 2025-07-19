@@ -52,7 +52,7 @@ static int cmd_telemetry_export(CNSContext *ctx, int argc, char **argv)
   {
     printf("Usage: cns telemetry export <format>\n");
     printf("Example: cns telemetry export json\n");
-    return CNS_ERR_INTERNAL_ARGS;
+    return CNS_ERR_INVALID_ARG;
   }
 
   printf("💾 Exporting Telemetry Data\n");

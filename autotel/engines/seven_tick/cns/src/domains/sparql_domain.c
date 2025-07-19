@@ -1,4 +1,6 @@
 
+#include "cns/types.h"
+
 CNSDomain cns_sparql_domain = {
     .name = "sparql",
     .description = "SPARQL query processing and pattern matching",

@@ -157,7 +157,7 @@ static int cmd_deploy(CNSContext* ctx, int argc, char** argv) {
         result = deploy_docker(version, dry_run);
     } else {
         cns_cli_error("Unknown deployment target: %s", target);
-        return CNS_ERR_INTERNAL_ARGS;
+        return CNS_ERR_INVALID_ARG;
     }
     
     if (result == CNS_OK) {

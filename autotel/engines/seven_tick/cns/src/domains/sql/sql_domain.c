@@ -3,8 +3,9 @@
     CNS SQL commands with physics-compliant execution
     ───────────────────────────────────────────────────────────── */
 
-#include "../../include/cns/cli.h"
-#include "../../include/cns/sql.h"
+#include "cns/cli.h"
+#include "cns/types.h"
+#include "cns/sql.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -66,7 +67,7 @@ static int cmd_sql_create(CNSContext* ctx, int argc, char** argv) {
     if (argc < 2) {
         cns_cli_error("Usage: cns sql create <table_name> <col1:type> [col2:type ...]\n");
         cns_cli_info("Types: int32, int64, float32, float64, id, date, time, bool\n");
-        return CNS_ERR_INTERNAL_ARGS;
+        return CNS_ERR_INVALID_ARG;
     }
     
     s7t_span_t span;
@@ -91,7 +92,7 @@ static int cmd_sql_create(CNSContext* ctx, int argc, char** argv) {
         if (!colon) {
             cns_cli_error("Invalid column definition: %s\n", col_def);
             s7t_span_end(&span);
-            return CNS_ERR_INTERNAL_ARGS;
+            return CNS_ERR_INVALID_ARG;
         }
         
         *colon = '\0';
@@ -111,7 +112,7 @@ static int cmd_sql_create(CNSContext* ctx, int argc, char** argv) {
         else {
             cns_cli_error("Unknown type: %s\n", type_str);
             s7t_span_end(&span);
-            return CNS_ERR_INTERNAL_ARGS;
+            return CNS_ERR_INVALID_ARG;
         }
         
         // Add column
@@ -146,7 +147,7 @@ static int cmd_sql_insert(CNSContext* ctx, int argc, char** argv) {
     
     if (argc < 3) {
         cns_cli_error("Usage: cns sql insert <table_name> <val1> [val2 ...]\n");
-        return CNS_ERR_INTERNAL_ARGS;
+        return CNS_ERR_INVALID_ARG;
     }
     
     s7t_span_t span;
@@ -174,7 +175,7 @@ static int cmd_sql_insert(CNSContext* ctx, int argc, char** argv) {
     if (value_count != table->column_count) {
         cns_cli_error("Expected %u values, got %u\n", table->column_count, value_count);
         s7t_span_end(&span);
-        return CNS_ERR_INTERNAL_ARGS;
+        return CNS_ERR_INVALID_ARG;
     }
     
     // Check row limit
@@ -260,7 +261,7 @@ static int cmd_sql_select(CNSContext* ctx, int argc, char** argv) {
     if (argc < 2) {
         cns_cli_error("Usage: cns sql select <query>\n");
         cns_cli_info("Example: cns sql select \"* FROM table WHERE col > 10\"\n");
-        return CNS_ERR_INTERNAL_ARGS;
+        return CNS_ERR_INVALID_ARG;
     }
     
     s7t_span_t span;
@@ -274,7 +275,7 @@ static int cmd_sql_select(CNSContext* ctx, int argc, char** argv) {
     if (!from_pos) {
         cns_cli_error("Invalid query: missing FROM clause\n");
         s7t_span_end(&span);
-        return CNS_ERR_INTERNAL_ARGS;
+        return CNS_ERR_INVALID_ARG;
     }
     
     char table_name[32];
@@ -676,7 +677,7 @@ static int cmd_sql_explain(CNSContext* ctx, int argc, char** argv) {
     
     if (argc < 2) {
         cns_cli_error("Usage: cns sql explain <query>\n");
-        return CNS_ERR_INTERNAL_ARGS;
+        return CNS_ERR_INVALID_ARG;
     }
     
     const char* query = argv[1];

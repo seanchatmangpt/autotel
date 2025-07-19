@@ -12,7 +12,7 @@ static int cmd_cjinja_render(CNSContext *ctx, int argc, char **argv)
   {
     printf("Usage: cns cjinja render <template> <context>\n");
     printf("Example: cns cjinja render 'Hello {{name}}!' '{\"name\":\"World\"}'\n");
-    return CNS_ERR_INTERNAL_ARGS;
+    return CNS_ERR_INVALID_ARG;
   }
 
   printf("🎨 CJinja Template Rendering\n");
@@ -24,7 +24,7 @@ static int cmd_cjinja_render(CNSContext *ctx, int argc, char **argv)
   if (!engine)
   {
     printf("❌ Failed to create CJinja engine\n");
-    return CNS_ERR_INTERNAL_MEMORY;
+    return CNS_ERR_RESOURCE;
   }
 
   // Create context
@@ -33,7 +33,7 @@ static int cmd_cjinja_render(CNSContext *ctx, int argc, char **argv)
   {
     printf("❌ Failed to create CJinja context\n");
     cns_cjinja_destroy(engine);
-    return CNS_ERR_INTERNAL_MEMORY;
+    return CNS_ERR_RESOURCE;
   }
 
   // Add variables to context (simplified parsing)
@@ -68,7 +68,7 @@ static int cmd_cjinja_compile(CNSContext *ctx, int argc, char **argv)
   {
     printf("Usage: cns cjinja compile <template_file>\n");
     printf("Example: cns cjinja compile template.j2\n");
-    return CNS_ERR_INTERNAL_ARGS;
+    return CNS_ERR_INVALID_ARG;
   }
 
   printf("🔧 CJinja Template Compilation\n");
@@ -90,7 +90,7 @@ static int cmd_cjinja_benchmark(CNSContext *ctx, int argc, char **argv)
   if (!engine)
   {
     printf("❌ Failed to create CJinja engine\n");
-    return CNS_ERR_INTERNAL_MEMORY;
+    return CNS_ERR_RESOURCE;
   }
 
   // Create context
@@ -99,7 +99,7 @@ static int cmd_cjinja_benchmark(CNSContext *ctx, int argc, char **argv)
   {
     printf("❌ Failed to create CJinja context\n");
     cns_cjinja_destroy(engine);
-    return CNS_ERR_INTERNAL_MEMORY;
+    return CNS_ERR_RESOURCE;
   }
 
   // Add test variables

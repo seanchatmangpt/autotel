@@ -1,0 +1,100 @@
+# CNS Makefile - CHATMAN NANO-STACK (ARM64 Compatible)
+# 7-tick performance-guaranteed CLI without x86 intrinsics
+
+CC = clang
+CXX = clang++
+CFLAGS = -O0 -g -Wall -Wextra -std=c11 -DS7T_DEBUG=1
+CXXFLAGS = -O0 -g -Wall -Wextra -std=c++17
+LDFLAGS = -lm -lpthread
+INCLUDES = -Iinclude -I../include -I../../c_src -I../../benchmarks -I../../tests
+
+# OpenTelemetry configuration (disabled for ARM64 compatibility)
+OTEL_ENABLED = 0
+
+# Source files
+CORE_SRCS = src/core/cli.c src/cns_parser.c
+DOMAIN_SRCS = $(wildcard src/domains/*.c)
+# ENGINE_SRCS disabled for ARM64 - contains x86 intrinsics
+ENGINE_SRCS = 
+SQL_SRCS = src/domains/sql/sql_domain.c src/domains/sql/sql_parser.c src/domains/sql/sql_execute.c
+COMMAND_SRCS = src/cmd_spin.c src/cmd_think.c src/cmd_reflect.c src/cmd_learn.c src/cmd_adapt.c \
+               src/cmd_benchmark.c src/cmd_ml.c src/cmd_pm.c src/cmd_trace.c src/cmd_stubs.c
+GATEKEEPER_SRCS = src/gatekeeper.c
+WEAVER_SRCS = codegen/weaver_main.c
+MAIN_SRC = src/main.c
+
+# Object files
+CORE_OBJS = $(CORE_SRCS:.c=.o)
+DOMAIN_OBJS = $(DOMAIN_SRCS:.c=.o)
+ENGINE_OBJS = $(ENGINE_SRCS:.c=.o)
+SQL_OBJS = $(SQL_SRCS:.c=.o)
+COMMAND_OBJS = $(COMMAND_SRCS:.c=.o)
+GATEKEEPER_OBJS = $(GATEKEEPER_SRCS:.c=.o)
+WEAVER_OBJS = $(WEAVER_SRCS:.c=.o)
+MAIN_OBJ = $(MAIN_SRC:.c=.o)
+
+# All objects for ARM64 build
+ALL_OBJS = $(CORE_OBJS) $(DOMAIN_OBJS) $(SQL_OBJS) $(COMMAND_OBJS) $(MAIN_OBJ)
+
+# Binary names
+TARGET = cns
+GATEKEEPER_TARGET = gatekeeper
+WEAVER_TARGET = cns_weaver
+
+# Default target
+all: stubs $(TARGET)
+
+# Create necessary directories and stub files
+stubs:
+	@mkdir -p src/domains/sql src/core
+	@echo "✓ Created necessary directories"
+
+# Build the main binary
+$(TARGET): $(ALL_OBJS)
+	$(CC) $(LDFLAGS) -o $@ $^
+	@echo "✓ Built $(TARGET) for ARM64 (7T-SQL support, no x86 engines)"
+
+# Build Gatekeeper (if needed)
+$(GATEKEEPER_TARGET): $(GATEKEEPER_OBJS) $(CORE_OBJS)
+	$(CC) $(LDFLAGS) -o $@ $^
+	@echo "✓ Built $(GATEKEEPER_TARGET) - CNS quality gate"
+
+# Compile source files
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+
+# Clean build artifacts
+clean:
+	rm -f $(CORE_OBJS) $(DOMAIN_OBJS) $(SQL_OBJS) $(COMMAND_OBJS) $(MAIN_OBJ) $(TARGET) $(GATEKEEPER_TARGET)
+	rm -f src/domains/sql/*.o
+	@echo "✓ Cleaned build artifacts"
+
+# Run tests
+test: $(TARGET)
+	./$(TARGET) help
+
+# Run SQL tests
+test-sql: $(TARGET)
+	@echo "Running 7T-SQL tests..."
+	./$(TARGET) sql init
+	./$(TARGET) sql create test_table id:int32 value:int32 score:float32
+	./$(TARGET) sql insert test_table 1 100 95.5
+	./$(TARGET) sql select "* FROM test_table WHERE value > 100"
+	./$(TARGET) sql show
+
+# Run SQL benchmarks
+bench-sql: $(TARGET)
+	@echo "Running 7T-SQL benchmarks..."
+	./$(TARGET) sql init
+	./$(TARGET) sql bench 1000
+
+# Help
+help:
+	@echo "CNS ARM64 Makefile targets:"
+	@echo "  make         - Build CNS binary (ARM64 compatible)"
+	@echo "  make clean   - Remove build artifacts"
+	@echo "  make test    - Run basic tests"
+	@echo "  make test-sql - Run 7T-SQL specific tests"
+	@echo "  make bench-sql - Run 7T-SQL benchmarks"
+
+.PHONY: all clean test test-sql bench-sql help stubs

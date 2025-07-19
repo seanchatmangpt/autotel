@@ -125,13 +125,13 @@ static int cmd_gate_run(CNSContext* ctx, int argc, char** argv) {
 static int cmd_gate_check(CNSContext* ctx, int argc, char** argv) {
     if (argc < 1) {
         cns_cli_error("Missing CTQ number (1-4)");
-        return CNS_ERR_INTERNAL_ARGS;
+        return CNS_ERR_INVALID_ARG;
     }
     
     int ctq_num = atoi(argv[0]);
     if (ctq_num < 1 || ctq_num > 4) {
         cns_cli_error("Invalid CTQ number. Must be 1-4");
-        return CNS_ERR_INTERNAL_ARGS;
+        return CNS_ERR_INVALID_ARG;
     }
     
     bool passed = false;

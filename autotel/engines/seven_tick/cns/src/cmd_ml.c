@@ -10,8 +10,18 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
-#include <immintrin.h>
 #include <stdint.h>
+
+// Architecture-specific SIMD includes
+#if defined(__x86_64__) || defined(__i386__)
+  #include <immintrin.h>
+  #define SIMD_AVAILABLE 1
+#elif defined(__aarch64__) || defined(__arm64__)
+  #include <arm_neon.h>
+  #define SIMD_AVAILABLE 1
+#else
+  #define SIMD_AVAILABLE 0
+#endif
 
 /*═══════════════════════════════════════════════════════════════
   7T TPOT Core Structures (Re-ported from working 7t_tpot.c)
@@ -213,26 +223,21 @@ double normalize_features_simd(Dataset7T *data, double *params)
 {
   START_TIMER();
 
-  // SIMD-optimized normalization
+#if SIMD_AVAILABLE && (defined(__x86_64__) || defined(__i386__))
+  // x86_64 AVX2 optimized normalization
   for (int i = 0; i < data->num_samples; i++)
   {
     for (int j = 0; j < data->num_features; j += 4)
     {
-      // Ensure we don't go out of bounds
       if (j + 3 < data->num_features)
       {
-        // Load 4 features into SIMD registers
-        __m256d features = _mm256_load_pd(&data->data[i * data->num_features + j]);
-
-        // Normalize: (x - min) / (max - min)
+        // Use loadu for unaligned access
+        __m256d features = _mm256_loadu_pd(&data->data[i * data->num_features + j]);
         __m256d normalized = _mm256_div_pd(features, _mm256_set1_pd(100.0));
-
-        // Store normalized features
-        _mm256_store_pd(&data->data[i * data->num_features + j], normalized);
+        _mm256_storeu_pd(&data->data[i * data->num_features + j], normalized);
       }
       else
       {
-        // Handle remaining elements sequentially
         for (int k = j; k < data->num_features; k++)
         {
           data->data[i * data->num_features + k] = 
@@ -241,6 +246,40 @@ double normalize_features_simd(Dataset7T *data, double *params)
       }
     }
   }
+#elif SIMD_AVAILABLE && (defined(__aarch64__) || defined(__arm64__))
+  // ARM64 NEON optimized normalization
+  for (int i = 0; i < data->num_samples; i++)
+  {
+    for (int j = 0; j < data->num_features; j += 2)
+    {
+      if (j + 1 < data->num_features)
+      {
+        float64x2_t features = vld1q_f64(&data->data[i * data->num_features + j]);
+        float64x2_t divisor = vdupq_n_f64(100.0);
+        float64x2_t normalized = vdivq_f64(features, divisor);
+        vst1q_f64(&data->data[i * data->num_features + j], normalized);
+      }
+      else
+      {
+        for (int k = j; k < data->num_features; k++)
+        {
+          data->data[i * data->num_features + k] = 
+            data->data[i * data->num_features + k] / 100.0;
+        }
+      }
+    }
+  }
+#else
+  // Portable fallback version
+  for (int i = 0; i < data->num_samples; i++)
+  {
+    for (int j = 0; j < data->num_features; j++)
+    {
+      data->data[i * data->num_features + j] = 
+        data->data[i * data->num_features + j] / 100.0;
+    }
+  }
+#endif
 
   END_TIMER();
   return GET_ELAPSED_NS() / 1000.0; // Return microseconds
@@ -250,26 +289,21 @@ double standardize_features_simd(Dataset7T *data, double *params)
 {
   START_TIMER();
 
-  // SIMD-optimized standardization
+#if SIMD_AVAILABLE && (defined(__x86_64__) || defined(__i386__))
+  // x86_64 AVX2 optimized standardization
   for (int i = 0; i < data->num_samples; i++)
   {
     for (int j = 0; j < data->num_features; j += 4)
     {
       if (j + 3 < data->num_features)
       {
-        // Load 4 features into SIMD registers
-        __m256d features = _mm256_load_pd(&data->data[i * data->num_features + j]);
-
-        // Standardize: (x - mean) / std
+        __m256d features = _mm256_loadu_pd(&data->data[i * data->num_features + j]);
         __m256d standardized = _mm256_sub_pd(features, _mm256_set1_pd(50.0));
         standardized = _mm256_div_pd(standardized, _mm256_set1_pd(25.0));
-
-        // Store standardized features
-        _mm256_store_pd(&data->data[i * data->num_features + j], standardized);
+        _mm256_storeu_pd(&data->data[i * data->num_features + j], standardized);
       }
       else
       {
-        // Handle remaining elements sequentially
         for (int k = j; k < data->num_features; k++)
         {
           data->data[i * data->num_features + k] = 
@@ -278,6 +312,41 @@ double standardize_features_simd(Dataset7T *data, double *params)
       }
     }
   }
+#elif SIMD_AVAILABLE && (defined(__aarch64__) || defined(__arm64__))
+  // ARM64 NEON optimized standardization
+  for (int i = 0; i < data->num_samples; i++)
+  {
+    for (int j = 0; j < data->num_features; j += 2)
+    {
+      if (j + 1 < data->num_features)
+      {
+        float64x2_t features = vld1q_f64(&data->data[i * data->num_features + j]);
+        float64x2_t mean = vdupq_n_f64(50.0);
+        float64x2_t std = vdupq_n_f64(25.0);
+        float64x2_t standardized = vdivq_f64(vsubq_f64(features, mean), std);
+        vst1q_f64(&data->data[i * data->num_features + j], standardized);
+      }
+      else
+      {
+        for (int k = j; k < data->num_features; k++)
+        {
+          data->data[i * data->num_features + k] = 
+            (data->data[i * data->num_features + k] - 50.0) / 25.0;
+        }
+      }
+    }
+  }
+#else
+  // Portable fallback version
+  for (int i = 0; i < data->num_samples; i++)
+  {
+    for (int j = 0; j < data->num_features; j++)
+    {
+      data->data[i * data->num_features + j] = 
+        (data->data[i * data->num_features + j] - 50.0) / 25.0;
+    }
+  }
+#endif
 
   END_TIMER();
   return GET_ELAPSED_NS() / 1000.0; // Return microseconds
@@ -298,38 +367,16 @@ double select_k_best_features_simd(Dataset7T *data, double *params)
   // Simple variance-based feature selection
   double *variances = malloc(data->num_features * sizeof(double));
 
-  // Compute variances using SIMD
-  for (int j = 0; j < data->num_features; j += 4)
+  // Compute variances (simplified for portability)
+  for (int j = 0; j < data->num_features; j++)
   {
-    if (j + 3 < data->num_features)
+    double variance_sum = 0.0;
+    for (int i = 0; i < data->num_samples; i++)
     {
-      __m256d variance_sum = _mm256_setzero_pd();
-
-      for (int i = 0; i < data->num_samples; i++)
-      {
-        __m256d features = _mm256_load_pd(&data->data[i * data->num_features + j]);
-        __m256d mean = _mm256_set1_pd(50.0);
-        __m256d diff = _mm256_sub_pd(features, mean);
-        __m256d squared = _mm256_mul_pd(diff, diff);
-        variance_sum = _mm256_add_pd(variance_sum, squared);
-      }
-
-      _mm256_store_pd(&variances[j], variance_sum);
+      double diff = data->data[i * data->num_features + j] - 50.0;
+      variance_sum += diff * diff;
     }
-    else
-    {
-      // Handle remaining features sequentially
-      for (int jj = j; jj < data->num_features; jj++)
-      {
-        double variance_sum = 0.0;
-        for (int i = 0; i < data->num_samples; i++)
-        {
-          double diff = data->data[i * data->num_features + jj] - 50.0;
-          variance_sum += diff * diff;
-        }
-        variances[jj] = variance_sum;
-      }
-    }
+    variances[j] = variance_sum;
   }
 
   // Select top k features (simplified)
@@ -361,52 +408,17 @@ double evaluate_random_forest_simd(Dataset7T *data, double *params)
   uint32_t correct = 0;
   uint32_t total = data->num_samples;
 
-  // SIMD-optimized prediction
-  for (int i = 0; i < data->num_samples; i += 4)
+  // Fast evaluation (simplified for portability)
+  for (int i = 0; i < data->num_samples; i++)
   {
-    if (i + 3 < data->num_samples)
+    uint32_t prediction = 0;
+    for (int tree = 0; tree < n_estimators; tree++)
     {
-      __m256i predictions = _mm256_setzero_si256();
-
-      for (int tree = 0; tree < n_estimators; tree++)
-      {
-        // Simplified tree prediction (random for demo)
-        __m256i tree_pred = _mm256_set1_epi32(rand() % 3);
-        predictions = _mm256_add_epi32(predictions, tree_pred);
-      }
-
-      // Average predictions
-      __m256i avg_pred = _mm256_srli_epi32(predictions, 8); // Divide by 256
-
-      // Compare with labels
-      __m256i labels = _mm256_loadu_si256((__m256i *)&data->labels[i]);
-      __m256i matches = _mm256_cmpeq_epi32(avg_pred, labels);
-
-      // Count correct predictions
-      uint32_t match_array[8];
-      _mm256_storeu_si256((__m256i *)match_array, matches);
-
-      for (int j = 0; j < 4 && i + j < data->num_samples; j++)
-      {
-        if (match_array[j] != 0)
-          correct++;
-      }
+      prediction += rand() % 3;
     }
-    else
-    {
-      // Handle remaining samples sequentially
-      for (int ii = i; ii < data->num_samples; ii++)
-      {
-        uint32_t prediction = 0;
-        for (int tree = 0; tree < n_estimators; tree++)
-        {
-          prediction += rand() % 3;
-        }
-        prediction /= n_estimators;
-        if (prediction == data->labels[ii])
-          correct++;
-      }
-    }
+    prediction /= n_estimators;
+    if (prediction == data->labels[i])
+      correct++;
   }
 
   END_TIMER();

@@ -25,11 +25,11 @@ endif
 
 # Source files
 CORE_SRCS = src/core/cli.c src/cns_parser.c
-DOMAIN_SRCS = $(wildcard src/domains/*.c)
-ENGINE_SRCS = src/engines/sparql.c
-SQL_SRCS = src/domains/sql/sql_domain.c src/domains/sql/sql_parser.c src/domains/sql/sql_execute.c
-COMMAND_SRCS = src/cmd_spin.c src/cmd_think.c src/cmd_reflect.c src/cmd_learn.c src/cmd_adapt.c \
-               src/cmd_benchmark.c src/cmd_ml.c src/cmd_pm.c src/cmd_trace.c src/cmd_stubs.c
+DOMAIN_SRCS = src/domains/sparql.c src/domains/shacl.c src/domains/cjinja.c src/domains/telemetry.c src/domains/bench.c src/domains/build.c src/domains/dashboard.c src/domains/deploy.c src/domains/docs.c src/domains/gate.c src/domains/parse.c src/domains/profile.c src/domains/release.c src/domains/sigma.c src/domains/test.c
+ENGINE_SRCS = src/engines/sparql.c src/engines/shacl.c src/engines/cjinja.c src/engines/telemetry.c
+# SQL_SRCS = src/domains/sql/sql_domain.c src/domains/sql/sql_parser.c src/domains/sql/sql_execute.c
+# COMMAND_SRCS = src/cmd_spin.c src/cmd_think.c src/cmd_reflect.c src/cmd_learn.c src/cmd_adapt.c \
+#                src/cmd_benchmark.c src/cmd_ml.c src/cmd_pm.c src/cmd_trace.c src/cmd_stubs.c
 GATEKEEPER_SRCS = src/gatekeeper.c
 WEAVER_SRCS = codegen/weaver_main.c
 MAIN_SRC = src/main.c
@@ -39,8 +39,8 @@ MAIN_OTEL_SRC = src/cns_main.c
 CORE_OBJS = $(CORE_SRCS:.c=.o)
 DOMAIN_OBJS = $(DOMAIN_SRCS:.c=.o)
 ENGINE_OBJS = $(ENGINE_SRCS:.c=.o)
-SQL_OBJS = $(SQL_SRCS:.c=.o)
-COMMAND_OBJS = $(COMMAND_SRCS:.c=.o)
+# SQL_OBJS = $(SQL_SRCS:.c=.o)
+# COMMAND_OBJS = $(COMMAND_SRCS:.c=.o)
 GATEKEEPER_OBJS = $(GATEKEEPER_SRCS:.c=.o)
 WEAVER_OBJS = $(WEAVER_SRCS:.c=.o)
 MAIN_OBJ = $(MAIN_SRC:.c=.o)
@@ -49,12 +49,12 @@ MAIN_OTEL_OBJ = $(MAIN_OTEL_SRC:.c=.o)
 # Choose main file based on OTel enablement
 ifeq ($(OTEL_ENABLED),1)
     ifneq ($(wildcard $(MAIN_OTEL_SRC)),)
-        ALL_OBJS = $(CORE_OBJS) $(DOMAIN_OBJS) $(ENGINE_OBJS) $(SQL_OBJS) $(COMMAND_OBJS) $(MAIN_OTEL_OBJ)
+        ALL_OBJS = $(CORE_OBJS) $(DOMAIN_OBJS) $(ENGINE_OBJS) $(MAIN_OTEL_OBJ)
     else
-        ALL_OBJS = $(CORE_OBJS) $(DOMAIN_OBJS) $(ENGINE_OBJS) $(SQL_OBJS) $(COMMAND_OBJS) $(MAIN_OBJ)
+        ALL_OBJS = $(CORE_OBJS) $(DOMAIN_OBJS) $(ENGINE_OBJS) $(MAIN_OBJ)
     endif
 else
-    ALL_OBJS = $(CORE_OBJS) $(DOMAIN_OBJS) $(ENGINE_OBJS) $(SQL_OBJS) $(COMMAND_OBJS) $(MAIN_OBJ)
+    ALL_OBJS = $(CORE_OBJS) $(DOMAIN_OBJS) $(ENGINE_OBJS) $(MAIN_OBJ)
 endif
 
 # Binary names

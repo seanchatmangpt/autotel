@@ -3,7 +3,11 @@
 
 #include <stdint.h>
 #include <stddef.h>
+
+// Conditional SIMD includes for x86/x64 only
+#ifdef __x86_64__
 #include <immintrin.h>
+#endif
 
 // Branch prediction hints for optimal performance
 #define LIKELY(x) __builtin_expect(!!(x), 1)
