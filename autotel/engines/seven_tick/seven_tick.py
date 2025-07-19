@@ -3,7 +3,7 @@ Seven-Tick Unified Interface
 Provides seamless integration between all 7-tick engines
 """
 
-from typing import Any, Dict, List, Optional, Union, Callable
+from typing import Any, Dict, List, Optional, Union, Callable, Tuple
 import asyncio
 from concurrent.futures import ThreadPoolExecutor, Future
 import numpy as np
@@ -15,8 +15,8 @@ from pathlib import Path
 from pm7t import PM7T
 from mcts7t import MCTS7T
 from sparql7t import SPARQL7TEngine
-from shacl7t import SHACL7T as SHACL7TEngine
-from owl7t import OWL7TEngine
+from shacl7t import SHACL7TValidator as SHACL7TEngine
+from owl7t import OWL7TCompiler as OWL7TEngine
 
 # Error handling
 class SevenTickError(Exception):

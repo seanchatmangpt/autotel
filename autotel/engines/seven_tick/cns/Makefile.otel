@@ -1,0 +1,122 @@
+# CNS Makefile with OpenTelemetry - CHATMAN NANO-STACK
+# 7-tick performance-guaranteed CLI with telemetry
+
+CXX = clang++
+CC = clang
+CXXFLAGS = -O3 -march=native -flto -ffast-math -Wall -Wextra -std=c++17
+CFLAGS = -O3 -march=native -flto -ffast-math -Wall -Wextra -std=c11
+LDFLAGS = -flto -lstdc++ -lpthread
+INCLUDES = -Iinclude -I../../include
+
+# OpenTelemetry configuration
+OTEL_CXXFLAGS = -DWITH_OPENTELEMETRY
+OTEL_LDFLAGS = -lopentelemetry_trace -lopentelemetry_common -lopentelemetry_exporter_ostream_span
+
+# Source files
+COMMAND_SRCS = src/cmd_spin.c src/cmd_think.c src/cmd_reflect.c src/cmd_learn.c src/cmd_adapt.c src/cmd_benchmark.c
+CORE_SRCS = src/core/cli.c
+DOMAIN_SRCS = $(wildcard src/domains/*.c)
+PARSER_SRCS = src/cns_parser.c
+MAIN_SRC = src/cns_main.c
+
+# Object files
+COMMAND_OBJS = $(COMMAND_SRCS:.c=.o)
+CORE_OBJS = $(CORE_SRCS:.c=.o)
+DOMAIN_OBJS = $(DOMAIN_SRCS:.c=.o)
+PARSER_OBJ = src/cns_parser.o
+MAIN_OBJ = src/cns_main.o
+
+# All object files
+ALL_OBJS = $(COMMAND_OBJS) $(CORE_OBJS) $(DOMAIN_OBJS) $(PARSER_OBJ) $(MAIN_OBJ)
+
+# Binary name
+TARGET = cns_otel
+
+# Default target
+all: $(TARGET)
+
+# Build the binary
+$(TARGET): $(ALL_OBJS)
+	$(CXX) $(LDFLAGS) $(OTEL_LDFLAGS) -o $@ $^
+	@echo "✓ Built $(TARGET) with OpenTelemetry"
+
+# Compile C++ source files (parser and main with OTel)
+src/cns_parser.o: src/cns_parser.c
+	$(CXX) $(CXXFLAGS) $(OTEL_CXXFLAGS) $(INCLUDES) -c -o $@ $<
+
+src/cns_main.o: src/cns_main.c
+	$(CXX) $(CXXFLAGS) $(OTEL_CXXFLAGS) $(INCLUDES) -c -o $@ $<
+
+# Compile C source files
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+
+# Clean build artifacts
+clean:
+	rm -f $(ALL_OBJS) $(TARGET)
+	@echo "✓ Cleaned build artifacts"
+
+# Install binary
+install: $(TARGET)
+	install -m 755 $(TARGET) /usr/local/bin/
+	@echo "✓ Installed to /usr/local/bin/$(TARGET)"
+
+# Uninstall binary
+uninstall:
+	rm -f /usr/local/bin/$(TARGET)
+	@echo "✓ Uninstalled from /usr/local/bin/$(TARGET)"
+
+# Run tests with telemetry
+test: $(TARGET)
+	OTEL_SERVICE_NAME=cns_test ./$(TARGET) test all
+
+# Run benchmarks with telemetry
+bench: $(TARGET)
+	OTEL_SERVICE_NAME=cns_bench ./$(TARGET) benchmark all
+
+# Run with example commands
+run-examples: $(TARGET)
+	@echo "Running CNS examples with OpenTelemetry..."
+	./$(TARGET) help
+	./$(TARGET) version
+	./$(TARGET) spin -n 100
+	./$(TARGET) think "test pattern"
+	./$(TARGET) reflect
+	./$(TARGET) learn sample.txt
+	./$(TARGET) adapt feedback.json
+	./$(TARGET) benchmark -q hash
+
+# Debug build
+debug: CXXFLAGS += -g -DDEBUG
+debug: CFLAGS += -g -DDEBUG
+debug: clean $(TARGET)
+
+# Profile build
+profile: CXXFLAGS += -pg
+profile: CFLAGS += -pg
+profile: LDFLAGS += -pg
+profile: clean $(TARGET)
+
+# Static analysis
+analyze:
+	clang-tidy src/*.c src/core/*.c src/domains/*.c -- $(CFLAGS) $(INCLUDES)
+
+# Format code
+format:
+	clang-format -i src/*.c src/core/*.c src/domains/*.c include/*.h
+
+# Help
+help:
+	@echo "CNS Makefile with OpenTelemetry targets:"
+	@echo "  make              - Build CNS binary with telemetry"
+	@echo "  make clean        - Remove build artifacts"
+	@echo "  make install      - Install to /usr/local/bin"
+	@echo "  make test         - Run tests with telemetry"
+	@echo "  make bench        - Run benchmarks with telemetry"
+	@echo "  make run-examples - Run example commands"
+	@echo "  make debug        - Build with debug symbols"
+	@echo "  make profile      - Build with profiling"
+	@echo "  make analyze      - Run static analysis"
+	@echo "  make format       - Format source code"
+
+.PHONY: all clean install uninstall test bench run-examples debug profile analyze format help

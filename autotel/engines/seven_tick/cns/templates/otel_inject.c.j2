@@ -1,0 +1,157 @@
+// AUTO-INJECTED OTEL instrumentation for CNS
+// Generated from ontology spans
+#include "cns_otel.h"
+#include "{{inject_target_header}}"
+
+// ============================================================================
+// AUTO-GENERATED INSTRUMENTED FUNCTION WRAPPERS
+// ============================================================================
+
+{% for span in spans %}
+// Instrumented wrapper for {{span.fn}}
+// {{span.comment}}
+{% if inject_signature and inject_signature[span.fn] %}
+{{inject_signature[span.fn]}} {
+    cns_otel_init();
+    opentelemetry_span_t* _span = cns_otel_start_{{span.fn}}();
+    
+    // Add function name as attribute
+    cns_otel_set_attribute_{{span.fn}}(_span, "function", "{{span.fn}}");
+    
+    // Record start time
+    uint64_t start_cycles = cns_gatekeeper_get_cycles();
+    
+    // ─── original {{span.fn}} body ─────────────────
+{% raw %}#include "{{span.fn}}_body.inc"{% endraw %}
+    // ───────────────────────────────────────────────
+    
+    // Record end time and calculate cycles
+    uint64_t end_cycles = cns_gatekeeper_get_cycles();
+    uint64_t cycles = end_cycles - start_cycles;
+    
+    // Add performance attributes
+    cns_otel_set_attribute_int_{{span.fn}}(_span, "cycles", cycles);
+    cns_otel_set_attribute_int_{{span.fn}}(_span, "start_cycles", start_cycles);
+    cns_otel_set_attribute_int_{{span.fn}}(_span, "end_cycles", end_cycles);
+    
+    // Check against Chatman constant (7 cycles)
+    if (cycles > 7) {
+        cns_otel_set_attribute_{{span.fn}}(_span, "violation", "true");
+        cns_otel_set_attribute_int_{{span.fn}}(_span, "violation_cycles", cycles - 7);
+    }
+    
+    cns_otel_end_{{span.fn}}(_span);
+}
+{% else %}
+// No signature found for {{span.fn}} - manual instrumentation required
+// Expected signature: {{span.fn}}(...)
+{% endif %}
+
+{% endfor %}
+
+// ============================================================================
+// PERFORMANCE TRACKING STRUCTURES
+// ============================================================================
+
+typedef struct {
+    uint64_t start_cycles;
+    uint64_t end_cycles;
+    opentelemetry_span_t* span;
+    const char* function_name;
+} CnsPerfTracker;
+
+// ============================================================================
+// CONVENIENCE MACROS FOR MANUAL INSTRUMENTATION
+// ============================================================================
+
+{% for span in spans %}
+#define CNS_PERF_START_{{span.fn.upper()}}() \
+    (CnsPerfTracker){ \
+        .start_cycles = cns_gatekeeper_get_cycles(), \
+        .span = cns_otel_start_{{span.fn}}(), \
+        .function_name = "{{span.fn}}" \
+    }
+
+#define CNS_PERF_END_{{span.fn.upper()}}(tracker) \
+    do { \
+        if (tracker.span) { \
+            tracker.end_cycles = cns_gatekeeper_get_cycles(); \
+            uint64_t cycles = tracker.end_cycles - tracker.start_cycles; \
+            cns_otel_set_attribute_int_{{span.fn}}(tracker.span, "cycles", cycles); \
+            if (cycles > 7) { \
+                cns_otel_set_attribute_{{span.fn}}(tracker.span, "violation", "true"); \
+            } \
+            cns_otel_end_{{span.fn}}(tracker.span); \
+        } \
+    } while(0)
+
+{% endfor %}
+
+// ============================================================================
+// BATCH OPERATION HELPERS
+// ============================================================================
+
+static inline void cns_otel_batch_start_operation(const char* operation_name) {
+    CnsOtelSpanBatch batch;
+    cns_otel_batch_init(&batch);
+    
+    // Add relevant spans based on operation
+    if (strstr(operation_name, "sparql") || strstr(operation_name, "query")) {
+        cns_otel_batch_add_spqlAsk(&batch);
+        cns_otel_batch_add_spqlSelect(&batch);
+    }
+    
+    if (strstr(operation_name, "jinja") || strstr(operation_name, "template")) {
+        cns_otel_batch_add_jinjaExec(&batch);
+        cns_otel_batch_add_jinjaRender(&batch);
+    }
+    
+    if (strstr(operation_name, "shacl") || strstr(operation_name, "validate")) {
+        cns_otel_batch_add_shaclValidate(&batch);
+        cns_otel_batch_add_shaclShape(&batch);
+    }
+    
+    if (strstr(operation_name, "gatekeeper") || strstr(operation_name, "test")) {
+        cns_otel_batch_add_gatekeeperCorrectness(&batch);
+        cns_otel_batch_add_gatekeeperCycleBudget(&batch);
+        cns_otel_batch_add_gatekeeperThroughput(&batch);
+    }
+}
+
+// ============================================================================
+// METRICS COLLECTION
+// ============================================================================
+
+static CnsOtelMetrics g_cns_metrics = {0};
+
+static inline void cns_otel_metrics_record_operation(const char* function_name, uint64_t cycles) {
+{% for span in spans %}
+    if (strcmp(function_name, "{{span.fn}}") == 0) {
+        cns_otel_metrics_record_{{span.fn}}(&g_cns_metrics, cycles);
+        return;
+    }
+{% endfor %}
+}
+
+static inline void cns_otel_metrics_print_summary(void) {
+    cns_otel_metrics_print(&g_cns_metrics);
+}
+
+static inline void cns_otel_metrics_reset(void) {
+    cns_otel_metrics_init(&g_cns_metrics);
+}
+
+// ============================================================================
+// INITIALIZATION AND CLEANUP
+// ============================================================================
+
+static inline void cns_otel_instrumentation_init(void) {
+    cns_otel_init();
+    cns_otel_metrics_reset();
+    cns_gatekeeper_init_cycles();
+}
+
+static inline void cns_otel_instrumentation_shutdown(void) {
+    cns_otel_metrics_print_summary();
+    cns_otel_shutdown();
+} 

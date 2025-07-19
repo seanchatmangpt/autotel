@@ -1,0 +1,83 @@
+# Gatekeeper Unit Tests Makefile
+
+CC = clang
+CFLAGS = -O3 -march=native -Wall -Wextra -std=c11 -lm -g
+INCLUDES = -Iinclude
+
+# Test targets
+TEST_GATEKEEPER_SRC = tests/test_gatekeeper.c
+TEST_GATEKEEPER_OBJ = tests/test_gatekeeper.o
+TEST_GATEKEEPER_TARGET = test_gatekeeper
+
+# Default target
+all: $(TEST_GATEKEEPER_TARGET)
+
+# Build test executable
+$(TEST_GATEKEEPER_TARGET): $(TEST_GATEKEEPER_OBJ)
+	$(CC) $(CFLAGS) -o $@ $^
+	@echo "✓ Built $(TEST_GATEKEEPER_TARGET)"
+
+# Compile test
+$(TEST_GATEKEEPER_OBJ): $(TEST_GATEKEEPER_SRC)
+	@mkdir -p tests
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+
+# Run unit tests
+test: $(TEST_GATEKEEPER_TARGET)
+	@echo "Running Gatekeeper unit tests..."
+	./$(TEST_GATEKEEPER_TARGET)
+
+# Run tests with verbose output
+test-verbose: $(TEST_GATEKEEPER_TARGET)
+	@echo "Running Gatekeeper unit tests with verbose output..."
+	./$(TEST_GATEKEEPER_TARGET) 2>&1 | tee test_results.log
+
+# Run performance benchmarks
+bench: $(TEST_GATEKEEPER_TARGET)
+	@echo "Running Gatekeeper performance benchmarks..."
+	time ./$(TEST_GATEKEEPER_TARGET)
+
+# Run memory check
+memcheck: $(TEST_GATEKEEPER_TARGET)
+	@echo "Running Gatekeeper with memory check..."
+	valgrind --leak-check=full --show-leak-kinds=all ./$(TEST_GATEKEEPER_TARGET)
+
+# Run with sanitizers
+sanitize: CFLAGS += -fsanitize=address -fsanitize=undefined
+sanitize: $(TEST_GATEKEEPER_TARGET)
+	@echo "Running Gatekeeper with sanitizers..."
+	./$(TEST_GATEKEEPER_TARGET)
+
+# Coverage build
+coverage: CFLAGS += -fprofile-arcs -ftest-coverage
+coverage: $(TEST_GATEKEEPER_TARGET)
+	@echo "Running Gatekeeper with coverage..."
+	./$(TEST_GATEKEEPER_TARGET)
+	@echo "Coverage data generated"
+
+# Clean
+clean:
+	rm -f $(TEST_GATEKEEPER_OBJ) $(TEST_GATEKEEPER_TARGET)
+	rm -f *.gcno *.gcda *.gcov
+	rm -f test_results.log
+	@echo "✓ Cleaned test artifacts"
+
+# Install test dependencies
+deps:
+	@echo "Installing test dependencies..."
+	@which valgrind > /dev/null || echo "Warning: valgrind not found (install for memory checking)"
+	@which gcov > /dev/null || echo "Warning: gcov not found (install for coverage)"
+
+# Help
+help:
+	@echo "Gatekeeper Test Makefile targets:"
+	@echo "  make test        - Run unit tests"
+	@echo "  make test-verbose - Run tests with verbose output"
+	@echo "  make bench       - Run performance benchmarks"
+	@echo "  make memcheck    - Run with memory checking"
+	@echo "  make sanitize    - Run with sanitizers"
+	@echo "  make coverage    - Run with coverage analysis"
+	@echo "  make clean       - Clean test artifacts"
+	@echo "  make deps        - Check test dependencies"
+
+.PHONY: all test test-verbose bench memcheck sanitize coverage clean deps help 

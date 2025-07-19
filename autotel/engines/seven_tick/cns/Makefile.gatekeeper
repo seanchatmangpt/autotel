@@ -1,0 +1,50 @@
+# Standalone Gatekeeper Makefile
+# Builds Gatekeeper without CNS dependencies
+
+CC = clang
+CFLAGS = -O3 -march=native -Wall -Wextra -std=c11 -lm
+INCLUDES = -Iinclude
+
+# Gatekeeper source
+GATEKEEPER_SRC = src/gatekeeper.c
+GATEKEEPER_OBJ = src/gatekeeper.o
+GATEKEEPER_TARGET = gatekeeper
+
+# Default target
+all: $(GATEKEEPER_TARGET)
+
+# Build Gatekeeper
+$(GATEKEEPER_TARGET): $(GATEKEEPER_OBJ)
+	$(CC) $(CFLAGS) -o $@ $^
+	@echo "✓ Built standalone $(GATEKEEPER_TARGET)"
+
+# Compile Gatekeeper
+$(GATEKEEPER_OBJ): $(GATEKEEPER_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+
+# Run Gatekeeper
+test: $(GATEKEEPER_TARGET)
+	@echo "Running Gatekeeper tests..."
+	./$(GATEKEEPER_TARGET)
+
+# Benchmark Gatekeeper
+bench: $(GATEKEEPER_TARGET)
+	@echo "Running Gatekeeper benchmarks..."
+	time ./$(GATEKEEPER_TARGET)
+
+# Clean
+clean:
+	rm -f $(GATEKEEPER_OBJ) $(GATEKEEPER_TARGET)
+	@echo "✓ Cleaned Gatekeeper build artifacts"
+
+# Install
+install: $(GATEKEEPER_TARGET)
+	install -m 755 $(GATEKEEPER_TARGET) /usr/local/bin/
+	@echo "✓ Installed Gatekeeper to /usr/local/bin/"
+
+# Uninstall
+uninstall:
+	rm -f /usr/local/bin/$(GATEKEEPER_TARGET)
+	@echo "✓ Uninstalled Gatekeeper"
+
+.PHONY: all test bench clean install uninstall 

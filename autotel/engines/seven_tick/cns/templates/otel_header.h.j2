@@ -1,0 +1,140 @@
+// AUTO-GENERATED — OpenTelemetry stubs for CNS
+// Generated from ontology spans
+#ifndef CNS_OTEL_H
+#define CNS_OTEL_H
+
+#include <opentelemetry/c/trace.h>
+#include <opentelemetry/c/trace_provider.h>
+
+// ============================================================================
+// CNS OpenTelemetry Initialization
+// ============================================================================
+
+static inline void cns_otel_init(void) {
+    opentelemetry_sdk_init();
+}
+
+static inline void cns_otel_shutdown(void) {
+    opentelemetry_sdk_shutdown();
+}
+
+// ============================================================================
+// AUTO-GENERATED SPAN FUNCTIONS
+// ============================================================================
+
+{% for span in spans %}
+// {{ span.spanName }}
+// {{ span.comment }}
+static inline opentelemetry_span_t* cns_otel_start_{{span.fn}}() {
+    return opentelemetry_tracer_start_span(
+        "{{span.spanName}}", 
+        NULL, 
+        0
+    );
+}
+
+static inline void cns_otel_end_{{span.fn}}(opentelemetry_span_t* s) {
+    if (s) {
+        opentelemetry_span_end(s);
+    }
+}
+
+static inline void cns_otel_set_attribute_{{span.fn}}(opentelemetry_span_t* s, const char* key, const char* value) {
+    if (s) {
+        opentelemetry_span_set_attribute_string(s, key, value);
+    }
+}
+
+static inline void cns_otel_set_attribute_int_{{span.fn}}(opentelemetry_span_t* s, const char* key, int64_t value) {
+    if (s) {
+        opentelemetry_span_set_attribute_int(s, key, value);
+    }
+}
+
+static inline void cns_otel_set_attribute_double_{{span.fn}}(opentelemetry_span_t* s, const char* key, double value) {
+    if (s) {
+        opentelemetry_span_set_attribute_double(s, key, value);
+    }
+}
+
+{% endfor %}
+
+// ============================================================================
+// CONVENIENCE MACROS
+// ============================================================================
+
+{% for span in spans %}
+#define CNS_OTEL_SPAN_{{span.fn.upper()}}(name) \
+    opentelemetry_span_t* name = cns_otel_start_{{span.fn}}()
+
+#define CNS_OTEL_END_{{span.fn.upper()}}(name) \
+    cns_otel_end_{{span.fn}}(name)
+
+{% endfor %}
+
+// ============================================================================
+// BATCH SPAN OPERATIONS
+// ============================================================================
+
+typedef struct {
+    opentelemetry_span_t* spans[{{ spans|length }}];
+    size_t count;
+} CnsOtelSpanBatch;
+
+static inline void cns_otel_batch_init(CnsOtelSpanBatch* batch) {
+    batch->count = 0;
+}
+
+{% for span in spans %}
+static inline void cns_otel_batch_add_{{span.fn}}(CnsOtelSpanBatch* batch) {
+    if (batch->count < {{ spans|length }}) {
+        batch->spans[batch->count++] = cns_otel_start_{{span.fn}}();
+    }
+}
+{% endfor %}
+
+static inline void cns_otel_batch_end_all(CnsOtelSpanBatch* batch) {
+    for (size_t i = 0; i < batch->count; i++) {
+        if (batch->spans[i]) {
+            opentelemetry_span_end(batch->spans[i]);
+        }
+    }
+    batch->count = 0;
+}
+
+// ============================================================================
+// METRICS AND COUNTERS
+// ============================================================================
+
+typedef struct {
+    uint64_t span_counts[{{ spans|length }}];
+    uint64_t total_spans;
+    uint64_t total_cycles;
+} CnsOtelMetrics;
+
+static inline void cns_otel_metrics_init(CnsOtelMetrics* metrics) {
+    memset(metrics, 0, sizeof(CnsOtelMetrics));
+}
+
+{% for span in spans %}
+static inline void cns_otel_metrics_record_{{span.fn}}(CnsOtelMetrics* metrics, uint64_t cycles) {
+    metrics->span_counts[{{ loop.index0 }}]++;
+    metrics->total_spans++;
+    metrics->total_cycles += cycles;
+}
+{% endfor %}
+
+static inline void cns_otel_metrics_print(const CnsOtelMetrics* metrics) {
+    printf("=== CNS OpenTelemetry Metrics ===\n");
+    printf("Total spans: %llu\n", (unsigned long long)metrics->total_spans);
+    printf("Total cycles: %llu\n", (unsigned long long)metrics->total_cycles);
+    printf("Average cycles per span: %.2f\n", 
+           metrics->total_spans > 0 ? (double)metrics->total_cycles / metrics->total_spans : 0.0);
+    
+    printf("\nSpan breakdown:\n");
+{% for span in spans %}
+    printf("  {{span.spanName}}: %llu\n", (unsigned long long)metrics->span_counts[{{ loop.index0 }}]);
+{% endfor %}
+}
+
+#endif // CNS_OTEL_H 

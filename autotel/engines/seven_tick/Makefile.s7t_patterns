@@ -1,0 +1,70 @@
+CC = gcc
+CFLAGS = -Wall -Wextra -std=c99 -O2 -g
+INCLUDES = -I. -Ilib
+LIBS = -lm
+
+# Source files
+S7T_PATTERNS_SRC = test_s7t_patterns.c
+S7T_PATTERNS_OBJ = test_s7t_patterns.o
+S7T_PATTERNS_BIN = test_s7t_patterns
+
+# Common library
+COMMON_SRC = lib/7t_common.c
+COMMON_OBJ = lib/7t_common.o
+
+# Default target
+all: $(S7T_PATTERNS_BIN)
+
+# Compile test binary
+$(S7T_PATTERNS_BIN): $(S7T_PATTERNS_OBJ) $(COMMON_OBJ)
+	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
+
+# Compile test source
+$(S7T_PATTERNS_OBJ): $(S7T_PATTERNS_SRC) s7t_patterns.h lib/7t_common.h
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+
+# Compile common library
+$(COMMON_OBJ): $(COMMON_SRC) lib/7t_common.h
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+
+# Test target
+test: $(S7T_PATTERNS_BIN)
+	@echo "=== Running S7T Patterns Test ==="
+	./$(S7T_PATTERNS_BIN)
+	@echo "=== Test Complete ==="
+
+# Performance test
+perf: $(S7T_PATTERNS_BIN)
+	@echo "=== Performance Test ==="
+	time ./$(S7T_PATTERNS_BIN)
+	@echo "=== Performance Test Complete ==="
+
+# Memory check
+memcheck: $(S7T_PATTERNS_BIN)
+	@echo "=== Memory Check ==="
+	valgrind --leak-check=full --show-leak-kinds=all ./$(S7T_PATTERNS_BIN)
+	@echo "=== Memory Check Complete ==="
+
+# Clean
+clean:
+	rm -f $(S7T_PATTERNS_OBJ) $(COMMON_OBJ) $(S7T_PATTERNS_BIN)
+
+# Install dependencies (if needed)
+deps:
+	@echo "Checking dependencies..."
+	@which gcc > /dev/null || (echo "gcc not found" && exit 1)
+	@which valgrind > /dev/null || echo "valgrind not found (optional for memory checking)"
+	@echo "Dependencies OK"
+
+# Help
+help:
+	@echo "Available targets:"
+	@echo "  all       - Build test binary"
+	@echo "  test      - Run tests"
+	@echo "  perf      - Run performance test"
+	@echo "  memcheck  - Run memory check with valgrind"
+	@echo "  clean     - Clean build artifacts"
+	@echo "  deps      - Check dependencies"
+	@echo "  help      - Show this help"
+
+.PHONY: all test perf memcheck clean deps help 
