@@ -1,239 +1,71 @@
-CC = cc
-BASE_CFLAGS = -O3 -march=native -fPIC -Wall -Wextra
-BASE_LDFLAGS = -shared
+# ─────────────────────────────────────────────────────────────
+# Makefile for CHATMAN-NANO-STACK (S7T Library)
+# ─────────────────────────────────────────────────────────────
 
-# Default flags
-CFLAGS = $(BASE_CFLAGS)
-LDFLAGS = $(BASE_LDFLAGS)
+CC = gcc
+CFLAGS = -std=c11 -O3 -march=native -Wall -Wextra -Werror
+CFLAGS += -fno-exceptions -fno-rtti -fstrict-aliasing
+CFLAGS += -DS7T_DEBUG  # Enable performance assertions
 
-# Production build flags
-PROD_CFLAGS = $(BASE_CFLAGS) -DNDEBUG -flto -fomit-frame-pointer -funroll-loops -ftree-vectorize
-PROD_LDFLAGS = $(BASE_LDFLAGS) -flto
+# Include paths
+INCLUDES = -I./include
 
-# Directories
-RUNTIME_DIR = runtime/src
-COMPILER_DIR = compiler/src
-LIB_DIR = lib
-VERIFICATION_DIR = verification
+# Source files
+DEMO_SRC = examples/s7t_demo.c
 
-# Runtime library
-RUNTIME_SRCS = $(RUNTIME_DIR)/seven_t_runtime.c
-RUNTIME_LIB = $(LIB_DIR)/lib7t_runtime.so
+# Output
+DEMO_BIN = s7t_demo
 
-# Compiler
-COMPILER_SRCS = $(COMPILER_DIR)/compiler.c $(COMPILER_DIR)/qop.c $(COMPILER_DIR)/cjinja.c
-COMPILER_BIN = compiler/seven-t-compiler
+# Detect architecture for SIMD flags
+UNAME_M := $(shell uname -m)
+ifeq ($(UNAME_M),x86_64)
+    CFLAGS += -msse2 -mavx2
+else ifeq ($(UNAME_M),aarch64)
+    CFLAGS += -march=armv8-a+simd
+endif
 
-# Verification
-GATEKEEPER_SRC = $(VERIFICATION_DIR)/gatekeeper_benchmark.c
-GATEKEEPER_BIN = $(VERIFICATION_DIR)/gatekeeper
-SHACL_BENCHMARK_SRC = $(VERIFICATION_DIR)/shacl_validation_benchmark.c
-SHACL_BENCHMARK_BIN = $(VERIFICATION_DIR)/shacl_validation_benchmark
-SHACL_7TICK_BENCHMARK_SRC = $(VERIFICATION_DIR)/shacl_7tick_benchmark.c
-SHACL_7TICK_BENCHMARK_BIN = $(VERIFICATION_DIR)/shacl_7tick_benchmark
-CJINJA_BENCHMARK_SRC = $(VERIFICATION_DIR)/cjinja_benchmark.c
-CJINJA_BENCHMARK_BIN = $(VERIFICATION_DIR)/cjinja_benchmark
-CJINJA_80_20_BENCHMARK_SRC = $(VERIFICATION_DIR)/cjinja_80_20_benchmark.c
-CJINJA_80_20_BENCHMARK_BIN = $(VERIFICATION_DIR)/cjinja_80_20_benchmark
-CJINJA_7TICK_VS_49TICK_BENCHMARK_SRC = $(VERIFICATION_DIR)/cjinja_7tick_vs_49tick_benchmark.c
-CJINJA_7TICK_VS_49TICK_BENCHMARK_BIN = $(VERIFICATION_DIR)/cjinja_7tick_vs_49tick_benchmark
-SHACL_IMPL_BENCHMARK_SRC = $(VERIFICATION_DIR)/shacl_implementation_benchmark.c
-SHACL_IMPL_BENCHMARK_BIN = $(VERIFICATION_DIR)/shacl_implementation_benchmark
-SPARQL_7TICK_BENCHMARK_SRC = $(VERIFICATION_DIR)/sparql_7tick_benchmark.c
-SPARQL_7TICK_BENCHMARK_BIN = $(VERIFICATION_DIR)/sparql_7tick_benchmark
+# Default target
+all: $(DEMO_BIN)
 
-# Telemetry7T targets
-TELEMETRY7T_SRC = c_src/telemetry7t.c
-TELEMETRY7T_BENCHMARK_SRC = verification/telemetry7t_benchmark.c
-TELEMETRY7T_BENCHMARK_BIN = verification/telemetry7t_benchmark
-TELEMETRY7T_7TICK_BENCHMARK_SRC = verification/telemetry7t_7tick_benchmark.c
-TELEMETRY7T_7TICK_BENCHMARK_BIN = verification/telemetry7t_7tick_benchmark
-TELEMETRY7T_JSON_BENCHMARK_SRC = verification/telemetry7t_simple_json.c
-TELEMETRY7T_JSON_BENCHMARK_BIN = verification/telemetry7t_simple_json
+# Build demo
+$(DEMO_BIN): $(DEMO_SRC)
+	@echo "Building CHATMAN-NANO-STACK demo..."
+	$(CC) $(CFLAGS) $(INCLUDES) $< -o $@
+	@echo "Build complete: ./$@"
 
-# PM7T Process Mining Library
-PM7T_OBJS = c_src/pm7t.o
-PM7T_LIB = libpm7t.so
+# Run demo
+run: $(DEMO_BIN)
+	@echo "Running CHATMAN-NANO-STACK demo..."
+	@./$(DEMO_BIN)
 
-# Optimized 7T Engine
-OPTIMIZED_OBJS = c_src/sparql7t_optimized.o
-OPTIMIZED_LIB = libsparql7t_optimized.so
+# Performance profiling
+perf: $(DEMO_BIN)
+	@echo "Running with performance profiling..."
+	perf record -e cycles,instructions,cache-misses ./$(DEMO_BIN)
+	perf report
 
-# 7T Benchmark Framework
-BENCHMARK_FRAMEWORK_OBJS = benchmarks/7t_benchmark_framework.o
-BENCHMARK_FRAMEWORK_LIB = lib7t_benchmark_framework.a
+# Valgrind check (should show 0 allocations)
+valgrind: $(DEMO_BIN)
+	@echo "Running memory check (expecting 0 heap allocations)..."
+	valgrind --leak-check=full --show-leak-kinds=all ./$(DEMO_BIN)
 
-# 7T Benchmark Suite
-BENCHMARK_SUITE_BIN = 7t_benchmark_suite
+# Assembly output for inspection
+asm: $(DEMO_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -S $< -o s7t_demo.s
+	@echo "Assembly output: s7t_demo.s"
 
-.PHONY: all runtime compiler verification clean production
-
-all: runtime compiler verification
-
-production: CFLAGS = $(PROD_CFLAGS)
-production: LDFLAGS = $(PROD_LDFLAGS)
-production: clean all
-
-runtime: $(RUNTIME_LIB)
-
-$(RUNTIME_LIB): $(RUNTIME_SRCS)
-	mkdir -p $(LIB_DIR)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
-
-compiler: $(COMPILER_BIN)
-
-$(COMPILER_BIN): $(COMPILER_SRCS)
-	$(CC) $(CFLAGS) -o $@ $^ -ldl
-
-verification: $(GATEKEEPER_BIN) $(SHACL_BENCHMARK_BIN) $(SHACL_7TICK_BENCHMARK_BIN) $(CJINJA_BENCHMARK_BIN) $(CJINJA_80_20_BENCHMARK_BIN) $(CJINJA_7TICK_VS_49TICK_BENCHMARK_BIN) $(SHACL_IMPL_BENCHMARK_BIN) $(TELEMETRY7T_BENCHMARK_BIN)
-
-$(GATEKEEPER_BIN): $(GATEKEEPER_SRC) $(RUNTIME_LIB)
-	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -l7t_runtime -ldl -Wl,-rpath,$(PWD)/$(LIB_DIR)
-
-$(SHACL_BENCHMARK_BIN): $(SHACL_BENCHMARK_SRC) $(RUNTIME_LIB)
-	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -l7t_runtime -ldl -Wl,-rpath,$(PWD)/$(LIB_DIR)
-
-$(SHACL_7TICK_BENCHMARK_BIN): $(SHACL_7TICK_BENCHMARK_SRC) $(RUNTIME_LIB)
-	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -l7t_runtime -ldl -Wl,-rpath,$(PWD)/$(LIB_DIR)
-
-$(CJINJA_BENCHMARK_BIN): $(CJINJA_BENCHMARK_SRC) $(COMPILER_DIR)/cjinja.c
-	$(CC) $(CFLAGS) -o $@ $(CJINJA_BENCHMARK_SRC) $(COMPILER_DIR)/cjinja.c -I$(COMPILER_DIR)
-
-$(CJINJA_80_20_BENCHMARK_BIN): $(CJINJA_80_20_BENCHMARK_SRC) $(COMPILER_DIR)/cjinja.c
-	$(CC) $(CFLAGS) -o $@ $(CJINJA_80_20_BENCHMARK_SRC) $(COMPILER_DIR)/cjinja.c -I$(COMPILER_DIR)
-
-$(CJINJA_7TICK_VS_49TICK_BENCHMARK_BIN): $(CJINJA_7TICK_VS_49TICK_BENCHMARK_SRC) $(COMPILER_DIR)/cjinja.c
-	$(CC) $(CFLAGS) -o $@ $(CJINJA_7TICK_VS_49TICK_BENCHMARK_SRC) $(COMPILER_DIR)/cjinja.c -I$(COMPILER_DIR)
-
-$(SHACL_IMPL_BENCHMARK_BIN): $(SHACL_IMPL_BENCHMARK_SRC) $(RUNTIME_LIB)
-	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -l7t_runtime -ldl -Wl,-rpath,$(PWD)/$(LIB_DIR)
-
-$(TELEMETRY7T_BENCHMARK_BIN): $(TELEMETRY7T_BENCHMARK_SRC) $(TELEMETRY7T_SRC)
-	$(CC) $(CFLAGS) -o $@ $^ -lpthread
-
-$(TELEMETRY7T_7TICK_BENCHMARK_BIN): $(TELEMETRY7T_7TICK_BENCHMARK_SRC)
-	$(CC) $(CFLAGS) -o $@ $<
-
-$(TELEMETRY7T_JSON_BENCHMARK_BIN): $(TELEMETRY7T_JSON_BENCHMARK_SRC) $(TELEMETRY7T_SRC) $(COMPILER_DIR)/cjinja.c
-	$(CC) $(CFLAGS) -o $@ $^
-
-$(PM7T_LIB): $(PM7T_OBJS)
-	$(CC) -shared -o $@ $(PM7T_OBJS) -lm
-
-c_src/pm7t.o: c_src/pm7t.c c_src/pm7t.h
-	$(CC) $(CFLAGS) -fPIC -c $< -o $@
-
-# Optimized 7T Engine targets
-$(OPTIMIZED_LIB): $(OPTIMIZED_OBJS)
-	$(CC) -shared -o $@ $(OPTIMIZED_OBJS) -lm
-
-c_src/sparql7t_optimized.o: c_src/sparql7t_optimized.c c_src/sparql7t_optimized.h
-	$(CC) $(CFLAGS) -O3 -march=native -fPIC -c $< -o $@
-
-# Process mining demos
-process_mining_demo: examples/process_mining_demo.c $(PM7T_LIB)
-	$(CC) $(CFLAGS) -o $@ $< -L. -lpm7t -lm
-
-healthcare_demo: examples/demo_01_healthcare_process_mining.c $(PM7T_LIB)
-	$(CC) $(CFLAGS) -o $@ $< -L. -lpm7t -lm
-
-ecommerce_demo: examples/demo_02_ecommerce_process_mining.c $(PM7T_LIB)
-	$(CC) $(CFLAGS) -o $@ $< -L. -lpm7t -lm
-
-manufacturing_demo: examples/demo_03_manufacturing_process_mining.c $(PM7T_LIB)
-	$(CC) $(CFLAGS) -o $@ $< -L. -lpm7t -lm
-
-financial_demo: examples/demo_04_financial_process_mining.c $(PM7T_LIB)
-	$(CC) $(CFLAGS) -o $@ $< -L. -lpm7t -lm
-
-itservice_demo: examples/demo_05_itservice_process_mining.c $(PM7T_LIB)
-	$(CC) $(CFLAGS) -o $@ $< -L. -lpm7t -lm
-
-# Build all process mining demos
-process_mining_demos: healthcare_demo ecommerce_demo manufacturing_demo financial_demo itservice_demo
-
-# PM7T benchmarks
-pm7t_benchmarks: benchmarks/pm7t_benchmarks.c $(PM7T_LIB)
-	$(CC) $(CFLAGS) -O3 -march=native -o $@ $< -L. -lpm7t -lm
-
-# Optimized benchmarks
-optimized_benchmarks: benchmarks/optimized_benchmarks.c $(OPTIMIZED_LIB)
-	$(CC) $(CFLAGS) -O3 -march=native -o $@ $< -L. -lsparql7t_optimized -lm
-
-# Run benchmarks
-benchmark: pm7t_benchmarks
-	./pm7t_benchmarks
-
-# Run optimized benchmarks
-benchmark_optimized: optimized_benchmarks
-	./optimized_benchmarks
-
-# Benchmark framework targets
-$(BENCHMARK_FRAMEWORK_LIB): $(BENCHMARK_FRAMEWORK_OBJS)
-	$(AR) rcs $@ $(BENCHMARK_FRAMEWORK_OBJS)
-
-benchmarks/7t_benchmark_framework.o: benchmarks/7t_benchmark_framework.c benchmarks/7t_benchmark_framework.h
-	$(CC) $(CFLAGS) -O3 -march=native -c $< -o $@
-
-# Benchmark suite
-$(BENCHMARK_SUITE_BIN): benchmarks/7t_benchmark_suite.c $(BENCHMARK_FRAMEWORK_LIB) 
-	$(CC) $(CFLAGS) -O3 -march=native -o $@ $< -L. -l7t_benchmark_framework -lm
-
-# Run benchmark suite
-benchmark-suite: $(BENCHMARK_SUITE_BIN)
-	./$(BENCHMARK_SUITE_BIN)
-
-# Run benchmark with Python runner
-benchmark-runner: $(BENCHMARK_SUITE_BIN)
-	python3 benchmarks/7t_benchmark_runner.py
-
-# Run specific benchmark test
-benchmark-test: $(BENCHMARK_SUITE_BIN)
-	@if [ -z "$(TEST)" ]; then \
-		echo "Usage: make benchmark-test TEST=<test_name>"; \
-		echo "Available tests: basic_operation, batch_operation, telemetry_overhead, memory_efficiency, cache_performance, branch_prediction, simd_performance, stress_test"; \
-		exit 1; \
-	fi
-	python3 benchmarks/7t_benchmark_runner.py --test $(TEST)
-
-# Continuous monitoring
-benchmark-monitor: $(BENCHMARK_SUITE_BIN)
-	python3 benchmarks/7t_benchmark_runner.py --continuous 60
-
+# Clean
 clean:
-	rm -f $(RUNTIME_LIB) $(COMPILER_BIN) $(GATEKEEPER_BIN) $(SHACL_BENCHMARK_BIN) $(SHACL_7TICK_BENCHMARK_BIN) $(CJINJA_BENCHMARK_BIN) $(SHACL_IMPL_BENCHMARK_BIN) $(TELEMETRY7T_BENCHMARK_BIN) $(PM7T_OBJS) $(PM7T_LIB) $(OPTIMIZED_OBJS) $(OPTIMIZED_LIB) $(BENCHMARK_FRAMEWORK_OBJS) $(BENCHMARK_FRAMEWORK_LIB) process_mining_demo pm7t_benchmarks optimized_benchmarks $(BENCHMARK_SUITE_BIN)
-	rm -f *.o *.so *.a
-	rm -f /tmp/seven_t_kernel.c /tmp/kernel.so /tmp/sprint_health_data.ttl
+	rm -f $(DEMO_BIN) s7t_demo.s perf.data perf.data.old
 
-run-benchmark: all
-	cd $(VERIFICATION_DIR) && ./gatekeeper
+# Help
+help:
+	@echo "CHATMAN-NANO-STACK Makefile targets:"
+	@echo "  make         - Build the demo"
+	@echo "  make run     - Build and run the demo"
+	@echo "  make perf    - Run with performance profiling"
+	@echo "  make valgrind - Check for memory allocations (should be 0)"
+	@echo "  make asm     - Generate assembly output"
+	@echo "  make clean   - Remove build artifacts"
 
-run-shacl-benchmark: all
-	cd $(VERIFICATION_DIR) && ./shacl_validation_benchmark
-
-run-shacl-7tick-benchmark: all
-	cd $(VERIFICATION_DIR) && ./shacl_7tick_benchmark
-
-run-cjinja-benchmark: all
-	cd $(VERIFICATION_DIR) && ./cjinja_benchmark
-
-run-cjinja-80-20-benchmark: all
-	cd $(VERIFICATION_DIR) && ./cjinja_80_20_benchmark
-
-run-cjinja-7tick-vs-49tick-benchmark: all
-	cd $(VERIFICATION_DIR) && ./cjinja_7tick_vs_49tick_benchmark
-
-run-shacl-impl-benchmark: all
-	cd $(VERIFICATION_DIR) && LD_LIBRARY_PATH=../lib ./shacl_implementation_benchmark
-
-run-shacl-7tick-benchmark: all
-	cd $(VERIFICATION_DIR) && LD_LIBRARY_PATH=../lib ./shacl_7tick_benchmark
-
-run-telemetry7t-benchmark: all
-	./verification/telemetry7t_benchmark
-
-run-telemetry7t-7tick-benchmark: all
-	./verification/telemetry7t_7tick_benchmark
-
-run-telemetry7t-json-benchmark: all
-	./verification/telemetry7t_simple_json
+.PHONY: all run perf valgrind asm clean help

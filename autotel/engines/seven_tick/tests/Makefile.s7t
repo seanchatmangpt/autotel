@@ -1,0 +1,43 @@
+# Makefile for s7t.h core library tests
+
+CC = gcc
+CFLAGS = -O3 -march=native -Wall -Wextra -std=c11 -I../include
+LDFLAGS = -lm
+
+# Enable specific CPU features if available
+CFLAGS += -msse4.2 -mavx2 -mbmi2
+
+# Source files
+TEST_SRCS = test_s7t_core.c
+TEST_OBJS = $(TEST_SRCS:.c=.o)
+TEST_EXEC = test_s7t_core
+
+# Targets
+.PHONY: all clean test
+
+all: $(TEST_EXEC)
+
+$(TEST_EXEC): $(TEST_OBJS)
+	$(CC) $(TEST_OBJS) -o $@ $(LDFLAGS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+test: $(TEST_EXEC)
+	./$(TEST_EXEC)
+
+clean:
+	rm -f $(TEST_OBJS) $(TEST_EXEC)
+
+# Performance test with different optimization levels
+perf-test: clean
+	@echo "=== Testing with -O0 ==="
+	$(CC) $(CFLAGS:-O3=-O0) test_s7t_core.c -o test_s7t_O0 $(LDFLAGS)
+	./test_s7t_O0 | grep "cycles/op"
+	@echo "\n=== Testing with -O2 ==="
+	$(CC) $(CFLAGS:-O3=-O2) test_s7t_core.c -o test_s7t_O2 $(LDFLAGS)
+	./test_s7t_O2 | grep "cycles/op"
+	@echo "\n=== Testing with -O3 ==="
+	$(CC) $(CFLAGS) test_s7t_core.c -o test_s7t_O3 $(LDFLAGS)
+	./test_s7t_O3 | grep "cycles/op"
+	rm -f test_s7t_O0 test_s7t_O2 test_s7t_O3

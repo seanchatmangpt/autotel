@@ -15,7 +15,7 @@ from pathlib import Path
 from pm7t import PM7T
 from mcts7t import MCTS7T
 from sparql7t import SPARQL7TEngine
-from shacl7t import SHACL7TEngine
+from shacl7t import SHACL7T as SHACL7TEngine
 from owl7t import OWL7TEngine
 
 # Error handling

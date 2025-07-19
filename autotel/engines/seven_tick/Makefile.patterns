@@ -1,0 +1,23 @@
+# Makefile for S7T Nanosecond Design Patterns
+
+CC = gcc
+CFLAGS = -O3 -march=native -Wall -Wextra -I. -Ilib
+LDFLAGS = -Llib -l7t_common
+
+# Pattern test executable
+test_patterns: test_patterns.c s7t_patterns.h lib/lib7t_common.a
+	$(CC) $(CFLAGS) test_patterns.c -o test_patterns $(LDFLAGS)
+
+# Build the common library if needed
+lib/lib7t_common.a:
+	make -C lib lib7t_common.a
+
+# Run the test
+run: test_patterns
+	./test_patterns
+
+# Clean build artifacts
+clean:
+	rm -f test_patterns
+
+.PHONY: run clean

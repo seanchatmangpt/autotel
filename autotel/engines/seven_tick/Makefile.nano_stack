@@ -1,0 +1,88 @@
+# CHATMAN-NANO-STACK Makefile
+# Build physics-compliant workflow patterns with aggressive optimization
+
+CC = gcc
+CFLAGS = -O3 -march=native -std=c11 -Wall -Wextra
+CFLAGS += -fomit-frame-pointer -finline-functions -funroll-loops
+CFLAGS += -ftree-vectorize -ffast-math -fno-exceptions
+INCLUDES = -I./include -I./lib
+
+# Source files
+DEMO_SRC = examples/nano_stack_demo.c
+TEST_SRC = tests/test_nano_stack_performance.c
+PATTERN_EXAMPLE_SRC = examples/pattern_composition.c
+
+# Output binaries
+DEMO_BIN = nano_stack_demo
+TEST_BIN = test_nano_stack
+PATTERN_BIN = pattern_composition
+
+# Targets
+all: demo test patterns
+
+demo: $(DEMO_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $(DEMO_BIN) $(DEMO_SRC)
+	@echo "✓ Built nano_stack_demo"
+
+test: $(TEST_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $(TEST_BIN) $(TEST_SRC)
+	@echo "✓ Built test_nano_stack"
+
+patterns: $(PATTERN_EXAMPLE_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $(PATTERN_BIN) $(PATTERN_EXAMPLE_SRC)
+	@echo "✓ Built pattern_composition"
+
+# Run targets
+run-demo: demo
+	@echo "\n=== Running NANO-STACK Demo ==="
+	./$(DEMO_BIN)
+
+run-test: test
+	@echo "\n=== Running Performance Tests ==="
+	./$(TEST_BIN)
+
+run-patterns: patterns
+	@echo "\n=== Running Pattern Composition ==="
+	./$(PATTERN_BIN)
+
+# Benchmark with perf
+benchmark: demo test
+	@echo "\n=== CPU Performance Analysis ==="
+	perf stat -e cycles,instructions,cache-misses,branch-misses ./$(TEST_BIN)
+
+# Generate assembly for inspection
+asm: $(DEMO_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -S -o nano_stack_demo.s $(DEMO_SRC)
+	@echo "✓ Generated assembly in nano_stack_demo.s"
+
+# Clean
+clean:
+	rm -f $(DEMO_BIN) $(TEST_BIN) $(PATTERN_BIN) *.s *.o
+
+# Documentation
+docs:
+	@echo "CHATMAN-NANO-STACK Workflow Patterns"
+	@echo "===================================="
+	@echo ""
+	@echo "Patterns Implemented:"
+	@echo "  1. Static Finite-State Lattice (SFL)"
+	@echo "  2. Token-Ring Pipeline"
+	@echo "  3. Micro-Op Tape"
+	@echo "  4. Bitmask Decision Field"
+	@echo "  5. Time-Bucket Accumulator"
+	@echo "  6. Sharded Hash-Join Grid"
+	@echo "  7. Scenario Matrix"
+	@echo ""
+	@echo "Performance Target: ≤7 CPU cycles per operation"
+	@echo ""
+	@echo "Build Commands:"
+	@echo "  make all       - Build all examples and tests"
+	@echo "  make demo      - Build demo application"
+	@echo "  make test      - Build performance tests"
+	@echo "  make run-demo  - Run the demo"
+	@echo "  make run-test  - Run performance tests"
+	@echo "  make benchmark - Run with perf analysis"
+	@echo "  make asm       - Generate assembly output"
+	@echo "  make clean     - Remove build artifacts"
+
+.PHONY: all demo test patterns run-demo run-test run-patterns benchmark asm clean docs
