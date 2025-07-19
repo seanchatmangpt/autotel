@@ -14,8 +14,8 @@ ifeq ($(shell uname -m),x86_64)
     CXXFLAGS += -mavx2 -mfma
 endif
 
-# OpenTelemetry configuration
-OTEL_ENABLED ?= 1
+# OpenTelemetry configuration - Auto-detect
+OTEL_ENABLED ?= $(shell pkg-config --exists opentelemetry && echo 1 || echo 0)
 ifeq ($(OTEL_ENABLED),1)
     CFLAGS += -DWITH_OPENTELEMETRY
     CXXFLAGS += -DWITH_OPENTELEMETRY

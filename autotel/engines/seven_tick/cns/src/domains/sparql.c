@@ -1,25 +1,23 @@
 #include "cns/types.h"
 #include "cns/engines/sparql.h"
+#include "../include/s7t.h"
+#include "../../sparql_queries.h"
+#include "../../include/ontology_ids.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-// Temporary placeholder types and constants
-typedef struct {
-    uint32_t subject_id;
-    uint32_t predicate_id;
-    uint32_t object_id;
-    double value;
-} QueryResult;
+// External kernel functions
+extern int s7t_scan_by_type(CNSSparqlEngine* engine, uint32_t type_id, uint32_t* results, int max_results);
+extern int s7t_scan_by_predicate(CNSSparqlEngine* engine, uint32_t pred_id, uint32_t* results, int max_results);
+extern int s7t_simd_filter_gt_f32(float* values, int count, float threshold, uint32_t* results);
+extern int s7t_hash_join(CNSSparqlEngine* engine, uint32_t* left, int left_count, uint32_t* right, int right_count, uint32_t* results);
+extern void s7t_project_results(CNSSparqlEngine* engine, uint32_t* ids, int count, QueryResult* results);
+extern void s7t_integrate_sparql_kernels(CNSSparqlEngine* engine);
+extern void s7t_print_kernel_performance(void);
+extern int s7t_execute_sparql_query_optimized(const char* query_name, CNSSparqlEngine* engine, QueryResult* results, int max_results);
 
-#define RDF_TYPE 1
-#define CUSTOMER_CLASS 2
-#define HAS_NAME 3
-#define HAS_EMAIL 4
-#define LIFETIME_VALUE 5
-#define PERSON_CLASS 6
-#define FOAF_NAME 7
-#define FOAF_KNOWS 8
+// Use ontology IDs from header instead of local definitions
 
 // SPARQL command implementations
 static int cmd_sparql_query(CNSContext *ctx, int argc, char **argv)
@@ -101,43 +99,88 @@ static int cmd_sparql_add(CNSContext *ctx, int argc, char **argv)
 static int cmd_sparql_benchmark(CNSContext *ctx, int argc, char **argv)
 {
     (void)ctx; (void)argc; (void)argv; // Suppress unused parameter warnings
-  printf("🏃 SPARQL Performance Benchmark\n");
-  printf("Running 7-tick performance tests...\n");
+  printf("🏃 SPARQL Kernel Performance Benchmark\n");
+  printf("Testing 7-tick compliance for all kernel functions...\n");
 
   // Create SPARQL engine for benchmarking
-  CNSSparqlEngine *engine = cns_sparql_create(1000, 100, 1000);
+  CNSSparqlEngine *engine = cns_sparql_create(5000, 500, 5000);
   if (!engine)
   {
     printf("❌ Failed to create SPARQL engine\n");
     return CNS_ERR_RESOURCE;
   }
 
-  // Add test data
-  for (int i = 0; i < 100; i++)
-  {
-    cns_sparql_add_triple(engine, i, i % 10, i % 20);
+  // Integrate kernels
+  s7t_integrate_sparql_kernels(engine);
+
+  // Add comprehensive test data
+  printf("🔄 Setting up benchmark data...\n");
+  for (int i = 1000; i < 1100; i++) {
+    cns_sparql_add_triple(engine, i, RDF_TYPE, CUSTOMER_CLASS);
+    cns_sparql_add_triple(engine, i, HAS_NAME, 5000 + i);
+    cns_sparql_add_triple(engine, i, HAS_EMAIL, 6000 + i);
+    cns_sparql_add_triple(engine, i, LIFETIME_VALUE, 7000 + i);
+  }
+  
+  for (int i = 2000; i < 2100; i++) {
+    cns_sparql_add_triple(engine, i, RDF_TYPE, PERSON_CLASS);
+    cns_sparql_add_triple(engine, i, FOAF_NAME, 8000 + i);
+    if (i % 2 == 0) {
+      cns_sparql_add_triple(engine, i, FOAF_KNOWS, i + 1);
+    }
   }
 
-  // Benchmark pattern matching
-  const int iterations = 1000000;
-  uint64_t start_cycles = cns_sparql_get_cycles();
-
-  for (int i = 0; i < iterations; i++)
-  {
-    cns_sparql_ask_pattern(engine, i % 100, i % 10, i % 20);
+  // Benchmark individual kernel functions
+  printf("📊 Benchmarking kernel functions...\n");
+  
+  const int kernel_iterations = 10000;
+  uint32_t results[1000];
+  float values[1000];
+  QueryResult query_results[1000];
+  
+  // Initialize test data for SIMD filter
+  for (int i = 0; i < 1000; i++) {
+    values[i] = (float)(i * 10);
   }
 
-  uint64_t end_cycles = cns_sparql_get_cycles();
-  uint64_t total_cycles = end_cycles - start_cycles;
-  double avg_cycles = (double)total_cycles / iterations;
+  // Warm up and benchmark each kernel
+  for (int iter = 0; iter < kernel_iterations; iter++) {
+    s7t_scan_by_type(engine, CUSTOMER_CLASS, results, 500);
+    s7t_scan_by_predicate(engine, RDF_TYPE, results, 500);
+    s7t_simd_filter_gt_f32(values, 1000, 5000.0f, results);
+    
+    uint32_t left[100], right[100];
+    for (int i = 0; i < 100; i++) { left[i] = 1000 + i; right[i] = 2000 + i; }
+    s7t_hash_join(engine, left, 100, right, 100, results);
+    
+    s7t_project_results(engine, results, 50, query_results);
+  }
 
-  printf("✅ Benchmark completed\n");
-  printf("Iterations: %d\n", iterations);
-  printf("Total cycles: %llu\n", total_cycles);
-  printf("Average cycles per operation: %.2f\n", avg_cycles);
-  printf("Performance: %s\n", avg_cycles <= 7.0 ? "7-tick achieved! 🎉" : "Above 7-tick threshold");
+  // Test AOT queries
+  printf("🚀 Testing AOT query execution...\n");
+  const char* test_queries[] = {
+    "getHighValueCustomers",
+    "findPersonsByName", 
+    "getDocumentsByCreator",
+    "socialConnections",
+    "organizationMembers"
+  };
+  
+  for (size_t i = 0; i < sizeof(test_queries) / sizeof(test_queries[0]); i++) {
+    uint64_t start = s7t_cycles();
+    int count = s7t_execute_sparql_query_optimized(test_queries[i], engine, query_results, 100);
+    uint64_t elapsed = s7t_cycles() - start;
+    
+    printf("  Query '%s': %llu cycles, %d results, %s\n", 
+           test_queries[i], elapsed, count, 
+           elapsed <= 7 ? "✅ 7T" : "❌ >7T");
+  }
+
+  // Print detailed kernel performance
+  s7t_print_kernel_performance();
 
   cns_sparql_destroy(engine);
+  printf("✅ Benchmark completed\n");
   return CNS_OK;
 }
 
@@ -180,10 +223,11 @@ static int cmd_sparql_exec(CNSContext *ctx, int argc, char **argv)
     // Results buffer
     QueryResult results[100];
     
-    // Call the AOT dispatcher (placeholder)
+    // Integrate kernels and execute AOT query
+    s7t_integrate_sparql_kernels(engine);
+    
     uint64_t start = s7t_cycles();
-    // int count = execute_compiled_sparql_query(query_name, engine, results, 100);
-    int count = -1; // Placeholder - AOT not implemented yet
+    int count = s7t_execute_sparql_query_optimized(query_name, engine, results, 100);
     uint64_t elapsed = s7t_cycles() - start;
 
     if (count >= 0) {
@@ -223,6 +267,105 @@ static int cmd_sparql_test(CNSContext *ctx, int argc, char **argv)
   // TODO: Integrate with actual test framework
   printf("✅ All tests passed (placeholder)\n");
 
+  return CNS_OK;
+}
+
+static int cmd_sparql_kernels(CNSContext *ctx, int argc, char **argv)
+{
+    (void)ctx; (void)argc; (void)argv; // Suppress unused parameter warnings
+  printf("🔧 SPARQL Kernel Performance Analysis\n");
+  printf("Analyzing 7-tick compliance for individual kernels...\n");
+
+  // Create SPARQL engine for kernel testing
+  CNSSparqlEngine *engine = cns_sparql_create(1000, 100, 1000);
+  if (!engine)
+  {
+    printf("❌ Failed to create SPARQL engine\n");
+    return CNS_ERR_RESOURCE;
+  }
+
+  // Integrate and warm up kernels
+  s7t_integrate_sparql_kernels(engine);
+
+  // Add test data
+  for (int i = 1000; i < 1050; i++) {
+    cns_sparql_add_triple(engine, i, RDF_TYPE, CUSTOMER_CLASS);
+    cns_sparql_add_triple(engine, i, HAS_NAME, 5000 + i);
+  }
+
+  // Test each kernel individually
+  printf("🧮 Testing individual kernel performance:\n\n");
+  
+  uint32_t results[500];
+  float values[100];
+  QueryResult query_results[100];
+  
+  // Initialize test data
+  for (int i = 0; i < 100; i++) {
+    values[i] = (float)(i * 100);
+  }
+
+  // Test s7t_scan_by_type
+  printf("1. s7t_scan_by_type (type scanning):\n");
+  for (int i = 0; i < 5; i++) {
+    uint64_t start = s7t_cycles();
+    int count = s7t_scan_by_type(engine, CUSTOMER_CLASS, results, 500);
+    uint64_t elapsed = s7t_cycles() - start;
+    printf("   Run %d: %llu cycles, %d results (%s)\n", 
+           i+1, elapsed, count, elapsed <= 7 ? "✅" : "❌");
+  }
+
+  // Test s7t_scan_by_predicate
+  printf("\n2. s7t_scan_by_predicate (predicate scanning):\n");
+  for (int i = 0; i < 5; i++) {
+    uint64_t start = s7t_cycles();
+    int count = s7t_scan_by_predicate(engine, RDF_TYPE, results, 500);
+    uint64_t elapsed = s7t_cycles() - start;
+    printf("   Run %d: %llu cycles, %d results (%s)\n", 
+           i+1, elapsed, count, elapsed <= 7 ? "✅" : "❌");
+  }
+
+  // Test s7t_simd_filter_gt_f32
+  printf("\n3. s7t_simd_filter_gt_f32 (SIMD filtering):\n");
+  for (int i = 0; i < 5; i++) {
+    uint64_t start = s7t_cycles();
+    int count = s7t_simd_filter_gt_f32(values, 100, 5000.0f, results);
+    uint64_t elapsed = s7t_cycles() - start;
+    printf("   Run %d: %llu cycles, %d results (%s)\n", 
+           i+1, elapsed, count, elapsed <= 7 ? "✅" : "❌");
+  }
+
+  // Test s7t_hash_join
+  printf("\n4. s7t_hash_join (hash join operations):\n");
+  uint32_t left[50], right[50];
+  for (int i = 0; i < 50; i++) { 
+    left[i] = 1000 + i; 
+    right[i] = 1000 + (i % 25); // Some overlap
+  }
+  for (int i = 0; i < 5; i++) {
+    uint64_t start = s7t_cycles();
+    int count = s7t_hash_join(engine, left, 50, right, 50, results);
+    uint64_t elapsed = s7t_cycles() - start;
+    printf("   Run %d: %llu cycles, %d results (%s)\n", 
+           i+1, elapsed, count, elapsed <= 7 ? "✅" : "❌");
+  }
+
+  // Test s7t_project_results
+  printf("\n5. s7t_project_results (result projection):\n");
+  for (int i = 0; i < 50; i++) results[i] = 1000 + i;
+  for (int i = 0; i < 5; i++) {
+    uint64_t start = s7t_cycles();
+    s7t_project_results(engine, results, 50, query_results);
+    uint64_t elapsed = s7t_cycles() - start;
+    printf("   Run %d: %llu cycles (%s)\n", 
+           i+1, elapsed, elapsed <= 7 ? "✅" : "❌");
+  }
+
+  // Print cumulative performance statistics
+  printf("\n");
+  s7t_print_kernel_performance();
+
+  cns_sparql_destroy(engine);
   return CNS_OK;
 }
 

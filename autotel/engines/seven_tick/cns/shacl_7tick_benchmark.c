@@ -115,9 +115,10 @@ int main(int argc, char** argv) {
     // Setup test data
     setup_test_data_7tick(sparql_engine);
     
-    // Initialize cache once
-    printf("🔥 Initializing 7-tick cache...\n");
+    // Initialize cache once - CRITICAL: Single initialization only
+    printf("🔥 Initializing 7-tick cache (SINGLE INIT)...\n");
     init_type_cache_7tick(sparql_engine);
+    printf("✅ Cache initialized - ready for validation\n");
     
     // Benchmark results
     uint64_t total_cycles = 0;
@@ -139,6 +140,7 @@ int main(int argc, char** argv) {
         // Run multiple iterations for accurate measurement
         for (int iter = 0; iter < iterations; iter++) {
             uint64_t start_cycles = shacl_get_cycles();
+            // FIXED: No cache re-init in validation calls
             result = shacl_validate_all_shapes_7tick(sparql_engine, test->node_id);
             uint64_t end_cycles = shacl_get_cycles();
             

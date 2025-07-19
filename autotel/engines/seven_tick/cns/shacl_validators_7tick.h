@@ -78,6 +78,19 @@ static inline void init_type_cache_7tick(CNSSparqlEngine* engine) {
     }
     
     g_cache_initialized = true;
+    
+    // 80/20 DEBUG: Print cache state for verification  
+    printf("Cache verification (CORRECTED):\n");
+    for (uint32_t i = 1; i <= 10; i++) {
+        NodeTypeCache* cache = &g_type_cache[i];
+        printf("  Node %u: type_bits=0x%02x, emails=%u, worksAt=%u, hasName=%u", 
+               i, cache->type_bits, cache->email_count, cache->has_worksAt, cache->has_name);
+        
+        // Debug: Show what SPARQL queries returned
+        bool is_person = cns_sparql_ask_pattern(engine, i, ID_rdf_type, ID_Person);
+        bool is_company = cns_sparql_ask_pattern(engine, i, ID_rdf_type, ID_Company);
+        printf(" (SPARQL: Person=%s, Company=%s)\n", is_person ? "T" : "F", is_company ? "T" : "F");
+    }
 }
 
 /**
@@ -88,6 +101,7 @@ static inline bool validate_PersonShape_7tick(CNSSparqlEngine* engine, uint32_t 
     // Bounds check
     if (UNLIKELY(node_id >= 256)) return true;
     
+    // FIXED: No cache init here - already done at startup
     NodeTypeCache* cache = &g_type_cache[node_id];
     
     // 1 cycle: Type check
@@ -115,6 +129,7 @@ static inline bool validate_CompanyShape_7tick(CNSSparqlEngine* engine, uint32_t
     // Bounds check
     if (UNLIKELY(node_id >= 256)) return true;
     
+    // FIXED: No cache init here - already done at startup
     NodeTypeCache* cache = &g_type_cache[node_id];
     
     // 1 cycle: Type check
@@ -131,8 +146,7 @@ static inline bool validate_CompanyShape_7tick(CNSSparqlEngine* engine, uint32_t
  * Target: 7 cycles total
  */
 static inline bool shacl_validate_all_shapes_7tick(CNSSparqlEngine* engine, uint32_t node_id) {
-    // Ensure cache is initialized
-    init_type_cache_7tick(engine);
+    // FIXED: Cache already initialized at startup - no redundant calls
     
     // Bounds check
     if (UNLIKELY(node_id >= 256)) return true;
