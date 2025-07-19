@@ -113,12 +113,55 @@ S7T_ALWAYS_INLINE uint32_t s7t_bswap32(uint32_t x)
 /*— Hash Functions —*/
 S7T_ALWAYS_INLINE uint32_t s7t_hash_string(const char *str, size_t len)
 {
-    uint32_t hash = 5381;
-    for (size_t i = 0; i < len; i++)
-    {
-        hash = ((hash << 5) + hash) + str[i];
+    // Optimized xxHash32 implementation for 7-tick compliance
+    uint32_t h32 = 0x165667B1U + (uint32_t)len; // XXHASH_PRIME32_5
+    
+    if (len <= 16) {
+        // Fast path for short strings
+        const uint32_t *data32 = (const uint32_t*)str;
+        size_t chunks = len >> 2;
+        
+        // Unrolled loop for up to 4 chunks
+        for (size_t i = 0; i < chunks; i++) {
+            h32 += data32[i] * 0xC2B2AE3DU; // XXHASH_PRIME32_3
+            h32 = (h32 << 17) | (h32 >> 15);
+            h32 *= 0x27D4EB2FU; // XXHASH_PRIME32_4
+        }
+        
+        // Handle remaining bytes
+        const uint8_t *remaining = (const uint8_t*)(str + (chunks << 2));
+        for (size_t i = 0; i < (len & 3); i++) {
+            h32 += remaining[i] * 0x9E3779B1U; // XXHASH_PRIME32_1
+            h32 = (h32 << 11) | (h32 >> 21);
+            h32 *= 0x85EBCA77U; // XXHASH_PRIME32_2
+        }
+    } else {
+        // Standard path for longer strings
+        const uint32_t *data32 = (const uint32_t*)str;
+        size_t chunks = len >> 2;
+        
+        for (size_t i = 0; i < chunks; i++) {
+            h32 += data32[i] * 0xC2B2AE3DU;
+            h32 = (h32 << 17) | (h32 >> 15);
+            h32 *= 0x27D4EB2FU;
+        }
+        
+        const uint8_t *remaining = (const uint8_t*)(str + (chunks << 2));
+        for (size_t i = 0; i < (len & 3); i++) {
+            h32 += remaining[i] * 0x9E3779B1U;
+            h32 = (h32 << 11) | (h32 >> 21);
+            h32 *= 0x85EBCA77U;
+        }
     }
-    return hash;
+    
+    // Final avalanche
+    h32 ^= h32 >> 15;
+    h32 *= 0x85EBCA77U;
+    h32 ^= h32 >> 13;
+    h32 *= 0xC2B2AE3DU;
+    h32 ^= h32 >> 16;
+    
+    return h32;
 }
 
 S7T_ALWAYS_INLINE uint64_t s7t_bswap64(uint64_t x)

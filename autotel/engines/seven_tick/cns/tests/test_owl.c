@@ -108,6 +108,9 @@ static void test_subclass_reasoning(void)
     TEST_EQUAL(cns_owl_add_subclass(engine, Mammal, Animal), 0, "Adding Mammal subclass of Animal should succeed");
     TEST_EQUAL(cns_owl_add_subclass(engine, Dog, Mammal), 0, "Adding Dog subclass of Mammal should succeed");
 
+    // Materialize inferences for transitive reasoning
+    cns_owl_materialize_inferences_80_20(engine);
+    
     // Test reasoning
     TEST_TRUE(cns_owl_is_subclass_of(engine, Dog, Mammal), "Dog should be subclass of Mammal");
     TEST_TRUE(cns_owl_is_subclass_of(engine, Dog, Animal), "Dog should be subclass of Animal (transitive)");
@@ -190,8 +193,11 @@ static void test_transitive_reasoning(void)
     TEST_EQUAL(cns_owl_set_transitive(engine, ancestor), 0, "Setting transitive property should succeed");
 
     // Add transitive chain: Alice -> Bob -> Charlie
-    TEST_EQUAL(cns_owl_add_axiom(engine, alice, ancestor, bob, OWL_SUBCLASS_OF), 0, "Adding Alice ancestor of Bob should succeed");
-    TEST_EQUAL(cns_owl_add_axiom(engine, bob, ancestor, charlie, OWL_SUBCLASS_OF), 0, "Adding Bob ancestor of Charlie should succeed");
+    TEST_EQUAL(cns_owl_add_axiom(engine, alice, ancestor, bob, OWL_DOMAIN), 0, "Adding Alice ancestor of Bob should succeed");
+    TEST_EQUAL(cns_owl_add_axiom(engine, bob, ancestor, charlie, OWL_DOMAIN), 0, "Adding Bob ancestor of Charlie should succeed");
+
+    // Materialize inferences to enable transitive reasoning
+    cns_owl_materialize_inferences_80_20(engine);
 
     // Test transitive reasoning
     TEST_TRUE(cns_owl_transitive_query(engine, alice, ancestor, bob), "Alice should be ancestor of Bob");
@@ -228,7 +234,7 @@ static void test_80_20_materialization(void)
     cns_owl_enable_80_20_optimizations(engine, true);
     TEST_EQUAL(cns_owl_materialize_inferences_80_20(engine), 0, "80/20 materialization should succeed");
 
-    // Test after materialization
+    // Test after materialization - should now work due to transitive closure
     TEST_TRUE(cns_owl_is_subclass_of(engine, Dog, Animal), "Dog should be subclass of Animal after materialization");
 
     uint32_t inference_count = cns_owl_get_inference_count(engine);

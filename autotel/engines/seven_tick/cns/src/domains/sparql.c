@@ -4,6 +4,23 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Temporary placeholder types and constants
+typedef struct {
+    uint32_t subject_id;
+    uint32_t predicate_id;
+    uint32_t object_id;
+    double value;
+} QueryResult;
+
+#define RDF_TYPE 1
+#define CUSTOMER_CLASS 2
+#define HAS_NAME 3
+#define HAS_EMAIL 4
+#define LIFETIME_VALUE 5
+#define PERSON_CLASS 6
+#define FOAF_NAME 7
+#define FOAF_KNOWS 8
+
 // SPARQL command implementations
 static int cmd_sparql_query(CNSContext *ctx, int argc, char **argv)
 {
@@ -124,6 +141,79 @@ static int cmd_sparql_benchmark(CNSContext *ctx, int argc, char **argv)
   return CNS_OK;
 }
 
+// New AOT execution command
+static int cmd_sparql_exec(CNSContext *ctx, int argc, char **argv)
+{
+    (void)ctx; // Suppress unused parameter warning
+    if (argc < 1) {
+        printf("Usage: cns sparql exec <query_name> [args...]\n");
+        printf("Available queries:\n");
+        printf("  - getHighValueCustomers\n");
+        printf("  - findPersonsByName\n");
+        printf("  - getDocumentsByCreator\n");
+        printf("  - socialConnections\n");
+        printf("  - organizationMembers\n");
+        return CNS_ERR_INVALID_ARG;
+    }
+
+    const char* query_name = argv[0];
+    
+    // Create SPARQL engine for testing
+    CNSSparqlEngine *engine = cns_sparql_create(1000, 100, 1000);
+    if (!engine) {
+        printf("❌ Failed to create SPARQL engine\n");
+        return CNS_ERR_RESOURCE;
+    }
+
+    // Add some test data for demonstration
+    cns_sparql_add_triple(engine, 1000, RDF_TYPE, CUSTOMER_CLASS);
+    cns_sparql_add_triple(engine, 1000, HAS_NAME, 5000);
+    cns_sparql_add_triple(engine, 1000, HAS_EMAIL, 5001);
+    cns_sparql_add_triple(engine, 1000, LIFETIME_VALUE, 5002);
+    
+    cns_sparql_add_triple(engine, 1001, RDF_TYPE, PERSON_CLASS);
+    cns_sparql_add_triple(engine, 1001, FOAF_NAME, 5010);
+    cns_sparql_add_triple(engine, 1001, FOAF_KNOWS, 1002);
+    
+    printf("🔍 Executing compiled SPARQL query: %s\n", query_name);
+    
+    // Results buffer
+    QueryResult results[100];
+    
+    // Call the AOT dispatcher (placeholder)
+    uint64_t start = s7t_cycles();
+    // int count = execute_compiled_sparql_query(query_name, engine, results, 100);
+    int count = -1; // Placeholder - AOT not implemented yet
+    uint64_t elapsed = s7t_cycles() - start;
+
+    if (count >= 0) {
+        printf("✅ Query '%s' executed in %llu cycles, returned %d results.\n", query_name, elapsed, count);
+        
+        // Print results
+        for (int i = 0; i < count && i < 10; i++) {
+            printf("   Result %d: subject=%u, predicate=%u, object=%u, value=%.2f\n", 
+                   i, results[i].subject_id, results[i].predicate_id, 
+                   results[i].object_id, results[i].value);
+        }
+        
+        if (count > 10) {
+            printf("   ... and %d more results\n", count - 10);
+        }
+        
+        // Performance analysis
+        double cycles_per_result = count > 0 ? (double)elapsed / count : (double)elapsed;
+        printf("📊 Performance: %.2f cycles per result\n", cycles_per_result);
+        printf("🎯 7-tick compliance: %s\n", elapsed <= 7 ? "✅ YES" : "❌ NO");
+        
+        cns_sparql_destroy(engine);
+        return CNS_OK;
+    } else {
+        printf("❌ Compiled query '%s' not found.\n", query_name);
+        cns_sparql_destroy(engine);
+        return CNS_ERR_NOT_FOUND;
+    }
+}
+
 static int cmd_sparql_test(CNSContext *ctx, int argc, char **argv)
 {
     (void)ctx; (void)argc; (void)argv; // Suppress unused parameter warnings
@@ -141,6 +231,13 @@ CNSCommand sparql_commands[] = {
     {.name = "query",
      .description = "Execute SPARQL query pattern",
      .handler = cmd_sparql_query,
+     .options = NULL,
+     .option_count = 0,
+     .arguments = NULL,
+     .argument_count = 0},
+    {.name = "exec",
+     .description = "Execute compiled AOT SPARQL query",
+     .handler = cmd_sparql_exec,
      .options = NULL,
      .option_count = 0,
      .arguments = NULL,

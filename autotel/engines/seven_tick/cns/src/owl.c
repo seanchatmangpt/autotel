@@ -256,14 +256,37 @@ bool cns_owl_transitive_query(CNSOWLEngine *engine, uint32_t subject, uint32_t p
     return false;
   }
 
-  // 80/20 optimization: Pre-computed transitive closure lookup (≤4 cycles)
-  if (engine->precompute_closures)
+  // Check if the property is transitive
+  if (!cns_owl_has_property_characteristic(engine, property, OWL_TRANSITIVE))
   {
-    return cns_owl_get_bit(engine->transitive_closure, subject * CNS_OWL_MAX_ENTITIES + property, object) != 0;
+    return false;
   }
 
-  // Fallback: Direct property check (≤3 cycles)
-  return cns_owl_get_bit(engine->property_matrix, subject, property) != 0;
+  // Look for direct property relationships in the axioms
+  for (size_t i = 0; i < engine->axiom_count; i++)
+  {
+    OWLAxiom *axiom = &engine->axioms[i];
+    if (axiom->subject_id == subject && axiom->predicate_id == property && axiom->object_id == object)
+    {
+      return true;
+    }
+  }
+
+  // Check for transitive relationships by following the chain
+  for (size_t i = 0; i < engine->axiom_count; i++)
+  {
+    OWLAxiom *axiom = &engine->axioms[i];
+    if (axiom->subject_id == subject && axiom->predicate_id == property)
+    {
+      // Found subject -> intermediate, now check intermediate -> object
+      if (cns_owl_transitive_query(engine, axiom->object_id, property, object))
+      {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 int cns_owl_materialize_transitive_closure(CNSOWLEngine *engine, uint32_t property)
@@ -361,6 +384,7 @@ int cns_owl_materialize_inferences_80_20(CNSOWLEngine *engine)
             cns_owl_get_bit(engine->class_hierarchy, k, j))
         {
           cns_owl_set_bit(engine->class_hierarchy, i, j);
+          engine->inference_count++;
         }
       }
     }

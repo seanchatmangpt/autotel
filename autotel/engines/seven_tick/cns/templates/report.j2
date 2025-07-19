@@ -1,0 +1,11 @@
+# Sales Report for {{ region_name }}
+
+{% for product in products %}
+- Product: {{ product.name }}
+  Revenue: ${{ product.revenue }}
+  {% if product.is_bestseller %}
+  (BESTSELLER!)
+  {% endif %}
+{% endfor %}
+
+Total Revenue: ${{ total_revenue }}

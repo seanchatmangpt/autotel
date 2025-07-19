@@ -26,15 +26,45 @@ find_package(OpenTelemetry QUIET)
 # Include directories
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+include_directories(${GENERATED_DIR})
 
 # ============================================================================
-# WEAVER SYSTEM
+# AOT COMPILATION SYSTEM
 # ============================================================================
 
-# Create build directory
+# Create build directory and generated directory
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/build)
+set(GENERATED_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
+file(MAKE_DIRECTORY ${GENERATED_DIR})
 
-# Extract spans from TTL
+# Define directories
+set(ONTOLOGY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/docs/ontology)
+set(SQL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/examples/sql)
+
+# Define the list of files our AOT compiler will create
+set(GENERATED_HEADERS
+    ${GENERATED_DIR}/ontology_ids.h
+    ${GENERATED_DIR}/ontology_rules.h
+    ${GENERATED_DIR}/shacl_validators.h
+    ${GENERATED_DIR}/sql_queries.h
+)
+
+# AOT Compilation Step - runs the consolidated compiler
+add_custom_command(
+    OUTPUT ${GENERATED_HEADERS}
+    COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/codegen/aot_compiler.py
+            --ontologies ${ONTOLOGY_DIR}
+            --sql ${SQL_DIR}
+            --output ${GENERATED_DIR}
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/codegen/aot_compiler.py
+            ${ONTOLOGY_DIR}/cns-core.ttl
+    COMMENT "Running AOT Compiler to generate C headers from ontology and SQL..."
+)
+
+# Create AOT compile target
+add_custom_target(aot_compile DEPENDS ${GENERATED_HEADERS})
+
+# Extract spans from TTL (legacy weaver support)
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/build/cns_spans.json
     COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}
@@ -120,8 +150,8 @@ if(OpenTelemetry_FOUND)
     target_link_libraries(cns_static PUBLIC OpenTelemetry::OpenTelemetry)
 endif()
 
-# Depend on weave target
-add_dependencies(cns_static weave)
+# Depend on AOT compilation and weave target
+add_dependencies(cns_static aot_compile weave)
 
 # ============================================================================
 # GATEKEEPER
@@ -137,8 +167,8 @@ target_link_libraries(gatekeeper PRIVATE
     m
 )
 
-# Depend on weave target
-add_dependencies(gatekeeper weave)
+# Depend on AOT compilation and weave target
+add_dependencies(gatekeeper aot_compile weave)
 
 # ============================================================================
 # COMMAND LINE INTERFACE
@@ -154,8 +184,8 @@ target_link_libraries(cns PRIVATE
     m
 )
 
-# Depend on weave target
-add_dependencies(cns weave)
+# Depend on AOT compilation and weave target
+add_dependencies(cns aot_compile weave)
 
 # ============================================================================
 # BENCHMARKS
@@ -171,8 +201,8 @@ target_link_libraries(cns_bench PRIVATE
     m
 )
 
-# Depend on weave target
-add_dependencies(cns_bench weave)
+# Depend on AOT compilation and weave target
+add_dependencies(cns_bench aot_compile weave)
 
 # ============================================================================
 # TESTS
@@ -191,8 +221,8 @@ target_link_libraries(cns_test PRIVATE
     m
 )
 
-# Depend on weave target
-add_dependencies(cns_test weave)
+# Depend on AOT compilation and weave target
+add_dependencies(cns_test aot_compile weave)
 
 # Add test
 add_test(NAME CNSUnitTest COMMAND cns_test)

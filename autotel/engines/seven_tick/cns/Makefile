@@ -39,6 +39,7 @@ MAIN_OTEL_SRC = src/cns_main.c
 CORE_OBJS = $(CORE_SRCS:.c=.o)
 DOMAIN_OBJS = $(DOMAIN_SRCS:.c=.o)
 ENGINE_OBJS = $(ENGINE_SRCS:.c=.o)
+PERF_OBJS = $(PERF_SRCS:.c=.o)
 # SQL_OBJS = $(SQL_SRCS:.c=.o)
 # COMMAND_OBJS = $(COMMAND_SRCS:.c=.o)
 GATEKEEPER_OBJS = $(GATEKEEPER_SRCS:.c=.o)
@@ -49,12 +50,12 @@ MAIN_OTEL_OBJ = $(MAIN_OTEL_SRC:.c=.o)
 # Choose main file based on OTel enablement
 ifeq ($(OTEL_ENABLED),1)
     ifneq ($(wildcard $(MAIN_OTEL_SRC)),)
-        ALL_OBJS = $(CORE_OBJS) $(DOMAIN_OBJS) $(ENGINE_OBJS) $(MAIN_OTEL_OBJ)
+        ALL_OBJS = $(CORE_OBJS) $(DOMAIN_OBJS) $(ENGINE_OBJS) $(PERF_OBJS) $(MAIN_OTEL_OBJ)
     else
-        ALL_OBJS = $(CORE_OBJS) $(DOMAIN_OBJS) $(ENGINE_OBJS) $(MAIN_OBJ)
+        ALL_OBJS = $(CORE_OBJS) $(DOMAIN_OBJS) $(ENGINE_OBJS) $(PERF_OBJS) $(MAIN_OBJ)
     endif
 else
-    ALL_OBJS = $(CORE_OBJS) $(DOMAIN_OBJS) $(ENGINE_OBJS) $(MAIN_OBJ)
+    ALL_OBJS = $(CORE_OBJS) $(DOMAIN_OBJS) $(ENGINE_OBJS) $(PERF_OBJS) $(MAIN_OBJ)
 endif
 
 # Binary names

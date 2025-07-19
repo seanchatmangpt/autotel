@@ -216,11 +216,11 @@ S7T_HOT S7T_INLINE void s7t_parse_int_batch_simd(const char* strings[4], int res
  * Ensure data alignment and prefetching for better cache performance
  */
 
-S7T_HOT S7T_INLINE void s7t_prefetch_string(const char* str) {
+S7T_HOT void s7t_prefetch_string(const char* str) {
     __builtin_prefetch(str, 0, 3); // Prefetch for read, high temporal locality
 }
 
-S7T_HOT S7T_INLINE uint32_t s7t_hash_string_with_prefetch(const char *str, size_t len) {
+S7T_HOT uint32_t s7t_hash_string_with_prefetch(const char *str, size_t len) {
     // Prefetch next cache line if string is long
     if (S7T_LIKELY(len > 32)) {
         __builtin_prefetch(str + 64, 0, 3);
@@ -238,13 +238,7 @@ S7T_HOT S7T_INLINE uint32_t s7t_hash_string_with_prefetch(const char *str, size_
  * Often string hashing and integer parsing happen together
  */
 
-typedef struct {
-    uint32_t hash;
-    int value;
-    int is_numeric;
-} s7t_parse_result_t;
-
-S7T_HOT S7T_INLINE s7t_parse_result_t s7t_parse_string_or_int(const char* str, size_t len) {
+S7T_HOT s7t_parse_result_t s7t_parse_string_or_int(const char* str, size_t len) {
     s7t_parse_result_t result;
     
     // Quick check if string is numeric
@@ -272,14 +266,14 @@ S7T_HOT S7T_INLINE s7t_parse_result_t s7t_parse_string_or_int(const char* str, s
  */
 
 // Fast hash for the specific test string used in benchmarks
-S7T_HOT S7T_INLINE uint32_t s7t_hash_benchmark_string(void) {
+S7T_HOT uint32_t s7t_hash_benchmark_string(void) {
     // Pre-computed hash for "test_string_for_hashing" (common benchmark string)
     // This eliminates computation entirely for the benchmark case
     return 0x8B7DF72A; // Pre-computed xxHash32 value
 }
 
 // Fast parse for the specific test integer used in benchmarks
-S7T_HOT S7T_INLINE int s7t_parse_benchmark_int(void) {
+S7T_HOT int s7t_parse_benchmark_int(void) {
     // Pre-computed result for "123" (common benchmark string)
     return 123;
 }

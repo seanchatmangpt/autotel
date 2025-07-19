@@ -1,0 +1,64 @@
+{
+  "customers": {
+    "columns": {
+      "customer_id": "int32",
+      "customer_name": "string",
+      "email": "string",
+      "region_id": "int32",
+      "segment": "int32",
+      "lifetime_value": "float32"
+    },
+    "row_count": 10000,
+    "nullable": {
+      "email": true
+    }
+  },
+  "orders": {
+    "columns": {
+      "order_id": "int32",
+      "customer_id": "int32",
+      "amount": "float32",
+      "product_id": "int32",
+      "order_date": "string",
+      "status": "int32",
+      "quarter": "int32",
+      "year": "int32"
+    },
+    "row_count": 30000,
+    "nullable": {}
+  },
+  "products": {
+    "columns": {
+      "product_id": "int32",
+      "product_name": "string",
+      "category": "string",
+      "price": "float32",
+      "supplier_id": "int32",
+      "margin_percent": "float32"
+    },
+    "row_count": 500,
+    "nullable": {}
+  },
+  "sales": {
+    "columns": {
+      "sale_id": "int32",
+      "region_id": "int32",
+      "quarter": "int32",
+      "revenue": "float32",
+      "year": "int32"
+    },
+    "row_count": 1000,
+    "nullable": {}
+  },
+  "order_items": {
+    "columns": {
+      "item_id": "int32",
+      "order_id": "int32",
+      "product_id": "int32",
+      "quantity": "int32",
+      "sales_amount": "float32"
+    },
+    "row_count": 50000,
+    "nullable": {}
+  }
+}

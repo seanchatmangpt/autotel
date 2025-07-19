@@ -1,0 +1,68 @@
+# SHACL 49-Cycle Optimized Benchmark Makefile
+CC = clang
+CFLAGS = -O3 -march=native -flto -ffast-math -Wall -Wextra -std=c11
+CFLAGS += -DWITH_OPENTELEMETRY -DS7T_DEBUG=1 -DSHACL_49_CYCLE_OPTIMIZED=1
+
+# Architecture-specific optimizations for 49-cycle target
+ifeq ($(shell uname -m),x86_64)
+    CFLAGS += -mavx2 -mfma -msse4.2 -mpopcnt
+endif
+
+ifeq ($(shell uname -m),arm64)
+    CFLAGS += -mcpu=apple-m1 -mtune=apple-m1
+endif
+
+LDFLAGS = -flto -lm -lpthread
+
+# Include paths
+INCLUDES = -Iinclude -I../include -I../../c_src
+
+# Sources
+BENCHMARK_SRC = shacl_49_cycle_benchmark.c
+BENCHMARK_TARGET = shacl_49_cycle_benchmark
+
+# CNS dependencies
+CORE_SRCS = src/engines/sparql.c src/engines/shacl.c
+CORE_OBJS = $(CORE_SRCS:.c=.o)
+
+all: $(BENCHMARK_TARGET)
+
+$(BENCHMARK_TARGET): $(BENCHMARK_SRC) $(CORE_OBJS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS)
+	@echo "✅ Built 49-cycle optimized SHACL benchmark"
+
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+
+# Run quick 49-cycle benchmark
+bench-quick: $(BENCHMARK_TARGET)
+	@echo "🚀 Running 49-cycle SHACL benchmark (quick)..."
+	./$(BENCHMARK_TARGET) 1000
+
+# Run full 49-cycle benchmark  
+bench: $(BENCHMARK_TARGET)
+	@echo "🚀 Running 49-cycle SHACL benchmark..."
+	./$(BENCHMARK_TARGET) 10000
+
+# Run with performance validation
+bench-validate: $(BENCHMARK_TARGET)
+	@echo "🔍 Running 49-cycle validation benchmark..."
+	./$(BENCHMARK_TARGET) 50000 > shacl_49_cycle_results.json
+
+# Compare with original benchmark
+bench-compare: $(BENCHMARK_TARGET)
+	@echo "📊 Comparing 49-cycle vs original performance..."
+	@if [ -f shacl_aot_benchmark ]; then \
+		echo "Original benchmark:"; \
+		./shacl_aot_benchmark 5000 | grep "avg_cycles"; \
+		echo "49-cycle optimized:"; \
+		./$(BENCHMARK_TARGET) 5000 | grep "avg_cycles"; \
+	else \
+		echo "Original benchmark not found, running optimized only"; \
+		./$(BENCHMARK_TARGET) 5000; \
+	fi
+
+clean:
+	rm -f $(BENCHMARK_TARGET) $(CORE_OBJS) shacl_49_cycle_results.json
+
+.PHONY: all bench-quick bench bench-validate bench-compare clean
