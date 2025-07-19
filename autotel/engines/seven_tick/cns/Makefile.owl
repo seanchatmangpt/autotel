@@ -1,0 +1,159 @@
+# ============================================================================
+# CNS OWL ENGINE MAKEFILE - 80/20 OPTIMIZED BUILD
+# ============================================================================
+
+# Compiler settings
+CC = clang
+CFLAGS = -O3 -march=native -Wall -Wextra -std=c11 -g
+LDFLAGS = -lm
+
+# Directories
+CNS_DIR = .
+INCLUDE_DIR = $(CNS_DIR)/include
+SRC_DIR = $(CNS_DIR)/src
+TEST_DIR = $(CNS_DIR)/tests
+BUILD_DIR = $(CNS_DIR)/build
+
+# Source files
+OWL_SRC = $(SRC_DIR)/owl.c
+OWL_HEADER = $(INCLUDE_DIR)/cns/owl.h
+OWL_TEST = $(TEST_DIR)/test_owl.c
+
+# Targets
+OWL_LIB = $(BUILD_DIR)/libcns_owl.a
+OWL_TEST_BIN = $(BUILD_DIR)/test_owl
+
+# Default target
+all: $(OWL_LIB) $(OWL_TEST_BIN)
+
+# Create build directory
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+# Build OWL library
+$(OWL_LIB): $(BUILD_DIR) $(OWL_SRC) $(OWL_HEADER)
+	@echo "Building CNS OWL library..."
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c $(OWL_SRC) -o $(BUILD_DIR)/owl.o
+	ar rcs $(OWL_LIB) $(BUILD_DIR)/owl.o
+	@echo "✓ Built CNS OWL library: $(OWL_LIB)"
+
+# Build OWL test suite
+$(OWL_TEST_BIN): $(OWL_LIB) $(OWL_TEST)
+	@echo "Building CNS OWL test suite..."
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) $(OWL_TEST) $(OWL_LIB) $(LDFLAGS) -o $(OWL_TEST_BIN)
+	@echo "✓ Built CNS OWL test suite: $(OWL_TEST_BIN)"
+
+# Run tests
+test: $(OWL_TEST_BIN)
+	@echo "Running CNS OWL tests..."
+	@echo "=========================================="
+	$(OWL_TEST_BIN)
+	@echo "=========================================="
+	@echo "✓ CNS OWL tests completed"
+
+# Benchmark tests
+benchmark: $(OWL_TEST_BIN)
+	@echo "Running CNS OWL benchmarks..."
+	@echo "=========================================="
+	$(OWL_TEST_BIN) | grep -E "(Benchmark|cycles|7T|optimization)"
+	@echo "=========================================="
+	@echo "✓ CNS OWL benchmarks completed"
+
+# Performance analysis
+perf: $(OWL_TEST_BIN)
+	@echo "Running CNS OWL performance analysis..."
+	@echo "=========================================="
+	perf stat -e cycles,instructions,cache-misses $(OWL_TEST_BIN) 2>&1 | grep -E "(Performance|cycles|instructions|cache-misses)"
+	@echo "=========================================="
+	@echo "✓ CNS OWL performance analysis completed"
+
+# Clean build artifacts
+clean:
+	@echo "Cleaning CNS OWL build artifacts..."
+	rm -rf $(BUILD_DIR)
+	rm -f *.o *.a *.so
+	@echo "✓ Cleaned CNS OWL build artifacts"
+
+# Install OWL library
+install: $(OWL_LIB)
+	@echo "Installing CNS OWL library..."
+	cp $(OWL_LIB) /usr/local/lib/
+	cp $(OWL_HEADER) /usr/local/include/cns/
+	@echo "✓ Installed CNS OWL library"
+
+# Uninstall OWL library
+uninstall:
+	@echo "Uninstalling CNS OWL library..."
+	rm -f /usr/local/lib/libcns_owl.a
+	rm -f /usr/local/include/cns/owl.h
+	@echo "✓ Uninstalled CNS OWL library"
+
+# Documentation
+docs:
+	@echo "Generating CNS OWL documentation..."
+	@echo "=========================================="
+	@echo "CNS OWL Engine Documentation"
+	@echo "=========================================="
+	@echo "Header: $(OWL_HEADER)"
+	@echo "Implementation: $(OWL_SRC)"
+	@echo "Test Suite: $(OWL_TEST)"
+	@echo ""
+	@echo "Key Features:"
+	@echo "- 80/20 optimized OWL reasoning"
+	@echo "- 7T compliant (≤7 cycles per operation)"
+	@echo "- Bit-vector based materialization"
+	@echo "- Transitive closure precomputation"
+	@echo "- Performance monitoring and metrics"
+	@echo ""
+	@echo "Usage:"
+	@echo "  make        # Build library and tests"
+	@echo "  make test   # Run test suite"
+	@echo "  make benchmark # Run benchmarks"
+	@echo "  make perf   # Performance analysis"
+	@echo "  make clean  # Clean build artifacts"
+	@echo "=========================================="
+
+# Development helpers
+dev-setup: $(BUILD_DIR)
+	@echo "Setting up CNS OWL development environment..."
+	@echo "✓ Build directory created: $(BUILD_DIR)"
+	@echo "✓ Ready for development"
+
+# Quick build (no tests)
+quick: $(OWL_LIB)
+	@echo "✓ Quick build completed"
+
+# Full build with tests
+full: all test benchmark
+	@echo "✓ Full build with tests completed"
+
+# Show build info
+info:
+	@echo "CNS OWL Build Information:"
+	@echo "  Compiler: $(CC)"
+	@echo "  CFLAGS: $(CFLAGS)"
+	@echo "  Include dir: $(INCLUDE_DIR)"
+	@echo "  Source dir: $(SRC_DIR)"
+	@echo "  Test dir: $(TEST_DIR)"
+	@echo "  Build dir: $(BUILD_DIR)"
+	@echo "  OWL library: $(OWL_LIB)"
+	@echo "  Test binary: $(OWL_TEST_BIN)"
+
+# Help target
+help:
+	@echo "CNS OWL Makefile Targets:"
+	@echo "  all        - Build library and tests (default)"
+	@echo "  test       - Run test suite"
+	@echo "  benchmark  - Run benchmarks"
+	@echo "  perf       - Performance analysis"
+	@echo "  clean      - Clean build artifacts"
+	@echo "  install    - Install library"
+	@echo "  uninstall  - Uninstall library"
+	@echo "  docs       - Show documentation"
+	@echo "  dev-setup  - Setup development environment"
+	@echo "  quick      - Quick build (no tests)"
+	@echo "  full       - Full build with tests"
+	@echo "  info       - Show build information"
+	@echo "  help       - Show this help"
+
+.PHONY: all test benchmark perf clean install uninstall docs dev-setup quick full info help 

@@ -1,188 +1,205 @@
-# CNS (Command Nano Stack) Documentation
+# CNS (Core Neural System) Documentation
 
 ## Overview
 
-CNS (Command Nano Stack) is a high-performance, 7-tick compliant command processing system designed for ultra-low latency applications. It provides a complete command parsing, dispatch, and execution framework optimized for sub-microsecond performance.
+CNS is a high-performance, 7-tick optimized CLI framework that integrates multiple specialized engines for semantic computing, validation, templating, and telemetry. Built with performance-first principles, CNS provides sub-microsecond operations while maintaining a clean, domain-oriented interface.
 
-## Architecture
+## 🚀 Ported Subsystems
 
-### Core Components
+### SPARQL Engine
+Ultra-fast triple pattern matching and knowledge graph operations with SIMD optimizations.
 
-```
-CNS System Architecture
-├── Core Engine (cns.h)
-│   ├── Command Registration
-│   ├── Hash-based Lookup
-│   ├── Execution Engine
-│   └── Performance Tracking
-├── Parser (cns_parser.h)
-│   ├── Tokenization
-│   ├── Quote Handling
-│   ├── Argument Extraction
-│   └── Validation
-├── Dispatch (cns_dispatch.h)
-│   ├── Command Routing
-│   ├── Batch Execution
-│   ├── Metrics Collection
-│   └── Help System
-├── Commands (cns_commands.h)
-│   ├── Built-in Handlers
-│   ├── Registration Macros
-│   ├── Help Commands
-│   └── Debug Tools
-├── Benchmark (cns_benchmark.h)
-│   ├── Performance Testing
-│   ├── Tier Classification
-│   ├── Statistical Analysis
-│   └── Target Validation
-├── Types (cns/types.h)
-│   ├── Option Definitions
-│   ├── Argument Structures
-│   ├── Command Contexts
-│   └── Result Codes
-└── CLI (cns/cli.h)
-    ├── Domain Management
-    ├── Argument Parsing
-    ├── Help System
-    └── Error Handling
+**Key Features:**
+- 7-tick performance guarantee
+- Cache-friendly memory layout
+- SIMD-optimized batch operations
+- Pattern matching with wildcards
+
+**Commands:**
+```bash
+cns sparql query <pattern>     # Execute SPARQL queries
+cns sparql add <triple>        # Add triples to graph
+cns sparql benchmark           # Performance benchmarks
+cns sparql test               # Unit tests
 ```
 
-## Performance Targets
+### SHACL Engine
+High-performance shape validation and constraint checking for semantic data.
 
-### 7-Tick Compliance
-- **L1 Tier**: < 10ns (7-tick target)
-- **L2 Tier**: < 100ns (sub-100ns)
-- **L3 Tier**: < 1μs (sub-microsecond)
+**Key Features:**
+- Shape-based validation
+- Constraint checking
+- 7-tick performance optimization
+- Telemetry integration
 
-### Design Principles
-- **Minimal Memory Allocation**: Predictable performance
-- **Hash-based Lookup**: O(1) command resolution
-- **Batch Processing**: Efficient multi-command execution
-- **Telemetry Integration**: Cycle counting and validation
+**Commands:**
+```bash
+cns shacl validate <data> <shapes>  # Validate data against shapes
+cns shacl check <constraints>       # Check constraints
+cns shacl benchmark                 # Performance benchmarks
+cns shacl test                     # Unit tests
+```
 
-## Quick Start
+### CJinja Engine
+Sub-microsecond template rendering with support for variables, conditionals, loops, and filters.
+
+**Key Features:**
+- Variable substitution
+- Conditional rendering
+- Loop support
+- Custom filters
+- 7-tick performance
+
+**Commands:**
+```bash
+cns cjinja render <template> <vars>  # Render templates
+cns cjinja compile <template>        # Compile templates
+cns cjinja benchmark                 # Performance benchmarks
+cns cjinja test                     # Unit tests
+```
+
+### Telemetry Engine
+OpenTelemetry-like distributed tracing and performance metrics with 7-tick optimization.
+
+**Key Features:**
+- Span management
+- Performance metrics
+- Distributed tracing
+- Export capabilities
+
+**Commands:**
+```bash
+cns telemetry start                  # Start telemetry collection
+cns telemetry stop                   # Stop telemetry collection
+cns telemetry report                 # Generate performance reports
+cns telemetry export                 # Export telemetry data
+cns telemetry benchmark              # Telemetry performance tests
+cns telemetry example                # Example usage
+```
+
+## 🏗️ Architecture
+
+### Domain-Command Structure
+CNS uses a domain-verb command structure where each subsystem is a domain with specific commands:
+
+```
+cns <domain> <command> [options] [arguments]
+```
+
+### Performance Guarantees
+All operations are optimized for 7 CPU cycles or less, ensuring sub-microsecond performance for critical operations.
+
+### Cross-Platform Support
+- x86_64 with AVX2/SIMD optimizations
+- ARM64 (Apple Silicon) compatibility
+- Conditional compilation for architecture-specific features
+
+## 📚 Documentation Structure
+
+- **Getting Started**: `getting-started/` - Quick start guides and tutorials
+- **Architecture**: `architecture/` - System design and architecture docs
+- **API Reference**: `api/` - Detailed API documentation
+- **Commands**: `commands/` - Command reference and examples
+- **Performance**: `performance/` - Performance tuning and optimization
+- **Integration**: `integration/` - Integration guides and examples
+- **Testing**: `testing/` - Testing strategies and examples
+- **Debugging**: `debugging/` - Troubleshooting and debugging guides
+- **Best Practices**: `best-practices/` - Development and usage guidelines
+- **FAQ**: `faq/` - Frequently asked questions
+
+## 🚀 Quick Start
+
+### Installation
+```bash
+cd cns
+make clean
+make OTEL_ENABLED=0  # Build without OpenTelemetry
+```
 
 ### Basic Usage
-```c
-#include "cns.h"
-#include "s7t.h"
+```bash
+# List available domains
+./cns help
 
-// Initialize CNS engine
-cns_cmd_entry_t commands[10];
-uint32_t hash_table[256];
-cns_engine_t engine;
-cns_init(&engine, commands, hash_table, 10);
+# Run SPARQL benchmark
+./cns sparql benchmark
 
-// Register commands
-cns_register(&engine, "echo", echo_handler, CNS_FLAG_NONE, 0, 2, "Echo command");
-cns_register(&engine, "help", help_handler, CNS_FLAG_NONE, 0, 1, "Help command");
+# Validate data with SHACL
+./cns shacl validate data.ttl shapes.ttl
 
-// Parse and execute
-cns_command_t cmd;
-cns_parse("echo hello world", &cmd);
-cns_execute(&engine, &cmd);
+# Render template with CJinja
+./cns cjinja render "Hello {{name}}!" name=World
+
+# Start telemetry collection
+./cns telemetry start
 ```
 
-### CLI Integration
-```c
-#include "cns/cli.h"
+## 🔧 Development
 
-// Initialize CLI
-cns_cli_init("my_program");
+### Building
+```bash
+# Standard build
+make
 
-// Register domains
-CNSDomain domain = {
-    .name = "file",
-    .description = "File operations",
-    .commands = file_commands,
-    .command_count = 3
-};
-cns_cli_register_domain(&domain);
+# Build with OpenTelemetry
+make OTEL_ENABLED=1
 
-// Run CLI
-cns_cli_run(argc, argv);
+# Debug build
+make debug
+
+# Profile build
+make profile
 ```
 
-## Documentation Structure
+### Testing
+```bash
+# Run all tests
+make test
 
-### Core Documentation
-- [**API Reference**](api/README.md) - Complete API documentation
-- [**Architecture Guide**](architecture/README.md) - System design and principles
-- [**Performance Guide**](performance/README.md) - Optimization and benchmarking
-- [**Integration Guide**](integration/README.md) - System integration patterns
-- [**Weaver System**](weaver/README.md) - OpenTelemetry code generation from TTL
+# Run specific domain tests
+./cns sparql test
+./cns shacl test
+./cns cjinja test
+./cns telemetry test
+```
 
-### Developer Guides
-- [**Getting Started**](getting-started/README.md) - Quick start tutorials
-- [**Command Development**](commands/README.md) - Creating custom commands
-- [**Testing Guide**](testing/README.md) - Unit testing and validation
-- [**Debugging Guide**](debugging/README.md) - Troubleshooting and profiling
+### Benchmarking
+```bash
+# Run all benchmarks
+make bench
 
-### Reference Materials
-- [**Examples**](examples/README.md) - Code examples and patterns
-- [**Best Practices**](best-practices/README.md) - Development guidelines
-- [**FAQ**](faq/README.md) - Frequently asked questions
-- [**Changelog**](changelog.md) - Version history and changes
-- [**Weaver Documentation**](WEAVER.md) - Complete weaver system guide
+# Run specific benchmarks
+./cns sparql benchmark
+./cns shacl benchmark
+./cns cjinja benchmark
+./cns telemetry benchmark
+```
 
-## Key Features
+## 📊 Performance
 
-### High Performance
-- **Sub-microsecond execution** for most operations
-- **Hash-based command lookup** for O(1) performance
-- **Minimal memory allocation** for predictable timing
-- **Cycle-accurate telemetry** for performance validation
+All subsystems are designed to meet the 7-tick performance constraint:
 
-### Developer Friendly
-- **Simple registration API** for command handlers
-- **Comprehensive help system** with automatic generation
-- **Built-in debugging tools** for development
-- **Extensive unit test suite** for validation
+- **SPARQL**: Sub-microsecond triple pattern matching
+- **SHACL**: Ultra-fast shape validation
+- **CJinja**: Sub-microsecond template rendering
+- **Telemetry**: Minimal overhead tracing
 
-### Production Ready
-- **Error handling** with detailed error codes
-- **Permission system** for security
-- **Batch processing** for efficiency
-- **Performance monitoring** with metrics collection
+## 🤝 Contributing
 
-## System Requirements
+1. Follow the 7-tick performance constraint
+2. Maintain cross-platform compatibility
+3. Add comprehensive tests
+4. Update documentation
+5. Use telemetry for performance monitoring
 
-### Compiler Support
-- **GCC 4.9+** with C99 support
-- **Clang 3.5+** with C99 support
-- **MSVC 2015+** with C99 support
+## 📄 License
 
-### Dependencies
-- **S7T Library** - 7-tick performance library
-- **Standard C Library** - Basic system functions
-- **Math Library** - For statistical calculations
+This project is part of the 7-tick optimization framework.
 
-### Platform Support
-- **Linux** - Primary development platform
-- **macOS** - Full compatibility
-- **Windows** - Limited compatibility (requires S7T support)
+## 🔗 Related Documentation
 
-## Getting Help
-
-### Documentation
-- [**API Reference**](api/README.md) - Complete function documentation
-- [**Examples**](examples/README.md) - Working code examples
-- [**Tutorials**](getting-started/README.md) - Step-by-step guides
-
-### Support
-- **Unit Tests** - Comprehensive test suite in `../tests/`
-- **Performance Benchmarks** - Built-in benchmarking tools
-- **Debug Tools** - Integrated debugging and profiling
-
-### Community
-- **Code Examples** - See `examples/` directory
-- **Best Practices** - Development guidelines
-- **FAQ** - Common questions and answers
-
-## License
-
-CNS is part of the 7-tick engine suite and follows the same licensing terms as the parent project.
-
----
-
-*CNS provides ultra-low latency command processing with 7-tick compliance and comprehensive developer tooling.* 
+- [Architecture Overview](architecture/README.md)
+- [API Reference](api/README.md)
+- [Performance Guide](performance/README.md)
+- [Integration Guide](integration/README.md)
+- [Testing Guide](testing/README.md) 

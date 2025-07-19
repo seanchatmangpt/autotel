@@ -1,9 +1,12 @@
 #include "cns/engines/telemetry.h"
+#include "cns/core/perf.h"
+#include "cns/types.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
 #include <time.h>
-#include <sys/time.h>
 
 // Global telemetry context
 static CNSTelemetryContext global_context;
@@ -233,9 +236,10 @@ void cns_telemetry_measure_span_cycles(const char *name, const char *operation)
   uint64_t end = cns_telemetry_get_cycles();
 
   uint64_t cycles = end - start;
+  // Check 7-tick constraint
   if (cycles > 7)
   {
-    printf("Warning: Telemetry span took %lu cycles (>7) - name=%s, operation=%s\n",
+    printf("Warning: Telemetry span took %llu cycles (>7) - name=%s, operation=%s\n",
            cycles, name ? name : "unknown", operation ? operation : "unknown");
   }
 }
@@ -255,17 +259,16 @@ void cns_telemetry_span_print(CNSTelemetrySpan *span)
   uint64_t duration_ns = cns_telemetry_get_span_duration_ns(span);
 
   printf("Telemetry Span:\n");
-  printf("  ID: %lu\n", span->span_id);
-  printf("  Trace ID: %lu\n", span->trace_id);
-  printf("  Parent ID: %lu\n", span->parent_span_id);
   printf("  Name: %s\n", span->name ? span->name : "unknown");
   printf("  Operation: %s\n", span->operation ? span->operation : "unknown");
-  printf("  Duration: %lu ns\n", duration_ns);
+  printf("  ID: %llu\n", span->span_id);
+  printf("  Trace ID: %llu\n", span->trace_id);
+  printf("  Parent ID: %llu\n", span->parent_span_id);
   printf("  Status: %d\n", span->status);
   printf("  Kind: %d\n", span->kind);
+  printf("  Duration: %llu ns\n", duration_ns);
   printf("  Attributes: %u\n", span->attributes_count);
   printf("  Events: %u\n", span->events_count);
-  printf("  Active: %s\n", cns_telemetry_is_span_active(span) ? "Yes" : "No");
 }
 
 void cns_telemetry_span_export_json(CNSTelemetrySpan *span, char *buffer, size_t buffer_size)
@@ -276,16 +279,15 @@ void cns_telemetry_span_export_json(CNSTelemetrySpan *span, char *buffer, size_t
   uint64_t duration_ns = cns_telemetry_get_span_duration_ns(span);
 
   snprintf(buffer, buffer_size,
-           "{\"span_id\":%lu,\"trace_id\":%lu,\"parent_span_id\":%lu,"
-           "\"name\":\"%s\",\"operation\":\"%s\",\"duration_ns\":%lu,"
+           "{\"span_id\":%llu,\"trace_id\":%llu,\"parent_span_id\":%llu,"
+           "\"name\":\"%s\",\"operation\":\"%s\",\"duration_ns\":%llu,"
            "\"status\":%d,\"kind\":%d,\"attributes_count\":%u,"
-           "\"events_count\":%u,\"active\":%s}",
+           "\"events_count\":%u}",
            span->span_id, span->trace_id, span->parent_span_id,
            span->name ? span->name : "unknown",
            span->operation ? span->operation : "unknown",
            duration_ns, span->status, span->kind,
-           span->attributes_count, span->events_count,
-           cns_telemetry_is_span_active(span) ? "true" : "false");
+           span->attributes_count, span->events_count);
 }
 
 // Specialized span functions for CNS subsystems
@@ -387,7 +389,7 @@ void cns_telemetry_benchmark(void)
 
   printf("✅ Basic span benchmark completed\n");
   printf("Iterations: %d\n", iterations);
-  printf("Total time: %lu ns\n", total_time_ns);
+  printf("Total time: %llu ns\n", total_time_ns);
   printf("Average time per span: %.2f ns\n", avg_time_ns);
   printf("Performance: %s\n", avg_time_ns <= 10.0 ? "7-tick achieved! 🎉" : "Above 7-tick threshold");
 
@@ -477,4 +479,185 @@ void cns_telemetry_example_usage(void)
 
   printf("✅ Example spans completed\n");
   printf("📊 Memory usage: %zu bytes\n", cns_telemetry_get_memory_usage(&global_context));
+}
+
+// CNS Telemetry API compatibility functions
+// These provide the interface expected by bench.c and other domain files
+
+typedef struct
+{
+  uint64_t span_id;
+  uint64_t trace_id;
+  uint64_t parent_span_id;
+  const char *name;
+  const char *operation;
+  uint64_t start_time;
+  uint64_t end_time;
+  int status;
+  int kind;
+  uint32_t attributes_count;
+  uint32_t events_count;
+  bool active;
+} cns_span_t;
+
+typedef struct
+{
+  const char *service_name;
+  double trace_sample_rate;
+  bool initialized;
+} cns_telemetry_t;
+
+typedef enum
+{
+  CNS_ATTR_STRING,
+  CNS_ATTR_INT64,
+  CNS_ATTR_DOUBLE,
+  CNS_ATTR_BOOL
+} cns_attr_type_t;
+
+typedef struct
+{
+  const char *key;
+  cns_attr_type_t type;
+  union
+  {
+    const char *string_value;
+    int64_t int64_value;
+    double double_value;
+    bool bool_value;
+  };
+} cns_attribute_t;
+
+typedef enum
+{
+  CNS_SPAN_STATUS_UNSET = 0,
+  CNS_SPAN_STATUS_OK,
+  CNS_SPAN_STATUS_ERROR
+} cns_span_status_t;
+
+#define CNS_DEFAULT_TELEMETRY_CONFIG { \
+    .service_name = "cns",             \
+    .trace_sample_rate = 1.0}
+
+// Global telemetry instance for compatibility
+static cns_telemetry_t *g_global_telemetry = NULL;
+
+// Initialize telemetry system
+int cns_telemetry_init(cns_telemetry_t *telemetry, const void *config)
+{
+  if (!telemetry)
+    return -1; // CNS_ERR_INVALID_ARG equivalent
+
+  telemetry->service_name = "cns";
+  telemetry->trace_sample_rate = 1.0;
+  telemetry->initialized = true;
+
+  if (!g_global_telemetry)
+  {
+    g_global_telemetry = telemetry;
+  }
+
+  return 0; // CNS_OK equivalent
+}
+
+// Shutdown telemetry system
+void cns_telemetry_shutdown(cns_telemetry_t *telemetry)
+{
+  if (telemetry)
+  {
+    telemetry->initialized = false;
+  }
+  if (g_global_telemetry == telemetry)
+  {
+    g_global_telemetry = NULL;
+  }
+}
+
+// Force flush all pending data
+int cns_telemetry_flush(cns_telemetry_t *telemetry)
+{
+  // For now, just return success
+  return 0; // CNS_OK equivalent
+}
+
+// Start a new span
+cns_span_t *cns_span_start(cns_telemetry_t *telemetry, const char *name, const cns_span_t *parent)
+{
+  if (!telemetry || !name)
+    return NULL;
+
+  cns_span_t *span = malloc(sizeof(cns_span_t));
+  if (!span)
+    return NULL;
+
+  span->span_id = (uint64_t)span; // Simple ID generation
+  span->trace_id = parent ? parent->trace_id : (uint64_t)span;
+  span->parent_span_id = parent ? parent->span_id : 0;
+  span->name = name;
+  span->operation = name;
+  span->start_time = s7t_cycles(); // Use s7t_cycles instead of cns_get_cycles
+  span->end_time = 0;
+  span->status = CNS_SPAN_STATUS_UNSET;
+  span->kind = 0;
+  span->attributes_count = 0;
+  span->events_count = 0;
+  span->active = true;
+
+  return span;
+}
+
+// End span with status
+void cns_span_end(cns_span_t *span, cns_span_status_t status)
+{
+  if (!span)
+    return;
+
+  span->end_time = s7t_cycles(); // Use s7t_cycles instead of cns_get_cycles
+  span->status = status;
+  span->active = false;
+
+  // For now, just free the span
+  free(span);
+}
+
+// Set span attributes
+void cns_span_set_attributes(cns_span_t *span, const cns_attribute_t *attrs, size_t count)
+{
+  if (!span || !attrs)
+    return;
+
+  span->attributes_count = (uint32_t)count;
+
+  // For now, just count the attributes
+  // In a full implementation, we would store them
+}
+
+// Record command latency
+void cns_metric_record_latency(cns_telemetry_t *telemetry, const char *command, uint64_t cycles)
+{
+  if (!telemetry || !command)
+    return;
+
+  // For now, just print the metric
+  printf("METRIC: %s latency = %llu cycles\n", command, (unsigned long long)cycles);
+}
+
+// Record performance violation
+void cns_metric_record_violation(cns_telemetry_t *telemetry, const char *operation, uint64_t actual_cycles, uint64_t threshold_cycles)
+{
+  if (!telemetry || !operation)
+    return;
+
+  printf("VIOLATION: %s took %llu cycles (threshold: %llu)\n",
+         operation, (unsigned long long)actual_cycles, (unsigned long long)threshold_cycles);
+}
+
+// Auto-end span on scope exit (for CNS_SPAN_SCOPE macro)
+static inline void cns_span_auto_end(cns_span_t **span)
+{
+  if (span && *span)
+  {
+    cns_span_end(*span, CNS_SPAN_STATUS_OK);
+    *span = NULL;
+  }
 }

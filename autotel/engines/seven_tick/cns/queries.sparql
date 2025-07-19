@@ -1,0 +1,44 @@
+# 80/20 SPARQL Test Queries
+# These represent the 20% of SPARQL features that handle 80% of real-world use cases
+
+# QUERY: getHighValueCustomers
+SELECT ?name ?email
+WHERE {
+    ?cust rdf:type :Customer .
+    ?cust :hasName ?name .
+    ?cust :hasEmail ?email .
+    ?cust :lifetimeValue ?ltv .
+    FILTER(?ltv > 5000.0)
+}
+
+# QUERY: findPersonsByName
+SELECT ?person ?email
+WHERE {
+    ?person rdf:type :Person .
+    ?person foaf:name ?name .
+    ?person foaf:email ?email .
+    FILTER(?name = "John")
+}
+
+# QUERY: getDocumentsByCreator
+SELECT ?doc ?title
+WHERE {
+    ?doc rdf:type :Document .
+    ?doc dc:creator ?creator .
+    ?doc dc:title ?title .
+}
+
+# QUERY: socialConnections
+SELECT ?person ?friend
+WHERE {
+    ?person rdf:type :Person .
+    ?person foaf:knows ?friend .
+    ?friend rdf:type :Person .
+}
+
+# QUERY: organizationMembers
+SELECT ?org ?member
+WHERE {
+    ?member :memberOf ?org .
+    ?org rdf:type :Organization .
+}

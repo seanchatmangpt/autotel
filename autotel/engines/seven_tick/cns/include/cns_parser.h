@@ -149,7 +149,7 @@ S7T_ALWAYS_INLINE cns_result_t cns_parse_simple(
 ) {
     // Clear using aligned stores
     uint64_t* p = (uint64_t*)cmd;
-    for (int i = 0; i < sizeof(cns_command_t) / 8; i++) {
+    for (size_t i = 0; i < sizeof(cns_command_t) / 8; i++) {
         p[i] = 0;
     }
     

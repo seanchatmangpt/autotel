@@ -4,7 +4,6 @@
 
 // Domain implementations
 extern CNSDomain cns_build_domain;
-extern CNSDomain cns_test_domain;
 extern CNSDomain cns_bench_domain;
 extern CNSDomain cns_gate_domain;
 extern CNSDomain cns_parse_domain;
@@ -14,11 +13,12 @@ extern CNSDomain cns_release_domain;
 extern CNSDomain cns_profile_domain;
 extern CNSDomain cns_deploy_domain;
 extern CNSDomain cns_sigma_domain;
-extern CNSDomain cns_sql_domain;
 extern CNSDomain cns_sparql_domain;
 extern CNSDomain cns_shacl_domain;
 extern CNSDomain cns_cjinja_domain;
 extern CNSDomain cns_telemetry_domain;
+extern CNSDomain cns_ml_domain;
+extern CNSDomain cns_benchmark_domain;
 
 int main(int argc, char **argv)
 {
@@ -31,7 +31,6 @@ int main(int argc, char **argv)
 
     // Register all domains
     cns_cli_register_domain(&cns_build_domain);
-    cns_cli_register_domain(&cns_test_domain);
     cns_cli_register_domain(&cns_bench_domain);
     cns_cli_register_domain(&cns_gate_domain);
     cns_cli_register_domain(&cns_parse_domain);
@@ -41,11 +40,12 @@ int main(int argc, char **argv)
     cns_cli_register_domain(&cns_profile_domain);
     cns_cli_register_domain(&cns_deploy_domain);
     cns_cli_register_domain(&cns_sigma_domain);
-    cns_cli_register_domain(&cns_sql_domain);
     cns_cli_register_domain(&cns_sparql_domain);
     cns_cli_register_domain(&cns_shacl_domain);
     cns_cli_register_domain(&cns_cjinja_domain);
     cns_cli_register_domain(&cns_telemetry_domain);
+    cns_cli_register_domain(&cns_ml_domain);
+    cns_cli_register_domain(&cns_benchmark_domain);
 
     // Run CLI
     int result = cns_cli_run(argc, argv);

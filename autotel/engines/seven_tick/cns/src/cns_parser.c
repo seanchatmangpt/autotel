@@ -62,6 +62,7 @@ cns_result_t cns_parse_with_telemetry(
     cns_command_t *cmd,
     const char *span_name)
 {
+    (void)span_name; // Suppress unused parameter warning when OpenTelemetry is disabled
 #ifdef WITH_OPENTELEMETRY
     // Create span for parsing
     auto span = g_parser_tracer->StartSpan(span_name ? span_name : "cns_parse");

@@ -63,6 +63,7 @@ static void run_benchmark(const char* name, const char* binary) {
 
 // Bench all command handler
 static int cmd_bench_all(CNSContext* ctx, int argc, char** argv) {
+    (void)ctx; (void)argc; (void)argv; // Suppress unused parameter warnings
     ensure_telemetry_init();
     
     // Create parent span for all benchmarks
@@ -91,6 +92,7 @@ static int cmd_bench_all(CNSContext* ctx, int argc, char** argv) {
 
 // Bench sparql command handler
 static int cmd_bench_sparql(CNSContext* ctx, int argc, char** argv) {
+    (void)ctx; (void)argc; (void)argv; // Suppress unused parameter warnings
     ensure_telemetry_init();
     
     CNS_SPAN_SCOPE(g_telemetry, "benchmark.sparql", NULL);
@@ -99,6 +101,7 @@ static int cmd_bench_sparql(CNSContext* ctx, int argc, char** argv) {
     
     // Simulate SPARQL benchmark
     uint64_t start = cns_get_cycles();
+    (void)start; // Suppress unused variable warning
     
     // Mock benchmark results
     BenchResult results[] = {
@@ -147,6 +150,7 @@ static int cmd_bench_sparql(CNSContext* ctx, int argc, char** argv) {
 
 // Bench memory command handler
 static int cmd_bench_memory(CNSContext* ctx, int argc, char** argv) {
+    (void)ctx; (void)argc; (void)argv; // Suppress unused parameter warnings
     ensure_telemetry_init();
     
     CNS_SPAN_SCOPE(g_telemetry, "benchmark.memory", NULL);
@@ -200,6 +204,7 @@ static int cmd_bench_memory(CNSContext* ctx, int argc, char** argv) {
 
 // Bench report command handler
 static int cmd_bench_report(CNSContext* ctx, int argc, char** argv) {
+    (void)ctx; (void)argc; (void)argv; // Suppress unused parameter warnings
     ensure_telemetry_init();
     
     CNS_SPAN_SCOPE(g_telemetry, "benchmark.report", NULL);

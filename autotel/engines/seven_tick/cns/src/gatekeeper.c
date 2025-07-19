@@ -11,7 +11,7 @@
 // ============================================================================
 
 #define GATEKEEPER_CHATMAN_CONSTANT_CYCLES 7
-#define GATEKEEPER_MIN_THROUGHPUT_MOPS 10
+#define GATEKEEPER_MIN_THROUGHPUT_MOPS 10.0
 #define GATEKEEPER_MIN_SIGMA_LEVEL 4.0
 #define GATEKEEPER_SAMPLE_SIZE 1000000
 #define GATEKEEPER_PERCENTILE_95 95

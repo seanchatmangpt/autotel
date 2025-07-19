@@ -1,0 +1,100 @@
+CNS Comprehensive Benchmark Suite
+Testing REAL CNS functionality with realistic workloads
+Unlike previous benchmarks that only measured clock() overhead,
+this suite validates actual compiler performance.
+
+Running String Parsing (10000 iterations)...
+Running String Hashing (10000 iterations)...
+Running Memory Allocation (5000 iterations)...
+Running Memory Copy (10000 iterations)...
+Running Integer Operations (50000 iterations)...
+Running Floating Point Operations (10000 iterations)...
+
+═══════════════════════════════════════════════════════════════
+CNS COMPREHENSIVE BENCHMARK RESULTS
+═══════════════════════════════════════════════════════════════
+Platform: Apple Silicon M2
+Compiler: clang with -O3 optimization
+Target: 7-tick performance compliance (≤2.3ns @ 3GHz)
+
+┌─ String Processing ─┐
+│
+├─ String Parsing
+│  Parse command strings with domains and arguments
+│  Iterations: 10000
+│  Avg time: 129.70 ns (130 cycles)
+│  Min/Max: 0 / 5000 cycles
+│  Std dev: 339.23 cycles
+│  Throughput: 7710100 ops/sec
+│  7-tick: ✗ FAIL (56.4x over limit)
+│
+├─ String Hashing
+│  Hash command names for lookup table
+│  Iterations: 10000
+│  Avg time: 51.00 ns (51 cycles)
+│  Min/Max: 0 / 1000 cycles
+│  Std dev: 220.00 cycles
+│  Throughput: 19607843 ops/sec
+│  7-tick: ✗ FAIL (22.2x over limit)
+│
+└───────┘
+
+┌─ Memory Management ─┐
+│
+├─ Memory Allocation
+│  Allocate and free various memory sizes
+│  Iterations: 5000
+│  Avg time: 37.60 ns (38 cycles)
+│  Min/Max: 0 / 4000 cycles
+│  Std dev: 202.45 cycles
+│  Throughput: 26595745 ops/sec
+│  7-tick: ✗ FAIL (16.3x over limit)
+│
+├─ Memory Copy
+│  Copy 1KB of data using memcpy
+│  Iterations: 10000
+│  Avg time: 1628.80 ns (1629 cycles)
+│  Min/Max: 1000 / 64000 cycles
+│  Std dev: 1108.52 cycles
+│  Throughput: 613949 ops/sec
+│  7-tick: ✗ FAIL (708.2x over limit)
+│
+└───────┘
+
+┌─ Mathematical Operations ─┐
+│
+├─ Integer Operations
+│  Basic arithmetic and bitwise operations
+│  Iterations: 50000
+│  Avg time: 36.04 ns (36 cycles)
+│  Min/Max: 0 / 1000 cycles
+│  Std dev: 186.39 cycles
+│  Throughput: 27746948 ops/sec
+│  7-tick: ✗ FAIL (15.7x over limit)
+│
+├─ Floating Point Operations
+│  Arithmetic and mathematical functions
+│  Iterations: 10000
+│  Avg time: 33.20 ns (33 cycles)
+│  Min/Max: 0 / 1000 cycles
+│  Std dev: 179.16 cycles
+│  Throughput: 30120482 ops/sec
+│  7-tick: ✗ FAIL (14.4x over limit)
+│
+└─────────┘
+
+SUMMARY:
+  Total benchmarks: 6
+  Passed 7-tick target: 0 (0.0%)
+  Failed 7-tick target: 6
+  Average execution time: 319.39 ns
+
+INTERPRETATION:
+  ⚠ PERFORMANCE ISSUES: Many operations exceed 7-tick budget
+
+NOTES:
+  • These benchmarks test ACTUAL CNS functionality
+  • Results include real memory allocation and computation
+  • 7-tick target (2.3ns) is extremely aggressive for complex operations
+  • String processing and memory operations should meet target
+═══════════════════════════════════════════════════════════════

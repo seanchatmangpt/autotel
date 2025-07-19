@@ -7,6 +7,7 @@
 // Telemetry command implementations
 static int cmd_telemetry_start(CNSContext *ctx, int argc, char **argv)
 {
+    (void)ctx; (void)argc; (void)argv; // Suppress unused parameter warnings
   printf("📊 Starting Telemetry Collection\n");
   printf("Initializing performance monitoring...\n");
 
@@ -23,6 +24,7 @@ static int cmd_telemetry_start(CNSContext *ctx, int argc, char **argv)
 
 static int cmd_telemetry_stop(CNSContext *ctx, int argc, char **argv)
 {
+    (void)ctx; (void)argc; (void)argv; // Suppress unused parameter warnings
   printf("🛑 Stopping Telemetry Collection\n");
   printf("Finalizing performance data...\n");
 
@@ -34,6 +36,7 @@ static int cmd_telemetry_stop(CNSContext *ctx, int argc, char **argv)
 
 static int cmd_telemetry_report(CNSContext *ctx, int argc, char **argv)
 {
+    (void)ctx; (void)argc; (void)argv; // Suppress unused parameter warnings
   printf("📈 Telemetry Performance Report\n");
   printf("Generating comprehensive analysis...\n");
 
@@ -48,6 +51,7 @@ static int cmd_telemetry_report(CNSContext *ctx, int argc, char **argv)
 
 static int cmd_telemetry_export(CNSContext *ctx, int argc, char **argv)
 {
+    (void)ctx; (void)argc; (void)argv; // Suppress unused parameter warnings
   if (argc < 2)
   {
     printf("Usage: cns telemetry export <format>\n");
@@ -81,6 +85,7 @@ static int cmd_telemetry_export(CNSContext *ctx, int argc, char **argv)
 
 static int cmd_telemetry_benchmark(CNSContext *ctx, int argc, char **argv)
 {
+    (void)ctx; (void)argc; (void)argv; // Suppress unused parameter warnings
   printf("🏃 Telemetry Performance Benchmark\n");
   printf("Running 7-tick performance tests...\n");
 
@@ -92,6 +97,7 @@ static int cmd_telemetry_benchmark(CNSContext *ctx, int argc, char **argv)
 
 static int cmd_telemetry_example(CNSContext *ctx, int argc, char **argv)
 {
+    (void)ctx; (void)argc; (void)argv; // Suppress unused parameter warnings
   printf("📊 Telemetry Example Usage\n");
   printf("Demonstrating telemetry features...\n");
 

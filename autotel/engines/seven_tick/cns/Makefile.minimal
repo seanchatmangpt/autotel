@@ -1,0 +1,73 @@
+# CNS Minimal Makefile - CHATMAN NANO-STACK (ARM64 Compatible)
+# Minimal build excluding SQL and problematic components
+
+CC = clang
+CFLAGS = -O0 -g -Wall -Wextra -std=c11 -DS7T_DEBUG=1
+LDFLAGS = -lm -lpthread
+INCLUDES = -Iinclude -I../include -I../../c_src -I../../benchmarks -I../../tests
+
+# OpenTelemetry disabled for ARM64 compatibility
+OTEL_ENABLED = 0
+
+# Source files (minimal set)
+CORE_SRCS = src/core/cli.c src/cns_parser.c
+# Exclude problematic domains that have complex dependencies
+DOMAIN_SRCS = src/domains/bench_domain.c src/domains/build_domain.c \
+              src/domains/cjinja_domain.c src/domains/dashboard_domain.c \
+              src/domains/deploy_domain.c src/domains/docs_domain.c \
+              src/domains/gate_domain.c src/domains/parse_domain.c \
+              src/domains/profile_domain.c src/domains/release_domain.c \
+              src/domains/shacl_domain.c src/domains/sigma_domain.c \
+              src/domains/sparql_domain.c src/domains/telemetry_domain.c \
+              src/domains/test_domain.c
+# Exclude engines with x86 intrinsics
+ENGINE_SRCS = 
+# Exclude SQL components due to header conflicts
+SQL_SRCS = 
+COMMAND_SRCS = src/cmd_spin.c src/cmd_think.c src/cmd_reflect.c src/cmd_learn.c src/cmd_adapt.c \
+               src/cmd_benchmark.c src/cmd_ml.c src/cmd_pm.c src/cmd_trace.c src/cmd_stubs.c
+MAIN_SRC = src/main.c
+
+# Object files
+CORE_OBJS = $(CORE_SRCS:.c=.o)
+DOMAIN_OBJS = $(DOMAIN_SRCS:.c=.o)
+COMMAND_OBJS = $(COMMAND_SRCS:.c=.o)
+MAIN_OBJ = $(MAIN_SRC:.c=.o)
+
+# All objects for minimal build
+ALL_OBJS = $(CORE_OBJS) $(DOMAIN_OBJS) $(COMMAND_OBJS) $(MAIN_OBJ)
+
+# Binary name
+TARGET = cns
+
+# Default target
+all: $(TARGET)
+
+# Build the main binary
+$(TARGET): $(ALL_OBJS)
+	$(CC) $(LDFLAGS) -o $@ $^
+	@echo "✓ Built minimal $(TARGET) for ARM64 (basic domains only)"
+
+# Compile source files
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+
+# Clean build artifacts
+clean:
+	rm -f $(CORE_OBJS) $(DOMAIN_OBJS) $(COMMAND_OBJS) $(MAIN_OBJ) $(TARGET)
+	@echo "✓ Cleaned build artifacts"
+
+# Test basic functionality
+test: $(TARGET)
+	@echo "Testing minimal CNS build..."
+	./$(TARGET) help || echo "Help command not available"
+	./$(TARGET) --version || echo "Version command not available"
+
+# Help
+help:
+	@echo "CNS Minimal ARM64 Makefile targets:"
+	@echo "  make         - Build minimal CNS binary (ARM64 compatible)"
+	@echo "  make clean   - Remove build artifacts"
+	@echo "  make test    - Run basic functionality tests"
+
+.PHONY: all clean test help

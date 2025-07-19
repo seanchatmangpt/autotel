@@ -1,0 +1,230 @@
+# CNS Comprehensive Benchmark Makefile
+# Builds and runs the complete CNS benchmark suite with real performance measurements
+
+CC = clang
+CFLAGS = -O3 -march=native -flto -ffast-math -Wall -Wextra -std=c11
+CFLAGS += -DWITH_OPENTELEMETRY -DS7T_DEBUG=1
+LDFLAGS = -flto -lm -lpthread
+
+# Enable SIMD optimizations
+ifeq ($(shell uname -m),x86_64)
+    CFLAGS += -mavx2 -mfma -msse4.2
+endif
+
+ifeq ($(shell uname -m),arm64)
+    CFLAGS += -mcpu=apple-m1
+endif
+
+# Include paths
+INCLUDES = -Iinclude -I../include -I../../c_src -I../../benchmarks -I../../tests
+
+# OpenTelemetry libraries (if available)
+OTEL_LIBS = -lopentelemetry_trace -lopentelemetry_common -lopentelemetry_exporter_ostream_span
+LDFLAGS += $(OTEL_LIBS) -lstdc++
+
+# Source files for comprehensive benchmark
+BENCHMARK_SRCS = cns_comprehensive_benchmark.c
+BENCHMARK_TARGET = cns_comprehensive_benchmark
+
+# CNS core dependencies (simplified for benchmark)
+CORE_SRCS = src/core/cli.c src/cns_parser.c
+DOMAIN_SRCS = src/domains/sparql.c src/domains/shacl.c src/domains/cjinja.c src/domains/telemetry.c src/domains/benchmark.c
+ENGINE_SRCS = src/engines/sparql.c src/engines/shacl.c src/engines/cjinja.c src/engines/telemetry.c
+
+# Object files
+CORE_OBJS = $(CORE_SRCS:.c=.o)
+DOMAIN_OBJS = $(DOMAIN_SRCS:.c=.o)
+ENGINE_OBJS = $(ENGINE_SRCS:.c=.o)
+BENCHMARK_OBJS = $(BENCHMARK_SRCS:.c=.o)
+
+# All object files
+ALL_BENCHMARK_OBJS = $(BENCHMARK_OBJS) $(CORE_OBJS) $(DOMAIN_OBJS) $(ENGINE_OBJS)
+
+# Default target
+all: $(BENCHMARK_TARGET)
+
+# Build comprehensive benchmark
+$(BENCHMARK_TARGET): $(ALL_BENCHMARK_OBJS)
+	$(CC) $(LDFLAGS) -o $@ $^
+	@echo "✅ Built comprehensive benchmark suite: $(BENCHMARK_TARGET)"
+
+# Compile source files
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+
+# Run quick benchmark (1000 iterations)
+bench-quick: $(BENCHMARK_TARGET)
+	@echo "🚀 Running quick benchmark suite (1000 iterations)..."
+	./$(BENCHMARK_TARGET) 1000
+
+# Run standard benchmark (10000 iterations)
+bench: $(BENCHMARK_TARGET)
+	@echo "🚀 Running standard benchmark suite (10000 iterations)..."
+	./$(BENCHMARK_TARGET) 10000
+
+# Run comprehensive benchmark (100000 iterations)
+bench-comprehensive: $(BENCHMARK_TARGET)
+	@echo "🚀 Running comprehensive benchmark suite (100000 iterations)..."
+	./$(BENCHMARK_TARGET) 100000
+
+# Run benchmark with OTEL output to file
+bench-otel: $(BENCHMARK_TARGET)
+	@echo "🚀 Running benchmark with OpenTelemetry output..."
+	@mkdir -p benchmark_results
+	OTEL_SERVICE_NAME=cns-benchmark \
+	OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317 \
+	./$(BENCHMARK_TARGET) 10000 > benchmark_results/cns_benchmark_$(shell date +%Y%m%d_%H%M%S).json
+
+# Run benchmark with different iteration counts for analysis
+bench-analysis: $(BENCHMARK_TARGET)
+	@echo "🔬 Running benchmark analysis with varying iteration counts..."
+	@mkdir -p benchmark_results
+	@echo "Running with 100 iterations (warmup)..."
+	./$(BENCHMARK_TARGET) 100 > benchmark_results/bench_100.txt
+	@echo "Running with 1000 iterations (quick)..."
+	./$(BENCHMARK_TARGET) 1000 > benchmark_results/bench_1000.txt
+	@echo "Running with 10000 iterations (standard)..."
+	./$(BENCHMARK_TARGET) 10000 > benchmark_results/bench_10000.txt
+	@echo "Running with 50000 iterations (comprehensive)..."
+	./$(BENCHMARK_TARGET) 50000 > benchmark_results/bench_50000.txt
+	@echo "✅ Analysis complete. Results in benchmark_results/"
+
+# Profile the benchmark (for optimization)
+bench-profile: CFLAGS += -pg
+bench-profile: LDFLAGS += -pg
+bench-profile: clean $(BENCHMARK_TARGET)
+	@echo "📊 Running profiled benchmark..."
+	./$(BENCHMARK_TARGET) 10000
+	gprof $(BENCHMARK_TARGET) gmon.out > benchmark_profile.txt
+	@echo "✅ Profile data saved to benchmark_profile.txt"
+
+# Debug build
+bench-debug: CFLAGS += -g -DDEBUG -O0
+bench-debug: CFLAGS := $(filter-out -O3 -flto,$(CFLAGS))
+bench-debug: LDFLAGS := $(filter-out -flto,$(LDFLAGS))
+bench-debug: clean $(BENCHMARK_TARGET)
+	@echo "🐛 Debug benchmark built"
+
+# Memory check with valgrind
+bench-memcheck: bench-debug
+	@echo "🔍 Running memory check..."
+	valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all \
+		--track-origins=yes --verbose ./$(BENCHMARK_TARGET) 100
+
+# Performance analysis with perf (Linux only)
+bench-perf: $(BENCHMARK_TARGET)
+	@echo "⚡ Running performance analysis with perf..."
+	perf record -g ./$(BENCHMARK_TARGET) 10000
+	perf report > benchmark_perf_report.txt
+	@echo "✅ Perf report saved to benchmark_perf_report.txt"
+
+# Stress test - run benchmark continuously
+bench-stress: $(BENCHMARK_TARGET)
+	@echo "🔥 Running stress test (10 runs of 10000 iterations)..."
+	@for i in 1 2 3 4 5 6 7 8 9 10; do \
+		echo "Stress run $$i/10..."; \
+		./$(BENCHMARK_TARGET) 10000 > benchmark_results/stress_run_$$i.txt; \
+		sleep 1; \
+	done
+	@echo "✅ Stress test complete"
+
+# Compare benchmark results
+bench-compare: 
+	@echo "📊 Comparing benchmark results..."
+	@if [ -f benchmark_results/bench_baseline.txt ]; then \
+		echo "Comparing against baseline..."; \
+		diff -u benchmark_results/bench_baseline.txt benchmark_results/bench_10000.txt; \
+	else \
+		echo "Creating baseline..."; \
+		cp benchmark_results/bench_10000.txt benchmark_results/bench_baseline.txt; \
+	fi
+
+# Generate HTML report
+bench-report: $(BENCHMARK_TARGET)
+	@echo "📋 Generating HTML benchmark report..."
+	@mkdir -p benchmark_results
+	./$(BENCHMARK_TARGET) 10000 > benchmark_results/latest_results.json
+	python3 -c "
+import json, html, datetime
+with open('benchmark_results/latest_results.json', 'r') as f:
+    data = f.read()
+    # Extract JSON from mixed output
+    json_start = data.find('{')
+    if json_start >= 0:
+        json_data = data[json_start:]
+        try:
+            results = json.loads(json_data)
+            with open('benchmark_results/report.html', 'w') as out:
+                out.write('<html><head><title>CNS Benchmark Report</title></head><body>')
+                out.write('<h1>CNS Comprehensive Benchmark Report</h1>')
+                out.write(f'<p>Generated: {datetime.datetime.now()}</p>')
+                out.write('<table border=\"1\"><tr><th>Benchmark</th><th>Category</th><th>Avg Cycles</th><th>7-Tick</th><th>Status</th></tr>')
+                for bench in results.get('benchmarks', []):
+                    status = '✅' if bench['passed'] else '❌'
+                    tick = '✅' if bench['seven_tick_compliant'] else '❌'
+                    out.write(f'<tr><td>{bench[\"name\"]}</td><td>{bench[\"category\"]}</td><td>{bench[\"avg_cycles\"]:.2f}</td><td>{tick}</td><td>{status}</td></tr>')
+                out.write('</table></body></html>')
+            print('HTML report generated: benchmark_results/report.html')
+        except json.JSONDecodeError:
+            print('Failed to parse JSON output')
+    else:
+        print('No JSON found in output')
+"
+
+# Clean build artifacts
+clean:
+	rm -f $(ALL_BENCHMARK_OBJS) $(BENCHMARK_TARGET)
+	rm -f benchmark_profile.txt gmon.out perf.data benchmark_perf_report.txt
+	@echo "✅ Cleaned benchmark build artifacts"
+
+# Clean all results
+clean-results:
+	rm -rf benchmark_results
+	@echo "✅ Cleaned all benchmark results"
+
+# Show help
+help:
+	@echo "CNS Comprehensive Benchmark Makefile"
+	@echo "======================================"
+	@echo ""
+	@echo "Targets:"
+	@echo "  make                  - Build benchmark suite"
+	@echo "  make bench-quick      - Run quick benchmark (1K iterations)"
+	@echo "  make bench            - Run standard benchmark (10K iterations)"
+	@echo "  make bench-comprehensive - Run full benchmark (100K iterations)"
+	@echo "  make bench-otel       - Run with OpenTelemetry output"
+	@echo "  make bench-analysis   - Run analysis with varying iterations"
+	@echo "  make bench-profile    - Run with profiling enabled"
+	@echo "  make bench-debug      - Build debug version"
+	@echo "  make bench-memcheck   - Run with memory checking"
+	@echo "  make bench-perf       - Run with performance analysis (Linux)"
+	@echo "  make bench-stress     - Run stress test (10 runs)"
+	@echo "  make bench-compare    - Compare against baseline"
+	@echo "  make bench-report     - Generate HTML report"
+	@echo "  make clean            - Clean build artifacts"
+	@echo "  make clean-results    - Clean all results"
+	@echo ""
+	@echo "Configuration:"
+	@echo "  CC=$(CC)"
+	@echo "  CFLAGS=$(CFLAGS)"
+	@echo "  Architecture: $(shell uname -m)"
+
+# Install benchmark to system
+install: $(BENCHMARK_TARGET)
+	install -m 755 $(BENCHMARK_TARGET) /usr/local/bin/
+	@echo "✅ Installed $(BENCHMARK_TARGET) to /usr/local/bin/"
+
+# Uninstall benchmark
+uninstall:
+	rm -f /usr/local/bin/$(BENCHMARK_TARGET)
+	@echo "✅ Uninstalled $(BENCHMARK_TARGET) from /usr/local/bin/"
+
+# Verify benchmark installation
+verify: $(BENCHMARK_TARGET)
+	@echo "🔍 Verifying benchmark functionality..."
+	./$(BENCHMARK_TARGET) 100 > /dev/null && echo "✅ Benchmark runs successfully" || echo "❌ Benchmark failed"
+
+.PHONY: all clean clean-results help install uninstall verify
+.PHONY: bench-quick bench bench-comprehensive bench-otel bench-analysis
+.PHONY: bench-profile bench-debug bench-memcheck bench-perf bench-stress
+.PHONY: bench-compare bench-report

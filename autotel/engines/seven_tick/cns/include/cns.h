@@ -235,6 +235,7 @@ S7T_ALWAYS_INLINE cns_result_t cns_execute(
 // Quick command validation (< 2 ticks)
 S7T_ALWAYS_INLINE bool cns_validate_quick(const char* cmd, size_t len) {
     // Basic validation: non-empty, within limits
+    (void)cmd; // Suppress unused parameter warning
     return len > 0 && len < CNS_MAX_CMD_LEN;
 }
 

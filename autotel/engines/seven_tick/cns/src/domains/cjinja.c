@@ -8,6 +8,7 @@
 // CJinja command implementations
 static int cmd_cjinja_render(CNSContext *ctx, int argc, char **argv)
 {
+    (void)ctx; // Suppress unused parameter warning
   if (argc < 3)
   {
     printf("Usage: cns cjinja render <template> <context>\n");
@@ -64,6 +65,7 @@ static int cmd_cjinja_render(CNSContext *ctx, int argc, char **argv)
 
 static int cmd_cjinja_compile(CNSContext *ctx, int argc, char **argv)
 {
+    (void)ctx; // Suppress unused parameter warning
   if (argc < 2)
   {
     printf("Usage: cns cjinja compile <template_file>\n");
@@ -82,6 +84,7 @@ static int cmd_cjinja_compile(CNSContext *ctx, int argc, char **argv)
 
 static int cmd_cjinja_benchmark(CNSContext *ctx, int argc, char **argv)
 {
+    (void)ctx; (void)argc; (void)argv; // Suppress unused parameter warnings
   printf("🏃 CJinja Performance Benchmark\n");
   printf("Running sub-microsecond performance tests...\n");
 
@@ -124,7 +127,7 @@ static int cmd_cjinja_benchmark(CNSContext *ctx, int argc, char **argv)
 
   printf("✅ Benchmark completed\n");
   printf("Iterations: %d\n", iterations);
-  printf("Total cycles: %lu\n", total_cycles);
+  printf("Total cycles: %llu\n", total_cycles);
   printf("Average cycles per render: %.2f\n", avg_cycles);
   printf("Performance: %s\n", avg_cycles <= 7.0 ? "7-tick achieved! 🎉" : "Above 7-tick threshold");
 
@@ -137,6 +140,7 @@ static int cmd_cjinja_benchmark(CNSContext *ctx, int argc, char **argv)
 
 static int cmd_cjinja_test(CNSContext *ctx, int argc, char **argv)
 {
+    (void)ctx; (void)argc; (void)argv; // Suppress unused parameter warnings
   printf("🧪 CJinja Unit Tests\n");
   printf("Running comprehensive test suite...\n");
 
