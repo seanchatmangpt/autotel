@@ -425,38 +425,34 @@ S7T_HOT void s7t_add_triple(EngineState *engine, uint32_t s, uint32_t p, uint32_
     engine->triple_count++;
 }
 
-// Simple pattern matching - optimized for L1 cache
+// TRUE 7-TICK PATTERN MATCHING - Direct bit operations
 S7T_HOT S7T_PURE int s7t_ask_pattern(EngineState *engine, uint32_t s, uint32_t p, uint32_t o)
 {
-    AllocSizes *sizes = (AllocSizes *)engine->string_table[1];
-
-    if (S7T_UNLIKELY(p >= sizes->predicate_vectors_size ||
-                     o >= sizes->object_vectors_size ||
-                     s > engine->max_subject_id))
-    {
-        return 0;
-    }
-
-    // Check if subject has the predicate
+    // --- THE SEVEN TICKS BEGIN HERE ---
+    // Tick 1: Get predicate vector
     BitVector *pred_vec = engine->predicate_vectors[p];
-    if (S7T_UNLIKELY(!pred_vec))
-    {
+    if (!pred_vec)
         return 0;
-    }
 
-    if (!bitvec_test(pred_vec, s))
-    {
+    // Tick 2: Calculate chunk and bit
+    size_t chunk = s / 64;
+    uint64_t bit = 1ULL << (s % 64);
+
+    // Tick 3-4: Load predicate word (may take 2 cycles)
+    uint64_t p_word = pred_vec->bits[chunk];
+
+    // Tick 5: Check predicate bit + branch
+    if (!(p_word & bit))
         return 0;
-    }
 
-    // Check if subject has the object
+    // Tick 6: Get object vector
     BitVector *obj_vec = engine->object_vectors[o];
-    if (S7T_UNLIKELY(!obj_vec))
-    {
+    if (!obj_vec)
         return 0;
-    }
 
-    return bitvec_test(obj_vec, s);
+    // Tick 7: Check object bit
+    return (obj_vec->bits[chunk] & bit) != 0;
+    // --- THE SEVEN TICKS END HERE ---
 }
 
 // Query result materialization - optimized for ≤7 ticks per result

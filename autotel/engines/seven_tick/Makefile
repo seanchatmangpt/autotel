@@ -35,6 +35,8 @@ CJINJA_BENCHMARK_SRC = $(VERIFICATION_DIR)/cjinja_benchmark.c
 CJINJA_BENCHMARK_BIN = $(VERIFICATION_DIR)/cjinja_benchmark
 CJINJA_80_20_BENCHMARK_SRC = $(VERIFICATION_DIR)/cjinja_80_20_benchmark.c
 CJINJA_80_20_BENCHMARK_BIN = $(VERIFICATION_DIR)/cjinja_80_20_benchmark
+CJINJA_7TICK_VS_49TICK_BENCHMARK_SRC = $(VERIFICATION_DIR)/cjinja_7tick_vs_49tick_benchmark.c
+CJINJA_7TICK_VS_49TICK_BENCHMARK_BIN = $(VERIFICATION_DIR)/cjinja_7tick_vs_49tick_benchmark
 SHACL_IMPL_BENCHMARK_SRC = $(VERIFICATION_DIR)/shacl_implementation_benchmark.c
 SHACL_IMPL_BENCHMARK_BIN = $(VERIFICATION_DIR)/shacl_implementation_benchmark
 SPARQL_7TICK_BENCHMARK_SRC = $(VERIFICATION_DIR)/sparql_7tick_benchmark.c
@@ -46,6 +48,8 @@ TELEMETRY7T_BENCHMARK_SRC = verification/telemetry7t_benchmark.c
 TELEMETRY7T_BENCHMARK_BIN = verification/telemetry7t_benchmark
 TELEMETRY7T_7TICK_BENCHMARK_SRC = verification/telemetry7t_7tick_benchmark.c
 TELEMETRY7T_7TICK_BENCHMARK_BIN = verification/telemetry7t_7tick_benchmark
+TELEMETRY7T_JSON_BENCHMARK_SRC = verification/telemetry7t_simple_json.c
+TELEMETRY7T_JSON_BENCHMARK_BIN = verification/telemetry7t_simple_json
 
 # PM7T Process Mining Library
 PM7T_OBJS = c_src/pm7t.o
@@ -74,7 +78,7 @@ compiler: $(COMPILER_BIN)
 $(COMPILER_BIN): $(COMPILER_SRCS)
 	$(CC) $(CFLAGS) -o $@ $^ -ldl
 
-verification: $(GATEKEEPER_BIN) $(SHACL_BENCHMARK_BIN) $(SHACL_7TICK_BENCHMARK_BIN) $(CJINJA_BENCHMARK_BIN) $(CJINJA_80_20_BENCHMARK_BIN) $(SHACL_IMPL_BENCHMARK_BIN) $(TELEMETRY7T_BENCHMARK_BIN) $(TELEMETRY7T_7TICK_BENCHMARK_BIN)
+verification: $(GATEKEEPER_BIN) $(SHACL_BENCHMARK_BIN) $(SHACL_7TICK_BENCHMARK_BIN) $(CJINJA_BENCHMARK_BIN) $(CJINJA_80_20_BENCHMARK_BIN) $(SHACL_IMPL_BENCHMARK_BIN) $(TELEMETRY7T_BENCHMARK_BIN) $(TELEMETRY7T_7TICK_BENCHMARK_BIN) $(TELEMETRY7T_JSON_BENCHMARK_BIN)
 
 $(GATEKEEPER_BIN): $(GATEKEEPER_SRC) $(RUNTIME_LIB)
 	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -l7t_runtime -ldl -Wl,-rpath,$(PWD)/$(LIB_DIR)
@@ -99,6 +103,9 @@ $(TELEMETRY7T_BENCHMARK_BIN): $(TELEMETRY7T_BENCHMARK_SRC) $(TELEMETRY7T_SRC)
 
 $(TELEMETRY7T_7TICK_BENCHMARK_BIN): $(TELEMETRY7T_7TICK_BENCHMARK_SRC)
 	$(CC) $(CFLAGS) -o $@ $<
+
+$(TELEMETRY7T_JSON_BENCHMARK_BIN): $(TELEMETRY7T_JSON_BENCHMARK_SRC) $(TELEMETRY7T_SRC) $(COMPILER_DIR)/cjinja.c
+	$(CC) $(CFLAGS) -o $@ $^
 
 $(PM7T_LIB): $(PM7T_OBJS)
 	$(CC) -shared -o $@ $(PM7T_OBJS) -lm
@@ -163,3 +170,6 @@ run-telemetry7t-benchmark: all
 
 run-telemetry7t-7tick-benchmark: all
 	./verification/telemetry7t_7tick_benchmark
+
+run-telemetry7t-json-benchmark: all
+	./verification/telemetry7t_simple_json
