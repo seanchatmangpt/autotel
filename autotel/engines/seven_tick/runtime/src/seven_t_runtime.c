@@ -6,7 +6,16 @@
 #define INITIAL_CAPACITY 1024
 #define BITVEC_WORD_BITS 64
 #define HASH_TABLE_SIZE 16384
-#define STRING_HASH_SIZE 8192
+#define STRING_HASH_SIZE 32768 // Increased from 8192 to reduce collisions
+#define MEMORY_POOL_SIZE 65536 // 64KB memory pool for small strings
+
+// Memory pool for small string allocations
+typedef struct MemoryPool
+{
+    char *buffer;
+    size_t used;
+    size_t size;
+} MemoryPool;
 
 // Track allocated sizes
 typedef struct
@@ -29,6 +38,7 @@ typedef struct StringHashEntry
 typedef struct
 {
     StringHashEntry *entries[STRING_HASH_SIZE];
+    size_t collision_count; // Track collisions for debugging
 } StringHashTable;
 
 // Simple hash table entry for PS->O mapping
@@ -68,14 +78,14 @@ static void ensure_capacity(void **array, size_t *current_size, size_t required_
     }
 }
 
-// Simple hash function for strings
+// Improved hash function for strings - better distribution
 static uint32_t hash_string(const char *str)
 {
-    uint32_t hash = 5381;
-    int c;
-    while ((c = *str++))
+    uint32_t hash = 0x811c9dc5; // FNV-1a hash
+    while (*str)
     {
-        hash = ((hash << 5) + hash) + c; // hash * 33 + c
+        hash ^= (uint32_t)*str++;
+        hash *= 0x01000193;
     }
     return hash % STRING_HASH_SIZE;
 }
@@ -211,6 +221,47 @@ S7T_PURE size_t bitvec_popcount(BitVector *bv)
     return bv->count;
 }
 
+// Memory pool allocation for small strings
+static char *pool_alloc_string(MemoryPool *pool, size_t size)
+{
+    if (pool->used + size <= pool->size)
+    {
+        char *result = pool->buffer + pool->used;
+        pool->used += size;
+        return result;
+    }
+    return NULL; // Pool full, fall back to malloc
+}
+
+// Initialize memory pool
+static MemoryPool *create_memory_pool(size_t size)
+{
+    MemoryPool *pool = malloc(sizeof(MemoryPool));
+    if (!pool)
+        return NULL;
+
+    pool->buffer = malloc(size);
+    if (!pool->buffer)
+    {
+        free(pool);
+        return NULL;
+    }
+
+    pool->used = 0;
+    pool->size = size;
+    return pool;
+}
+
+// Destroy memory pool
+static void destroy_memory_pool(MemoryPool *pool)
+{
+    if (pool)
+    {
+        free(pool->buffer);
+        free(pool);
+    }
+}
+
 // Engine creation and management
 EngineState *s7t_create_engine(void)
 {
@@ -230,8 +281,9 @@ EngineState *s7t_create_engine(void)
     engine->string_table = calloc(INITIAL_CAPACITY, sizeof(char *));
     engine->string_table[0] = (char *)string_hash;
     engine->string_table[1] = (char *)sizes;
+    engine->string_table[2] = (char *)create_memory_pool(MEMORY_POOL_SIZE); // Memory pool
     engine->string_capacity = INITIAL_CAPACITY;
-    engine->string_count = 2; // Start at 2 to skip hash table and sizes
+    engine->string_count = 3; // Start at 3 to skip hash table, sizes, and memory pool
 
     // Pre-allocate arrays
     engine->predicate_vectors = calloc(INITIAL_CAPACITY, sizeof(BitVector *));
@@ -257,6 +309,7 @@ void s7t_destroy_engine(EngineState *engine)
     // Get sizes and string hash table
     StringHashTable *string_hash = (StringHashTable *)engine->string_table[0];
     AllocSizes *sizes = (AllocSizes *)engine->string_table[1];
+    MemoryPool *string_pool = (MemoryPool *)engine->string_table[2];
 
     // Free string hash table entries
     for (int i = 0; i < STRING_HASH_SIZE; i++)
@@ -265,16 +318,21 @@ void s7t_destroy_engine(EngineState *engine)
         while (entry)
         {
             StringHashEntry *next = entry->next;
-            free(entry->str);
+            // Only free strings that weren't allocated from the memory pool
+            if (entry->str < string_pool->buffer ||
+                entry->str >= string_pool->buffer + string_pool->size)
+            {
+                free(entry->str);
+            }
             free(entry);
             entry = next;
         }
     }
     free(string_hash);
 
-    // Free string table (skip first two entries - strings are freed via hash table)
-    // The strings are already freed when we freed the hash table entries above
+    // Free string table (skip first three entries - strings are freed via hash table)
     free(sizes);
+    destroy_memory_pool(string_pool);
     free(engine->string_table);
 
     // Free bit vectors
@@ -321,6 +379,7 @@ S7T_HOT uint32_t s7t_intern_string(EngineState *engine, const char *str)
 {
     // Use a hash table for O(1) lookups
     StringHashTable *string_hash = (StringHashTable *)engine->string_table[0];
+    MemoryPool *string_pool = (MemoryPool *)engine->string_table[2]; // Memory pool in slot 2
     uint32_t hash = hash_string(str);
     StringHashEntry *entry = string_hash->entries[hash];
 
@@ -341,11 +400,18 @@ S7T_HOT uint32_t s7t_intern_string(EngineState *engine, const char *str)
                                        engine->string_capacity * sizeof(char *));
     }
 
-    // Allocate memory for the new string and its hash entry
+    // Allocate memory for the new string using memory pool first
     size_t str_len = strlen(str) + 1; // +1 for null terminator
-    char *new_str = malloc(str_len);
+    char *new_str = pool_alloc_string(string_pool, str_len);
+
     if (!new_str)
-        abort(); // Out of memory
+    {
+        // Memory pool full, fall back to malloc
+        new_str = malloc(str_len);
+        if (!new_str)
+            abort(); // Out of memory
+    }
+
     strcpy(new_str, str);
 
     // Allocate memory for the new hash entry
@@ -361,6 +427,10 @@ S7T_HOT uint32_t s7t_intern_string(EngineState *engine, const char *str)
     // Insert new entry at the head of the linked list
     new_entry->next = string_hash->entries[hash];
     string_hash->entries[hash] = new_entry;
+
+    // Track collisions
+    if (string_hash->entries[hash]->next)
+        string_hash->collision_count++;
 
     // Store the new string in the string table
     engine->string_table[engine->string_count] = new_str;

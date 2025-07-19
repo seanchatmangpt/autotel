@@ -1,0 +1,169 @@
+# Refactored 7T Engine Benchmarks Makefile
+# Uses standardized benchmark framework
+
+CC = gcc
+CFLAGS = -O3 -march=native -Wall -Wextra
+INCLUDES = -I../runtime/src -I../compiler/src
+LIBS = -lm
+
+# Benchmark framework
+FRAMEWORK_SRC = 7t_benchmark_framework.c
+FRAMEWORK_HEADER = 7t_benchmark_framework.h
+
+# Runtime and compiler sources
+RUNTIME_SRC = ../runtime/src/seven_t_runtime.c
+COMPILER_SRC = ../compiler/src/cjinja.c
+
+# Refactored benchmark targets
+REFACTORED_BENCHMARKS = sparql_benchmark_refactored \
+                        shacl_benchmark_refactored \
+                        7t_comprehensive_benchmark
+
+# Legacy benchmarks (for comparison)
+LEGACY_BENCHMARKS = sparql_7tick_benchmark \
+                    shacl_7tick_benchmark \
+                    cjinja_benchmark
+
+.PHONY: all refactored legacy clean run-all run-refactored run-legacy compare
+
+all: refactored legacy
+
+# Refactored benchmarks using standardized framework
+refactored: $(REFACTORED_BENCHMARKS)
+
+sparql_benchmark_refactored: sparql_benchmark_refactored.c $(FRAMEWORK_SRC) $(RUNTIME_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(FRAMEWORK_SRC) $(RUNTIME_SRC) $(LIBS)
+
+shacl_benchmark_refactored: shacl_benchmark_refactored.c $(FRAMEWORK_SRC) $(RUNTIME_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(FRAMEWORK_SRC) $(RUNTIME_SRC) $(LIBS)
+
+7t_comprehensive_benchmark: 7t_comprehensive_benchmark.c $(FRAMEWORK_SRC) $(RUNTIME_SRC) $(COMPILER_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(FRAMEWORK_SRC) $(RUNTIME_SRC) $(COMPILER_SRC) $(LIBS)
+
+# Legacy benchmarks (existing ones)
+legacy: $(LEGACY_BENCHMARKS)
+
+sparql_7tick_benchmark: sparql_7tick_benchmark.c $(RUNTIME_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(RUNTIME_SRC) $(LIBS)
+
+shacl_7tick_benchmark: shacl_7tick_benchmark.c $(RUNTIME_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(RUNTIME_SRC) $(LIBS)
+
+cjinja_benchmark: cjinja_benchmark.c $(COMPILER_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(COMPILER_SRC) $(LIBS)
+
+# Run all refactored benchmarks
+run-refactored: refactored
+	@echo "🚀 Running Refactored 7T Engine Benchmarks"
+	@echo "=========================================="
+	@echo ""
+	@for benchmark in $(REFACTORED_BENCHMARKS); do \
+		echo "Running $$benchmark..."; \
+		echo "----------------------"; \
+		./$$benchmark; \
+		echo ""; \
+	done
+	@echo "✅ All refactored benchmarks completed!"
+
+# Run all legacy benchmarks
+run-legacy: legacy
+	@echo "🔄 Running Legacy 7T Engine Benchmarks"
+	@echo "======================================"
+	@echo ""
+	@for benchmark in $(LEGACY_BENCHMARKS); do \
+		echo "Running $$benchmark..."; \
+		echo "----------------------"; \
+		./$$benchmark; \
+		echo ""; \
+	done
+	@echo "✅ All legacy benchmarks completed!"
+
+# Run all benchmarks
+run-all: run-refactored run-legacy
+
+# Compare refactored vs legacy
+compare: refactored legacy
+	@echo "📊 Comparing Refactored vs Legacy Benchmarks"
+	@echo "============================================"
+	@echo ""
+	@echo "Running refactored benchmarks..."
+	@for benchmark in $(REFACTORED_BENCHMARKS); do \
+		echo "  $$benchmark"; \
+		./$$benchmark > /tmp/refactored_$${benchmark}.log 2>&1; \
+	done
+	@echo ""
+	@echo "Running legacy benchmarks..."
+	@for benchmark in $(LEGACY_BENCHMARKS); do \
+		echo "  $$benchmark"; \
+		./$$benchmark > /tmp/legacy_$${benchmark}.log 2>&1; \
+	done
+	@echo ""
+	@echo "Comparison complete. Check /tmp/ for log files."
+
+# Individual benchmark runs
+run-sparql-refactored: sparql_benchmark_refactored
+	./sparql_benchmark_refactored
+
+run-shacl-refactored: shacl_benchmark_refactored
+	./shacl_benchmark_refactored
+
+run-comprehensive: 7t_comprehensive_benchmark
+	./7t_comprehensive_benchmark
+
+run-sparql-legacy: sparql_7tick_benchmark
+	./sparql_7tick_benchmark
+
+run-shacl-legacy: shacl_7tick_benchmark
+	./shacl_7tick_benchmark
+
+run-cjinja-legacy: cjinja_benchmark
+	./cjinja_benchmark
+
+# Performance analysis
+analyze: refactored
+	@echo "📈 Performance Analysis"
+	@echo "======================"
+	@echo ""
+	@echo "Running comprehensive benchmark for analysis..."
+	./7t_comprehensive_benchmark
+	@echo ""
+	@echo "📊 Generated files:"
+	@ls -la *benchmark_results.*
+
+# Clean build artifacts
+clean:
+	rm -f $(REFACTORED_BENCHMARKS) $(LEGACY_BENCHMARKS)
+	rm -f *.o
+	rm -f *benchmark_results.*
+	rm -f /tmp/refactored_*.log /tmp/legacy_*.log
+
+# Help target
+help:
+	@echo "7T Engine Refactored Benchmarks Makefile"
+	@echo "========================================"
+	@echo ""
+	@echo "Available targets:"
+	@echo "  all                    - Build all benchmarks (refactored + legacy)"
+	@echo "  refactored             - Build refactored benchmarks using framework"
+	@echo "  legacy                 - Build legacy benchmarks"
+	@echo "  run-all                - Run all benchmarks"
+	@echo "  run-refactored         - Run refactored benchmarks"
+	@echo "  run-legacy             - Run legacy benchmarks"
+	@echo "  compare                - Compare refactored vs legacy"
+	@echo "  analyze                - Run performance analysis"
+	@echo "  clean                  - Remove build artifacts"
+	@echo "  help                   - Show this help message"
+	@echo ""
+	@echo "Individual benchmark runs:"
+	@echo "  run-sparql-refactored  - Run refactored SPARQL benchmark"
+	@echo "  run-shacl-refactored   - Run refactored SHACL benchmark"
+	@echo "  run-comprehensive      - Run comprehensive benchmark"
+	@echo "  run-sparql-legacy      - Run legacy SPARQL benchmark"
+	@echo "  run-shacl-legacy       - Run legacy SHACL benchmark"
+	@echo "  run-cjinja-legacy      - Run legacy CJinja benchmark"
+	@echo ""
+	@echo "Refactored benchmarks use the standardized framework with:"
+	@echo "  - Consistent timing and measurement"
+	@echo "  - Performance tier assessment"
+	@echo "  - CSV/JSON result export"
+	@echo "  - Comprehensive reporting" 

@@ -10,7 +10,7 @@ typedef struct
   uint64_t *data;
   uint32_t size;
   uint32_t capacity;
-} BitVector;
+} TPOTBitVector;
 
 // 7T TPOT Core Structures
 typedef struct
@@ -19,8 +19,8 @@ typedef struct
   uint32_t num_features;
   double *data;            // Row-major layout for cache efficiency
   uint32_t *labels;        // Integer labels
-  BitVector *feature_mask; // Active features
-  BitVector *sample_mask;  // Active samples
+  TPOTBitVector *feature_mask; // Active features
+  TPOTBitVector *sample_mask;  // Active samples
 } Dataset7T;
 
 typedef struct
@@ -29,8 +29,8 @@ typedef struct
   uint32_t algorithm_id; // Algorithm identifier
   double *parameters;    // Algorithm parameters
   uint32_t num_parameters;
-  BitVector *input_features;
-  BitVector *output_features;
+  TPOTBitVector *input_features;
+  TPOTBitVector *output_features;
 } PipelineStep;
 
 typedef struct

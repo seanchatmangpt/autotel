@@ -1,0 +1,93 @@
+{
+  "suite_name": "SPARQL Engine",
+  "total_tests": 12,
+  "passed_tests": 12,
+  "failed_tests": 0,
+  "success_rate": 100.0,
+  "results": [
+    {
+      "test_name": "Engine Creation",
+      "test_suite": "SPARQL Engine",
+      "passed": true,
+      "execution_time_ms": 0.06,
+      "failure_message": ""
+    },
+    {
+      "test_name": "String Interning",
+      "test_suite": "SPARQL Engine",
+      "passed": true,
+      "execution_time_ms": 0.05,
+      "failure_message": ""
+    },
+    {
+      "test_name": "Triple Addition",
+      "test_suite": "SPARQL Engine",
+      "passed": true,
+      "execution_time_ms": 0.05,
+      "failure_message": ""
+    },
+    {
+      "test_name": "Pattern Matching Basic",
+      "test_suite": "SPARQL Engine",
+      "passed": true,
+      "execution_time_ms": 0.06,
+      "failure_message": ""
+    },
+    {
+      "test_name": "Pattern Matching Wildcards",
+      "test_suite": "SPARQL Engine",
+      "passed": true,
+      "execution_time_ms": 0.01,
+      "failure_message": ""
+    },
+    {
+      "test_name": "Bit Vector Operations",
+      "test_suite": "SPARQL Engine",
+      "passed": true,
+      "execution_time_ms": 0.11,
+      "failure_message": ""
+    },
+    {
+      "test_name": "Materialization",
+      "test_suite": "SPARQL Engine",
+      "passed": true,
+      "execution_time_ms": 0.02,
+      "failure_message": ""
+    },
+    {
+      "test_name": "Large Scale Operations",
+      "test_suite": "SPARQL Engine",
+      "passed": true,
+      "execution_time_ms": 0.34,
+      "failure_message": ""
+    },
+    {
+      "test_name": "7-Tick Pattern Matching Performance",
+      "test_suite": "SPARQL Engine",
+      "passed": true,
+      "execution_time_ms": 0.20,
+      "failure_message": ""
+    },
+    {
+      "test_name": "7-Tick Bit Vector Performance",
+      "test_suite": "SPARQL Engine",
+      "passed": true,
+      "execution_time_ms": 0.63,
+      "failure_message": ""
+    },
+    {
+      "test_name": "Edge Cases",
+      "test_suite": "SPARQL Engine",
+      "passed": true,
+      "execution_time_ms": 0.05,
+      "failure_message": ""
+    },
+    {
+      "test_name": "Memory Management",
+      "test_suite": "SPARQL Engine",
+      "passed": true,
+      "execution_time_ms": 0.10,
+      "failure_message": ""
+    }
+  ]
+}

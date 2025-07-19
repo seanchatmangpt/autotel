@@ -1,0 +1,206 @@
+# 7T Engine Unit Tests Makefile
+# Comprehensive unit testing framework
+
+CC = gcc
+CFLAGS = -O3 -march=native -Wall -Wextra
+INCLUDES = -I../runtime/src -I../compiler/src
+LIBS = -lm
+
+# Unit test framework
+FRAMEWORK_SRC = 7t_unit_test_framework.c
+FRAMEWORK_HEADER = 7t_unit_test_framework.h
+
+# Runtime and compiler sources
+RUNTIME_SRC = ../runtime/src/seven_t_runtime.c
+COMPILER_SRC = ../compiler/src/cjinja.c
+
+# Unit test targets
+UNIT_TESTS = sparql_unit_tests \
+             shacl_unit_tests \
+             cjinja_unit_tests \
+             7t_comprehensive_unit_tests
+
+# Legacy tests (for comparison)
+LEGACY_TESTS = unit_test \
+               sparql_test \
+               simple_test
+
+.PHONY: all unit-tests legacy-tests clean run-all run-unit-tests run-legacy-tests compare
+
+all: unit-tests legacy-tests
+
+# Unit tests using framework
+unit-tests: $(UNIT_TESTS)
+
+sparql_unit_tests: sparql_unit_tests.c $(FRAMEWORK_SRC) $(RUNTIME_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(FRAMEWORK_SRC) $(RUNTIME_SRC) $(LIBS)
+
+shacl_unit_tests: shacl_unit_tests.c $(FRAMEWORK_SRC) $(RUNTIME_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(FRAMEWORK_SRC) $(RUNTIME_SRC) $(LIBS)
+
+cjinja_unit_tests: cjinja_unit_tests.c $(FRAMEWORK_SRC) $(COMPILER_SRC) $(RUNTIME_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(FRAMEWORK_SRC) $(COMPILER_SRC) $(RUNTIME_SRC) $(LIBS)
+
+7t_comprehensive_unit_tests: 7t_comprehensive_unit_tests.c $(FRAMEWORK_SRC) $(RUNTIME_SRC) $(COMPILER_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(FRAMEWORK_SRC) $(RUNTIME_SRC) $(COMPILER_SRC) $(LIBS)
+
+# Legacy tests (existing ones)
+legacy-tests: $(LEGACY_TESTS)
+
+unit_test: unit_test.c $(RUNTIME_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(RUNTIME_SRC) $(LIBS)
+
+sparql_test: sparql_test.c $(RUNTIME_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(RUNTIME_SRC) $(LIBS)
+
+simple_test: simple_test.c $(RUNTIME_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(RUNTIME_SRC) $(LIBS)
+
+# Run all unit tests
+run-unit-tests: unit-tests
+	@echo "🧪 Running 7T Engine Unit Tests"
+	@echo "==============================="
+	@echo ""
+	@for test in $(UNIT_TESTS); do \
+		echo "Running $$test..."; \
+		echo "-------------------"; \
+		./$$test; \
+		echo ""; \
+	done
+	@echo "✅ All unit tests completed!"
+
+# Run all legacy tests
+run-legacy-tests: legacy-tests
+	@echo "🔄 Running Legacy Tests"
+	@echo "======================="
+	@echo ""
+	@for test in $(LEGACY_TESTS); do \
+		echo "Running $$test..."; \
+		echo "-------------------"; \
+		./$$test; \
+		echo ""; \
+	done
+	@echo "✅ All legacy tests completed!"
+
+# Run all tests
+run-all: run-unit-tests run-legacy-tests
+
+# Compare unit tests vs legacy tests
+compare: unit-tests legacy-tests
+	@echo "📊 Comparing Unit Tests vs Legacy Tests"
+	@echo "======================================"
+	@echo ""
+	@echo "Running unit tests..."
+	@for test in $(UNIT_TESTS); do \
+		echo "  $$test"; \
+		./$$test > /tmp/unit_$${test}.log 2>&1; \
+	done
+	@echo ""
+	@echo "Running legacy tests..."
+	@for test in $(LEGACY_TESTS); do \
+		echo "  $$test"; \
+		./$$test > /tmp/legacy_$${test}.log 2>&1; \
+	done
+	@echo ""
+	@echo "Comparison complete. Check /tmp/ for log files."
+
+# Individual test runs
+run-sparql-unit: sparql_unit_tests
+	./sparql_unit_tests
+
+run-shacl-unit: shacl_unit_tests
+	./shacl_unit_tests
+
+run-cjinja-unit: cjinja_unit_tests
+	./cjinja_unit_tests
+
+run-comprehensive-unit: 7t_comprehensive_unit_tests
+	./7t_comprehensive_unit_tests
+
+run-legacy-unit: unit_test
+	./unit_test
+
+run-legacy-sparql: sparql_test
+	./sparql_test
+
+run-legacy-simple: simple_test
+	./simple_test
+
+# Test analysis
+analyze: unit-tests
+	@echo "📈 Unit Test Analysis"
+	@echo "===================="
+	@echo ""
+	@echo "Running comprehensive unit test for analysis..."
+	./7t_comprehensive_unit_tests
+	@echo ""
+	@echo "📊 Generated files:"
+	@ls -la *test_results.*
+
+# Test coverage (simplified)
+coverage: unit-tests
+	@echo "📊 Test Coverage Analysis"
+	@echo "========================"
+	@echo ""
+	@echo "Running all unit tests for coverage analysis..."
+	@for test in $(UNIT_TESTS); do \
+		echo "Running $$test for coverage..."; \
+		./$$test > /dev/null 2>&1; \
+	done
+	@echo ""
+	@echo "Coverage analysis complete."
+
+# Performance testing
+performance: unit-tests
+	@echo "⚡ Performance Testing"
+	@echo "====================="
+	@echo ""
+	@echo "Running performance-focused tests..."
+	./sparql_unit_tests | grep "7-TICK"
+	./shacl_unit_tests | grep "7-TICK"
+	./cjinja_unit_tests | grep "7-TICK"
+	@echo ""
+	@echo "Performance testing complete."
+
+# Clean build artifacts
+clean:
+	rm -f $(UNIT_TESTS) $(LEGACY_TESTS)
+	rm -f *.o
+	rm -f *test_results.*
+	rm -f /tmp/unit_*.log /tmp/legacy_*.log
+
+# Help target
+help:
+	@echo "7T Engine Unit Tests Makefile"
+	@echo "============================="
+	@echo ""
+	@echo "Available targets:"
+	@echo "  all                    - Build all tests (unit + legacy)"
+	@echo "  unit-tests             - Build unit tests using framework"
+	@echo "  legacy-tests           - Build legacy tests"
+	@echo "  run-all                - Run all tests"
+	@echo "  run-unit-tests         - Run unit tests"
+	@echo "  run-legacy-tests       - Run legacy tests"
+	@echo "  compare                - Compare unit vs legacy tests"
+	@echo "  analyze                - Run test analysis"
+	@echo "  coverage               - Run coverage analysis"
+	@echo "  performance            - Run performance testing"
+	@echo "  clean                  - Remove build artifacts"
+	@echo "  help                   - Show this help message"
+	@echo ""
+	@echo "Individual test runs:"
+	@echo "  run-sparql-unit        - Run SPARQL unit tests"
+	@echo "  run-shacl-unit         - Run SHACL unit tests"
+	@echo "  run-cjinja-unit        - Run CJinja unit tests"
+	@echo "  run-comprehensive-unit - Run comprehensive unit tests"
+	@echo "  run-legacy-unit        - Run legacy unit test"
+	@echo "  run-legacy-sparql      - Run legacy SPARQL test"
+	@echo "  run-legacy-simple      - Run legacy simple test"
+	@echo ""
+	@echo "Unit test framework features:"
+	@echo "  - Comprehensive assertion macros"
+	@echo "  - Performance testing with 7-tick validation"
+	@echo "  - CSV/JSON result export"
+	@echo "  - Test suite management"
+	@echo "  - Integration testing"
+	@echo "  - Memory management testing" 

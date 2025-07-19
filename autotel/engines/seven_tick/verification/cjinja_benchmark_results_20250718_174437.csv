@@ -1,0 +1,10 @@
+test_name,operations,avg_cycles_per_op,avg_time_ns_per_op,ops_per_sec,target_achievement_percent,passed
+"Simple Variable Substitution (49-tick)",10000,215.3,215.3,4644682,0.0,false
+"Simple Variable Substitution (7-tick)",10000,128.3,128.3,7794232,0.0,false
+"Conditional Rendering (49-tick)",10000,607.0,607.0,1647446,0.0,false
+"Conditional Rendering (7-tick)",10000,555.6,555.6,1799856,0.0,false
+"Loop Rendering (49-tick only)",1000,7132.0,7132.0,140213,0.0,false
+"Filter Rendering (49-tick only)",10000,1288.1,1288.1,776337,0.0,false
+"Advanced Filters (49-tick only)",10000,1280.4,1280.4,781006,0.0,false
+"Template Inheritance (49-tick only)",1000,1532.0,1532.0,652742,0.0,false
+"Batch Rendering (49-tick only)",1000,1087.0,1087.0,919963,0.0,false

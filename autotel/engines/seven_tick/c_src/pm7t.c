@@ -39,7 +39,14 @@ static void pm7t_free(void *ptr, size_t size)
   if (ptr)
   {
     free(ptr);
-    current_memory_usage -= size;
+    if (current_memory_usage >= size)
+    {
+      current_memory_usage -= size;
+    }
+    else
+    {
+      current_memory_usage = 0; // Prevent underflow
+    }
   }
 }
 
@@ -496,81 +503,83 @@ void pm7t_destroy_process_stats(ProcessStats *stats)
 // Conformance checking
 double pm7t_calculate_fitness(ProcessModel *model, TraceLog *trace_log)
 {
-  if (!model || !trace_log)
+  if (!model || !trace_log || trace_log->size == 0)
     return 0.0;
 
-  uint32_t fitting_traces = 0;
+  // Simple fitness calculation: percentage of traces that can be replayed
+  // This is a simplified version - real fitness would be more complex
+  size_t replayable_traces = 0;
 
   for (size_t i = 0; i < trace_log->size; i++)
   {
-    bool trace_fits = true;
+    Trace *trace = &trace_log->traces[i];
+    bool can_replay = true;
 
-    for (size_t j = 0; j < trace_log->traces[i].size - 1; j++)
+    // Check if all transitions in the trace exist in the model
+    for (size_t j = 0; j < trace->size - 1; j++)
     {
-      uint32_t from = trace_log->traces[i].activities[j];
-      uint32_t to = trace_log->traces[i].activities[j + 1];
-
-      bool transition_exists = false;
+      bool transition_found = false;
       for (size_t k = 0; k < model->size; k++)
       {
-        if (model->transitions[k].from_activity == from &&
-            model->transitions[k].to_activity == to)
+        if (model->transitions[k].from_activity == trace->activities[j] &&
+            model->transitions[k].to_activity == trace->activities[j + 1])
         {
-          transition_exists = true;
+          transition_found = true;
           break;
         }
       }
-
-      if (!transition_exists)
+      if (!transition_found)
       {
-        trace_fits = false;
+        can_replay = false;
         break;
       }
     }
 
-    if (trace_fits)
+    if (can_replay)
     {
-      fitting_traces++;
+      replayable_traces++;
     }
   }
 
-  return (double)fitting_traces / trace_log->size;
+  return (double)replayable_traces / trace_log->size;
 }
 
 double pm7t_calculate_precision(ProcessModel *model, TraceLog *trace_log)
 {
-  // Simplified precision calculation
-  if (!model || !trace_log)
+  if (!model || !trace_log || trace_log->size == 0)
     return 0.0;
 
-  uint32_t total_transitions = 0;
-  uint32_t used_transitions = 0;
+  // Simple precision calculation: percentage of model transitions that are actually used
+  // This is a simplified version - real precision would be more complex
+  size_t used_transitions = 0;
 
   for (size_t i = 0; i < model->size; i++)
   {
-    total_transitions += model->transitions[i].frequency;
-  }
+    bool transition_used = false;
 
-  for (size_t i = 0; i < trace_log->size; i++)
-  {
-    for (size_t j = 0; j < trace_log->traces[i].size - 1; j++)
+    for (size_t j = 0; j < trace_log->size; j++)
     {
-      uint32_t from = trace_log->traces[i].activities[j];
-      uint32_t to = trace_log->traces[i].activities[j + 1];
-
-      for (size_t k = 0; k < model->size; k++)
+      Trace *trace = &trace_log->traces[j];
+      for (size_t k = 0; k < trace->size - 1; k++)
       {
-        if (model->transitions[k].from_activity == from &&
-            model->transitions[k].to_activity == to)
+        if (model->transitions[i].from_activity == trace->activities[k] &&
+            model->transitions[i].to_activity == trace->activities[k + 1])
         {
-          used_transitions++;
+          transition_used = true;
           break;
         }
       }
+      if (transition_used)
+        break;
+    }
+
+    if (transition_used)
+    {
+      used_transitions++;
     }
   }
 
-  return total_transitions > 0 ? (double)used_transitions / total_transitions : 0.0;
+  return (double)used_transitions / model->size;
 }
 
 double pm7t_calculate_generalization(ProcessModel *model, TraceLog *trace_log)
@@ -718,7 +727,16 @@ PerformanceAnalysis *pm7t_analyze_performance(EventLog *event_log)
   analysis->avg_duration = (double)total_duration / analysis->size;
   analysis->min_duration = (double)min_duration;
   analysis->max_duration = (double)max_duration;
-  analysis->throughput = (double)analysis->size / (analysis->avg_duration / 1000000000.0); // cases per second
+
+  // Fix throughput calculation to avoid division by zero
+  if (analysis->avg_duration > 0)
+  {
+    analysis->throughput = (double)analysis->size / (analysis->avg_duration / 1000000000.0); // cases per second
+  }
+  else
+  {
+    analysis->throughput = 0.0;
+  }
 
   return analysis;
 }
