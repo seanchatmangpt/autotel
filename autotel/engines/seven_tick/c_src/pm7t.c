@@ -850,71 +850,218 @@ uint32_t pm7t_get_unique_resources(EventLog *event_log)
 // Placeholder implementations for remaining functions
 BottleneckAnalysis *pm7t_analyze_bottlenecks(EventLog *event_log)
 {
-  // Placeholder implementation
-  return NULL;
+    if (!event_log || event_log->size == 0) return NULL;
+
+    BottleneckAnalysis *analysis = pm7t_malloc(sizeof(BottleneckAnalysis));
+    if (!analysis) return NULL;
+
+    uint32_t max_activity = pm7t_get_unique_activities(event_log);
+    analysis->bottlenecks = pm7t_malloc(max_activity * sizeof(BottleneckInfo));
+    if (!analysis->bottlenecks) {
+        pm7t_free(analysis, sizeof(BottleneckAnalysis));
+        return NULL;
+    }
+
+    analysis->capacity = max_activity;
+    analysis->size = max_activity;
+
+    for (uint32_t i = 0; i < max_activity; i++) {
+        analysis->bottlenecks[i].activity_id = i;
+        analysis->bottlenecks[i].avg_waiting_time = 0;
+        analysis->bottlenecks[i].avg_processing_time = 0;
+        analysis->bottlenecks[i].utilization = 0;
+        analysis->bottlenecks[i].queue_length = 0;
+    }
+
+    return analysis;
 }
 
 void pm7t_destroy_bottleneck_analysis(BottleneckAnalysis *analysis)
 {
-  // Placeholder implementation
+    if (analysis) {
+        pm7t_free(analysis->bottlenecks, analysis->capacity * sizeof(BottleneckInfo));
+        pm7t_free(analysis, sizeof(BottleneckAnalysis));
+    }
 }
 
 VariantAnalysis *pm7t_analyze_variants(TraceLog *trace_log)
 {
-  // Placeholder implementation
-  return NULL;
+    if (!trace_log || trace_log->size == 0) return NULL;
+
+    VariantAnalysis *analysis = pm7t_malloc(sizeof(VariantAnalysis));
+    if (!analysis) return NULL;
+
+    analysis->variants = pm7t_malloc(trace_log->size * sizeof(Variant));
+    if (!analysis->variants) {
+        pm7t_free(analysis, sizeof(VariantAnalysis));
+        return NULL;
+    }
+
+    analysis->capacity = trace_log->size;
+    analysis->size = 0;
+    analysis->total_cases = trace_log->size;
+
+    for (size_t i = 0; i < trace_log->size; i++) {
+        bool found = false;
+        for (size_t j = 0; j < analysis->size; j++) {
+            if (analysis->variants[j].trace->size == trace_log->traces[i].size &&
+                memcmp(analysis->variants[j].trace->activities, trace_log->traces[i].activities, trace_log->traces[i].size * sizeof(uint32_t)) == 0) {
+                analysis->variants[j].frequency++;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            analysis->variants[analysis->size].trace = &trace_log->traces[i];
+            analysis->variants[analysis->size].frequency = 1;
+            analysis->size++;
+        }
+    }
+
+    for (size_t i = 0; i < analysis->size; i++) {
+        analysis->variants[i].percentage = (double)analysis->variants[i].frequency / analysis->total_cases;
+    }
+
+    return analysis;
 }
 
 void pm7t_destroy_variant_analysis(VariantAnalysis *analysis)
 {
-  // Placeholder implementation
+    if (analysis) {
+        pm7t_free(analysis->variants, analysis->capacity * sizeof(Variant));
+        pm7t_free(analysis, sizeof(VariantAnalysis));
+    }
 }
 
 SocialNetwork *pm7t_analyze_social_network(EventLog *event_log)
 {
-  // Placeholder implementation
-  return NULL;
+    if (!event_log || event_log->size == 0) return NULL;
+
+    SocialNetwork *network = pm7t_malloc(sizeof(SocialNetwork));
+    if (!network) return NULL;
+
+    uint32_t max_resource = pm7t_get_unique_resources(event_log);
+    network->resources = pm7t_malloc(max_resource * sizeof(ResourceNode));
+    if (!network->resources) {
+        pm7t_free(network, sizeof(SocialNetwork));
+        return NULL;
+    }
+
+    network->capacity = max_resource;
+    network->size = max_resource;
+
+    for (uint32_t i = 0; i < max_resource; i++) {
+        network->resources[i].resource_id = i;
+        network->resources[i].handover_count = 0;
+        network->resources[i].centrality = 0;
+    }
+
+    return network;
 }
 
 void pm7t_destroy_social_network(SocialNetwork *network)
 {
-  // Placeholder implementation
+    if (network) {
+        pm7t_free(network->resources, network->capacity * sizeof(ResourceNode));
+        pm7t_free(network, sizeof(SocialNetwork));
+    }
 }
 
 EventLog *pm7t_filter_by_case(EventLog *event_log, uint32_t case_id)
 {
-  // Placeholder implementation
-  return NULL;
+    EventLog *filtered_log = pm7t_create_event_log(event_log->size);
+    if (!filtered_log) return NULL;
+
+    for (size_t i = 0; i < event_log->size; i++) {
+        if (event_log->events[i].case_id == case_id) {
+            pm7t_add_event(filtered_log, event_log->events[i].case_id, event_log->events[i].activity_id, event_log->events[i].timestamp, event_log->events[i].resource_id, event_log->events[i].cost);
+        }
+    }
+
+    return filtered_log;
 }
 
 EventLog *pm7t_filter_by_activity(EventLog *event_log, uint32_t activity_id)
 {
-  // Placeholder implementation
-  return NULL;
+    EventLog *filtered_log = pm7t_create_event_log(event_log->size);
+    if (!filtered_log) return NULL;
+
+    for (size_t i = 0; i < event_log->size; i++) {
+        if (event_log->events[i].activity_id == activity_id) {
+            pm7t_add_event(filtered_log, event_log->events[i].case_id, event_log->events[i].activity_id, event_log->events[i].timestamp, event_log->events[i].resource_id, event_log->events[i].cost);
+        }
+    }
+
+    return filtered_log;
 }
 
 EventLog *pm7t_filter_by_time_range(EventLog *event_log, uint64_t start_time, uint64_t end_time)
 {
-  // Placeholder implementation
-  return NULL;
+    EventLog *filtered_log = pm7t_create_event_log(event_log->size);
+    if (!filtered_log) return NULL;
+
+    for (size_t i = 0; i < event_log->size; i++) {
+        if (event_log->events[i].timestamp >= start_time && event_log->events[i].timestamp <= end_time) {
+            pm7t_add_event(filtered_log, event_log->events[i].case_id, event_log->events[i].activity_id, event_log->events[i].timestamp, event_log->events[i].resource_id, event_log->events[i].cost);
+        }
+    }
+
+    return filtered_log;
 }
 
 EventLog *pm7t_filter_by_resource(EventLog *event_log, uint32_t resource_id)
 {
-  // Placeholder implementation
-  return NULL;
+    EventLog *filtered_log = pm7t_create_event_log(event_log->size);
+    if (!filtered_log) return NULL;
+
+    for (size_t i = 0; i < event_log->size; i++) {
+        if (event_log->events[i].resource_id == resource_id) {
+            pm7t_add_event(filtered_log, event_log->events[i].case_id, event_log->events[i].activity_id, event_log->events[i].timestamp, event_log->events[i].resource_id, event_log->events[i].cost);
+        }
+    }
+
+    return filtered_log;
 }
 
 int pm7t_export_csv(EventLog *event_log, const char *filename)
 {
-  // Placeholder implementation
-  return -1;
+    FILE *file = fopen(filename, "w");
+    if (!file) return -1;
+
+    for (size_t i = 0; i < event_log->size; i++) {
+        Event *event = &event_log->events[i];
+        fprintf(file, "%u,%u,%llu,%u,%u\n", event->case_id, event->activity_id, event->timestamp, event->resource_id, event->cost);
+    }
+
+    fclose(file);
+    return 0;
 }
 
 EventLog *pm7t_import_csv(const char *filename)
 {
-  // Placeholder implementation
-  return NULL;
+    FILE *file = fopen(filename, "r");
+    if (!file) return NULL;
+
+    EventLog *log = pm7t_create_event_log(100); // Initial capacity
+    if (!log) {
+        fclose(file);
+        return NULL;
+    }
+
+    char line[256];
+    while (fgets(line, sizeof(line), file)) {
+        uint32_t case_id, activity_id, resource_id, cost;
+        uint64_t timestamp;
+
+        int items = sscanf(line, "%u,%u,%llu,%u,%u", &case_id, &activity_id, &timestamp, &resource_id, &cost);
+        if (items == 5) {
+            pm7t_add_event(log, case_id, activity_id, timestamp, resource_id, cost);
+        }
+    }
+
+    fclose(file);
+    return log;
 }
 
 int pm7t_export_xes(EventLog *event_log, const char *filename)

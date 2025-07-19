@@ -16,21 +16,21 @@
       "test_name": "String Interning",
       "test_suite": "SPARQL Engine",
       "passed": true,
-      "execution_time_ms": 0.05,
+      "execution_time_ms": 0.08,
       "failure_message": ""
     },
     {
       "test_name": "Triple Addition",
       "test_suite": "SPARQL Engine",
       "passed": true,
-      "execution_time_ms": 0.05,
+      "execution_time_ms": 0.12,
       "failure_message": ""
     },
     {
       "test_name": "Pattern Matching Basic",
       "test_suite": "SPARQL Engine",
       "passed": true,
-      "execution_time_ms": 0.06,
+      "execution_time_ms": 0.09,
       "failure_message": ""
     },
     {
@@ -44,49 +44,49 @@
       "test_name": "Bit Vector Operations",
       "test_suite": "SPARQL Engine",
       "passed": true,
-      "execution_time_ms": 0.11,
+      "execution_time_ms": 0.10,
       "failure_message": ""
     },
     {
       "test_name": "Materialization",
       "test_suite": "SPARQL Engine",
       "passed": true,
-      "execution_time_ms": 0.02,
+      "execution_time_ms": 0.03,
       "failure_message": ""
     },
     {
       "test_name": "Large Scale Operations",
       "test_suite": "SPARQL Engine",
       "passed": true,
-      "execution_time_ms": 0.34,
+      "execution_time_ms": 0.30,
       "failure_message": ""
     },
     {
       "test_name": "7-Tick Pattern Matching Performance",
       "test_suite": "SPARQL Engine",
       "passed": true,
-      "execution_time_ms": 0.20,
+      "execution_time_ms": 0.24,
       "failure_message": ""
     },
     {
       "test_name": "7-Tick Bit Vector Performance",
       "test_suite": "SPARQL Engine",
       "passed": true,
-      "execution_time_ms": 0.63,
+      "execution_time_ms": 0.87,
       "failure_message": ""
     },
     {
       "test_name": "Edge Cases",
       "test_suite": "SPARQL Engine",
       "passed": true,
-      "execution_time_ms": 0.05,
+      "execution_time_ms": 0.07,
       "failure_message": ""
     },
     {
       "test_name": "Memory Management",
       "test_suite": "SPARQL Engine",
       "passed": true,
-      "execution_time_ms": 0.10,
+      "execution_time_ms": 0.13,
       "failure_message": ""
     }
   ]

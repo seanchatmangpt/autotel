@@ -1,0 +1,21 @@
+# Simple Makefile for testing the demo benchmark suite
+
+CC = gcc
+CFLAGS = -O3 -march=native -mtune=native -ffast-math -funroll-loops -Wall -Wextra
+INCLUDES = -I../runtime/src
+LIBS = -lm
+
+# Runtime sources
+RUNTIME_SOURCES = ../runtime/src/seven_t_runtime.c
+
+# Demo benchmark sources
+DEMO_SOURCES = demo_benchmark_framework.c demo_benchmark_suite.c
+
+# Target
+demo_benchmark_suite: $(DEMO_SOURCES) $(RUNTIME_SOURCES)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LIBS)
+
+clean:
+	rm -f demo_benchmark_suite *.o
+
+.PHONY: clean

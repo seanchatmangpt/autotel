@@ -104,7 +104,20 @@ typedef struct
 // High-precision timing functions
 static inline uint64_t get_cycles(void)
 {
+#ifdef __aarch64__
+  // ARM64 cycle counter
+  uint64_t val;
+  asm volatile("mrs %0, cntvct_el0" : "=r" (val));
+  return val;
+#elif defined(__x86_64__) || defined(__i386__)
+  // x86 cycle counter
   return __builtin_readcyclecounter();
+#else
+  // Fallback to nanoseconds
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return ts.tv_sec * 1000000000ULL + ts.tv_nsec;
+#endif
 }
 
 static inline uint64_t get_nanoseconds(void)

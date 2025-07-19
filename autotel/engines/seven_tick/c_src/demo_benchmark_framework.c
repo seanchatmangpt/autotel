@@ -1,6 +1,5 @@
 #include "demo_benchmark_framework.h"
 #include "../runtime/src/seven_t_runtime.h"
-#include <immintrin.h>
 
 // Cycle distribution implementation
 DemoCycleDistribution *demo_cycle_distribution_create(size_t capacity)
@@ -118,6 +117,72 @@ void fitness_distribution_destroy(FitnessDistribution *dist)
     free(dist->fitness_scores);
     free(dist);
   }
+}
+
+// Export functions for benchmark results
+void demo_benchmark_suite_export_json(DemoBenchmarkSuite *suite, const char *filename)
+{
+  if (!suite || !filename) return;
+  
+  FILE *fp = fopen(filename, "w");
+  if (!fp) return;
+  
+  fprintf(fp, "{\n");
+  fprintf(fp, "  \"suite_name\": \"%s\",\n", suite->suite_name);
+  fprintf(fp, "  \"total_tests\": %zu,\n", suite->result_count);
+  fprintf(fp, "  \"total_time_ns\": %llu,\n", suite->total_suite_time_ns);
+  fprintf(fp, "  \"overall_score\": %.2f,\n", suite->overall_score);
+  fprintf(fp, "  \"overall_fitness_score\": %.4f,\n", suite->overall_fitness_score);
+  fprintf(fp, "  \"results\": [\n");
+  
+  for (size_t i = 0; i < suite->result_count; i++) {
+    DemoBenchmarkResult *result = &suite->results[i];
+    fprintf(fp, "    {\n");
+    fprintf(fp, "      \"test_name\": \"%s\",\n", result->test_name);
+    fprintf(fp, "      \"use_case\": \"%s\",\n", demo_use_case_get_name(result->use_case));
+    fprintf(fp, "      \"passed\": %s,\n", result->passed ? "true" : "false");
+    fprintf(fp, "      \"iterations\": %zu,\n", result->iterations);
+    fprintf(fp, "      \"avg_cycles\": %.2f,\n", result->avg_cycles_per_iteration);
+    fprintf(fp, "      \"avg_time_ns\": %.2f,\n", result->avg_time_ns_per_iteration);
+    fprintf(fp, "      \"ops_per_sec\": %.0f,\n", result->ops_per_sec);
+    fprintf(fp, "      \"target_achievement\": %.1f,\n", result->target_achievement_percent);
+    fprintf(fp, "      \"fitness_achievement\": %.1f,\n", result->fitness_achievement_percent);
+    fprintf(fp, "      \"overall_fitness\": %.4f\n", result->pipeline_result.overall_fitness);
+    fprintf(fp, "    }%s\n", i < suite->result_count - 1 ? "," : "");
+  }
+  
+  fprintf(fp, "  ]\n");
+  fprintf(fp, "}\n");
+  fclose(fp);
+}
+
+void demo_benchmark_suite_export_csv(DemoBenchmarkSuite *suite, const char *filename)
+{
+  if (!suite || !filename) return;
+  
+  FILE *fp = fopen(filename, "w");
+  if (!fp) return;
+  
+  // CSV header
+  fprintf(fp, "Test Name,Use Case,Passed,Iterations,Avg Cycles,Avg Time (ns),Ops/sec,Target Achievement (%%),Fitness Achievement (%%),Overall Fitness\n");
+  
+  // CSV data
+  for (size_t i = 0; i < suite->result_count; i++) {
+    DemoBenchmarkResult *result = &suite->results[i];
+    fprintf(fp, "%s,%s,%s,%zu,%.2f,%.2f,%.0f,%.1f,%.1f,%.4f\n",
+            result->test_name,
+            demo_use_case_get_name(result->use_case),
+            result->passed ? "PASS" : "FAIL",
+            result->iterations,
+            result->avg_cycles_per_iteration,
+            result->avg_time_ns_per_iteration,
+            result->ops_per_sec,
+            result->target_achievement_percent,
+            result->fitness_achievement_percent,
+            result->pipeline_result.overall_fitness);
+  }
+  
+  fclose(fp);
 }
 
 // Demo benchmark suite management
@@ -481,7 +546,6 @@ PipelineResult *pipeline_result_create(DemoUseCase use_case)
   pipeline->use_case_name = demo_use_case_get_name(use_case);
   pipeline->steps = malloc(10 * sizeof(PipelineStepResult)); // Max 10 steps
   pipeline->step_count = 0;
-  pipeline->step_capacity = 10;
   pipeline->total_pipeline_time_ns = 0;
   pipeline->total_pipeline_cycles = 0;
   pipeline->overall_fitness = 0.0;
@@ -495,7 +559,7 @@ PipelineResult *pipeline_result_create(DemoUseCase use_case)
 
 void pipeline_result_add_step(PipelineResult *pipeline, PipelineStepResult *step)
 {
-  if (!pipeline || !step || pipeline->step_count >= pipeline->step_capacity)
+  if (!pipeline || !step || pipeline->step_count >= 10) // Max 10 steps
     return;
 
   pipeline->steps[pipeline->step_count++] = *step;
@@ -526,7 +590,7 @@ void pipeline_result_calculate_stats(PipelineResult *pipeline)
     pipeline->avg_fitness_per_step = total_fitness / pipeline->step_count;
   }
 
-  pipeline->pipeline_success = (successful_steps == pipeline->step_count);
+  pipeline->pipeline_success = (successful_steps == (int)pipeline->step_count);
 }
 
 void pipeline_result_destroy(PipelineResult *pipeline)

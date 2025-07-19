@@ -19,7 +19,7 @@ PM7T is a high-performance process mining library built on top of the 7T Engine,
 
 ### Data Management
 - **CSV Import/Export**: Standard format support
-- **XES Import/Export**: Process mining standard format
+- **XES Import/Export**: Process mining standard format (coming soon)
 - **Filtering**: Case, activity, time, and resource-based filtering
 - **Memory Management**: Configurable memory limits and usage tracking
 

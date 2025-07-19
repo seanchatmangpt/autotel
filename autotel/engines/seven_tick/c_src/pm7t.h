@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-// Process mining data structures
+
 typedef struct
 {
   uint32_t case_id;

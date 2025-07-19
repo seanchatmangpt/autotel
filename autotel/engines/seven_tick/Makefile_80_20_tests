@@ -1,0 +1,110 @@
+# 80/20 Unit Tests Makefile
+# Focus: Critical functionality, high impact tests
+
+CC = cc
+CFLAGS = -O3 -march=native -fPIC -Wall -Wextra -std=c99
+INCLUDES = -I../compiler/src
+LIBS = -lm
+
+# Test targets
+TESTS = test_80_20_cjinja test_80_20_sparql test_80_20_benchmark_framework
+
+# Default target
+all: $(TESTS)
+
+# CJinja 80/20 tests
+test_80_20_cjinja: test_80_20_cjinja.c ../compiler/src/cjinja.c
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LIBS)
+
+# SPARQL 80/20 tests
+test_80_20_sparql: test_80_20_sparql.c ../compiler/src/cjinja.c
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LIBS)
+
+# Benchmark framework 80/20 tests
+test_80_20_benchmark_framework: test_80_20_benchmark_framework.c benchmark_framework.h
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(LIBS)
+
+# Run all tests
+test: all
+	@echo "Running 80/20 Unit Tests..."
+	@echo "================================"
+	@echo ""
+	
+	@echo "1. CJinja Tests:"
+	@./test_80_20_cjinja
+	@echo ""
+	
+	@echo "2. SPARQL Tests:"
+	@./test_80_20_sparql
+	@echo ""
+	
+	@echo "3. Benchmark Framework Tests:"
+	@./test_80_20_benchmark_framework
+	@echo ""
+	
+	@echo "80/20 Unit Tests Complete!"
+
+# Run individual tests
+test-cjinja: test_80_20_cjinja
+	@echo "Running CJinja 80/20 Tests..."
+	@./test_80_20_cjinja
+
+test-sparql: test_80_20_sparql
+	@echo "Running SPARQL 80/20 Tests..."
+	@./test_80_20_sparql
+
+test-framework: test_80_20_benchmark_framework
+	@echo "Running Benchmark Framework 80/20 Tests..."
+	@./test_80_20_benchmark_framework
+
+# Performance tests
+perf-test: all
+	@echo "Running Performance Tests..."
+	@echo "================================"
+	@echo ""
+	
+	@echo "CJinja Performance:"
+	@time ./test_80_20_cjinja > /dev/null 2>&1
+	@echo ""
+	
+	@echo "SPARQL Performance:"
+	@time ./test_80_20_sparql > /dev/null 2>&1
+	@echo ""
+	
+	@echo "Framework Performance:"
+	@time ./test_80_20_benchmark_framework > /dev/null 2>&1
+
+# Clean up
+clean:
+	rm -f $(TESTS)
+	rm -f test_export.json test_export.csv
+	rm -f *.o
+
+# Install dependencies (if needed)
+deps:
+	@echo "Checking dependencies..."
+	@which $(CC) > /dev/null || (echo "Error: $(CC) not found" && exit 1)
+	@echo "Dependencies OK"
+
+# Help
+help:
+	@echo "80/20 Unit Tests Makefile"
+	@echo "========================"
+	@echo ""
+	@echo "Targets:"
+	@echo "  all              - Build all test executables"
+	@echo "  test             - Run all tests"
+	@echo "  test-cjinja      - Run CJinja tests only"
+	@echo "  test-sparql      - Run SPARQL tests only"
+	@echo "  test-framework   - Run benchmark framework tests only"
+	@echo "  perf-test        - Run performance tests"
+	@echo "  clean            - Remove all generated files"
+	@echo "  deps             - Check dependencies"
+	@echo "  help             - Show this help"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make test        # Run all tests"
+	@echo "  make test-cjinja # Run only CJinja tests"
+	@echo "  make clean       # Clean up"
+
+.PHONY: all test test-cjinja test-sparql test-framework perf-test clean deps help 

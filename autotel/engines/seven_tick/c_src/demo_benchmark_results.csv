@@ -1,0 +1,11 @@
+Test Name,Use Case,Passed,Iterations,Avg Cycles,Avg Time (ns),Ops/sec,Target Achievement (%),Fitness Achievement (%),Overall Fitness
+Iris Classification Pipeline,Iris Classification,FAIL,1000,27788.48,27809.00,35960,0.0,100.0,0.9200
+Boston Housing Regression Pipeline,Boston Housing Regression,FAIL,1000,28617.76,28629.00,34930,0.0,100.0,0.8567
+Digits Classification Pipeline,Digits Classification,FAIL,500,31886.11,31856.00,31391,0.0,100.0,0.8833
+Breast Cancer Classification Pipeline,Breast Cancer Classification,FAIL,1000,28782.59,28788.00,34737,0.0,100.0,0.9233
+Wine Quality Classification Pipeline,Wine Quality Classification,FAIL,1000,31322.49,31344.00,31904,0.0,100.0,0.8767
+Latency Benchmark,Iris Classification,FAIL,10000,28275.52,28280.00,35361,0.0,100.0,0.9000
+Throughput Benchmark,Iris Classification,FAIL,5000,27404.36,27421.20,36468,0.0,100.0,0.9133
+Fitness Quality Benchmark,Boston Housing Regression,FAIL,1000,28236.90,28238.00,35413,0.0,100.0,0.9033
+Memory Efficiency Benchmark,Digits Classification,FAIL,100,31438.71,31460.00,31786,0.0,100.0,0.8433
+Integration Stress Benchmark,Wine Quality Classification,FAIL,2000,31053.63,31063.50,32192,0.0,100.0,0.8900
