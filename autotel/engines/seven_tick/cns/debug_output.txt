@@ -1,0 +1,37 @@
+🚀 CNS Production AOT Compiler v2.0
+   Ontologies: docs/ontology
+   SQL: examples/sql
+   Output: build/generated/debug_test
+📖 Processing ontologies...
+    - Loading cns-compilers.ttl
+    - Loading cns-seven-t.ttl
+    - Loading cns-testing.ttl
+    - Loading cns-domains.ttl
+    - Loading cns-build.ttl
+    - Loading cns-weaver.ttl
+    - Loading cns-complete.ttl
+    - Loading cns-enhanced.ttl
+    - Loading cns-performance.ttl
+    - Loading cns-core.ttl
+    - Loading cns-master.ttl
+    - Warning: Failed to parse cns-master.ttl: at line 17 of <>:
+Bad syntax (objectList expected) at ^ in:
+"...b'll specialized CNS ontology files\nowl:imports <cns-core.ttl>'^b' .\nowl:imports <cns-telemetry.ttl> .\nowl:imports <cns-perfor'..."
+    - Loading cns-gatekeeper.ttl
+    - Loading cns-tests.ttl
+    - Loading cns-telemetry.ttl
+    - Loading cns-engines.ttl
+    - Loading cns-architecture.ttl
+📊 Processing SQL queries...
+    - Processed 3 queries from reports_new.sql
+    - Processed 5 queries from reports.sql
+🔧 Generating optimized C headers...
+
+✅ AOT Compilation Complete
+    - Total time: 0.11ms
+    - Parse time: 0.11ms
+    - Generation time: 0.00ms
+    - Generated 76 ontology rules
+    - Generated 38 SHACL shapes
+    - Generated 8 SQL queries
+    - Efficiency: 690.4 rules/ms

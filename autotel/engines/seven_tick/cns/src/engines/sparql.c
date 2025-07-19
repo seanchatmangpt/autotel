@@ -77,8 +77,8 @@ int cns_sparql_ask_pattern(CNSSparqlEngine *engine, uint32_t s, uint32_t p, uint
     return 0; // Rare case with branch prediction hint
   }
 
-  // Single memory access with optimized indexing
-  size_t index = p * engine->cache_lines_per_predicate * 64 + s;
+  // FIXED: Include object parameter in index calculation for complete triple (s,p,o) lookup
+  size_t index = (p * engine->max_subjects * engine->max_objects) + (s * engine->max_objects) + o;
   uint64_t data = engine->data[index / 64];
   uint64_t mask = 1ULL << (index % 64);
 

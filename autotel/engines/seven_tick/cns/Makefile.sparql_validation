@@ -1,0 +1,97 @@
+# SPARQL 80/20 Validation Makefile
+# Builds and validates the complete SPARQL system
+
+CC = clang
+CFLAGS = -O3 -march=native -flto -ffast-math -Wall -Wextra -std=c11 -DS7T_DEBUG=1
+LDFLAGS = -lm -lpthread
+INCLUDES = -Iinclude -I../include -I../../c_src -I../../benchmarks -I../../tests
+
+# Source files
+SPARQL_SRCS = src/engines/sparql_engine.c
+TEST_SRCS = tests/test_sparql_engine.c
+VALIDATION_SRCS = sparql_80_20_validation.c
+
+# Object files
+SPARQL_OBJS = $(SPARQL_SRCS:.c=.o)
+TEST_OBJS = $(TEST_SRCS:.c=.o)
+VALIDATION_OBJS = $(VALIDATION_SRCS:.c=.o)
+
+# Targets
+SPARQL_ENGINE = libsparql.a
+TEST_BINARY = test_sparql_engine
+VALIDATION_BINARY = sparql_validation
+
+# Default target
+all: $(SPARQL_ENGINE) $(TEST_BINARY) $(VALIDATION_BINARY)
+	@echo "✅ SPARQL system built successfully"
+
+# Build SPARQL engine library
+$(SPARQL_ENGINE): $(SPARQL_OBJS)
+	ar rcs $@ $^
+	@echo "✅ Built SPARQL engine library"
+
+# Build test binary
+$(TEST_BINARY): $(TEST_OBJS) $(SPARQL_ENGINE)
+	$(CC) $(LDFLAGS) -o $@ $^
+	@echo "✅ Built SPARQL test binary"
+
+# Build validation binary
+$(VALIDATION_BINARY): $(VALIDATION_OBJS) $(SPARQL_ENGINE)
+	$(CC) $(LDFLAGS) -o $@ $^
+	@echo "✅ Built SPARQL validation binary"
+
+# Compile source files
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+
+# Run tests
+test: $(TEST_BINARY)
+	@echo "🧪 Running SPARQL engine tests..."
+	./$(TEST_BINARY)
+
+# Run validation
+validate: $(VALIDATION_BINARY)
+	@echo "🚀 Running SPARQL 80/20 validation..."
+	./$(VALIDATION_BINARY)
+
+# Run full validation suite
+full-validation: test validate
+	@echo "✅ Full SPARQL validation suite completed"
+
+# Performance benchmark
+benchmark: $(VALIDATION_BINARY)
+	@echo "📊 Running SPARQL performance benchmark..."
+	time ./$(VALIDATION_BINARY)
+
+# Clean build artifacts
+clean:
+	rm -f $(SPARQL_OBJS) $(TEST_OBJS) $(VALIDATION_OBJS)
+	rm -f $(SPARQL_ENGINE) $(TEST_BINARY) $(VALIDATION_BINARY)
+	@echo "✅ Cleaned SPARQL build artifacts"
+
+# Install (copy to system location)
+install: $(SPARQL_ENGINE)
+	sudo cp $(SPARQL_ENGINE) /usr/local/lib/
+	sudo cp include/cns/sparql.h /usr/local/include/cns/
+	@echo "✅ SPARQL engine installed to system"
+
+# Uninstall
+uninstall:
+	sudo rm -f /usr/local/lib/$(SPARQL_ENGINE)
+	sudo rm -f /usr/local/include/cns/sparql.h
+	@echo "✅ SPARQL engine uninstalled from system"
+
+# Show help
+help:
+	@echo "SPARQL 80/20 Validation Makefile targets:"
+	@echo "  make              - Build all SPARQL components"
+	@echo "  make test         - Run SPARQL engine tests"
+	@echo "  make validate     - Run SPARQL 80/20 validation"
+	@echo "  make full-validation - Run complete validation suite"
+	@echo "  make benchmark    - Run performance benchmark"
+	@echo "  make install      - Install to system"
+	@echo "  make uninstall    - Uninstall from system"
+	@echo "  make clean        - Remove build artifacts"
+	@echo "  make help         - Show this help"
+
+.PHONY: all test validate full-validation benchmark clean install uninstall help 

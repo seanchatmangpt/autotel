@@ -1,0 +1,48 @@
+# CNS Performance Validation
+# This query validates that all functions have proper performance characteristics
+
+PREFIX cns: <https://schema.chatman.ai/cns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+# Check that all functions have performance characteristics
+SELECT ?function ?functionLabel ?cycleCost ?performanceTier ?apiSignature ?validationStatus
+WHERE {
+  ?function a cns:Function .
+  ?function rdfs:label ?functionLabel .
+  
+  # Get cycle cost
+  OPTIONAL {
+    ?function cns:cycleCost ?cycleCost .
+  }
+  
+  # Get performance tier
+  OPTIONAL {
+    ?function cns:hasPerformanceTier ?performanceTier .
+    ?performanceTier rdfs:label ?tierLabel .
+  }
+  
+  # Get API signature
+  OPTIONAL {
+    ?function cns:providesAPI ?apiSignature .
+  }
+  
+  # Validate performance compliance
+  BIND(
+    IF(
+      ?cycleCost <= 7 && ?performanceTier = cns:SevenTickTier,
+      "✅ 7-Tick Compliant",
+      IF(
+        ?cycleCost <= 1000 && ?performanceTier = cns:SubMicrosecondTier,
+        "✅ Sub-μs Compliant",
+        IF(
+          ?cycleCost <= 10000 && ?performanceTier = cns:MicrosecondTier,
+          "✅ μs Compliant",
+          "❌ Performance Violation"
+        )
+      )
+    ) AS ?validationStatus
+  )
+}
+ORDER BY ?cycleCost ?functionLabel 

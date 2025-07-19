@@ -6,11 +6,18 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
-#include <immintrin.h>
+#include <stdio.h>
 #include "cns/engines/sparql.h"
 #include "ontology_ids.h"
 #include "sparql_queries.h"
 #include "../include/s7t.h"
+
+// SIMD includes based on architecture
+#ifdef __x86_64__
+#include <immintrin.h>
+#elif defined(__aarch64__)
+#include <arm_neon.h>
+#endif
 
 // Performance tracking
 static s7t_perf_counter_t s7t_kernel_perf[5] = {0};
@@ -126,7 +133,7 @@ S7T_HOT int s7t_simd_filter_gt_f32(float* values, int count, float threshold, ui
     
     int result_count = 0;
     
-#ifdef __AVX2__
+#if defined(__x86_64__) && defined(__AVX2__)
     const __m256 threshold_vec = _mm256_set1_ps(threshold);
     const int simd_width = 8;
     
@@ -135,12 +142,11 @@ S7T_HOT int s7t_simd_filter_gt_f32(float* values, int count, float threshold, ui
     for (int i = 0; i < simd_count; i += simd_width) {
         s7t_prefetch_r(&values[i + simd_width]); // Prefetch next batch
         
-        __m256 vals = _mm256_load_ps(&values[i]);
+        __m256 vals = _mm256_loadu_ps(&values[i]); // Use unaligned load for safety
         __m256 mask = _mm256_cmp_ps(vals, threshold_vec, _CMP_GT_OQ);
         int mask_bits = _mm256_movemask_ps(mask);
         
         // Extract indices where condition is true
-        S7T_UNROLL(8)
         for (int j = 0; j < simd_width; j++) {
             if (mask_bits & (1 << j)) {
                 results[result_count++] = i + j;
@@ -154,8 +160,35 @@ S7T_HOT int s7t_simd_filter_gt_f32(float* values, int count, float threshold, ui
             results[result_count++] = i;
         }
     }
+#elif defined(__aarch64__) && defined(__ARM_NEON)
+    // NEON implementation for ARM64
+    const float32x4_t threshold_vec = vdupq_n_f32(threshold);
+    const int simd_width = 4;
+    
+    int simd_count = (count / simd_width) * simd_width;
+    for (int i = 0; i < simd_count; i += simd_width) {
+        float32x4_t vals = vld1q_f32(&values[i]);
+        uint32x4_t mask = vcgtq_f32(vals, threshold_vec);
+        
+        // Extract results
+        uint32_t mask_array[4];
+        vst1q_u32(mask_array, mask);
+        
+        for (int j = 0; j < simd_width; j++) {
+            if (mask_array[j]) {
+                results[result_count++] = i + j;
+            }
+        }
+    }
+    
+    // Handle remaining elements
+    for (int i = simd_count; i < count; i++) {
+        if (values[i] > threshold) {
+            results[result_count++] = i;
+        }
+    }
 #else
-    // Fallback for non-AVX2 systems
+    // Fallback for non-SIMD systems
     for (int i = 0; i < count; i++) {
         if (values[i] > threshold) {
             results[result_count++] = i;
@@ -278,12 +311,12 @@ void s7t_print_kernel_performance(void) {
         double avg = perf->count > 0 ? (double)perf->total_cycles / perf->count : 0.0;
         bool compliant = (perf->max_cycles <= 7);
         
-        printf("%-20s %10lu %10lu %10.1f %10lu %8s\n",
+        printf("%-20s %10llu %10llu %10.1f %10llu %8s\n",
                kernel_names[i],
-               perf->min_cycles,
-               perf->max_cycles,
+               (unsigned long long)perf->min_cycles,
+               (unsigned long long)perf->max_cycles,
                avg,
-               perf->total_cycles,
+               (unsigned long long)perf->total_cycles,
                compliant ? "✅" : "❌");
     }
     

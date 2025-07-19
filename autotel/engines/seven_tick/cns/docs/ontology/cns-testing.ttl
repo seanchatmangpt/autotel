@@ -4,510 +4,591 @@
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-@prefix test: <https://schema.chatman.ai/testing#> .
-@prefix perf: <https://schema.chatman.ai/performance#> .
 
 #################################################################
 # CNS Testing Ontology
-# Focus: Testing frameworks, test types, assertions, and validation
 #################################################################
 
 # ============================================================================
-# TESTING CLASSES
+# TESTING FRAMEWORKS
 # ============================================================================
 
-test:TestFramework a rdfs:Class ;
-    rdfs:label "Test Framework" ;
-    rdfs:comment "A testing framework for CNS components" ;
-    rdfs:subClassOf owl:Thing .
+cns:TestingFramework a rdfs:Class ;
+    rdfs:label "Testing Framework" ;
+    rdfs:comment "A testing framework for CNS" .
 
-test:TestCase a rdfs:Class ;
-    rdfs:label "Test Case" ;
-    rdfs:comment "An individual test case" ;
-    rdfs:subClassOf owl:Thing .
+cns:UnitTestFramework a cns:TestingFramework ;
+    rdfs:label "Unit Test Framework" ;
+    rdfs:comment "Framework for unit testing individual components" ;
+    cns:testType "unit" ;
+    cns:performanceTier cns:SevenTickTier .
 
-test:TestSuite a rdfs:Class ;
-    rdfs:label "Test Suite" ;
-    rdfs:comment "A collection of related test cases" ;
-    rdfs:subClassOf owl:Thing .
+cns:IntegrationTestFramework a cns:TestingFramework ;
+    rdfs:label "Integration Test Framework" ;
+    rdfs:comment "Framework for integration testing" ;
+    cns:testType "integration" ;
+    cns:performanceTier cns:SubMicrosecondTier .
 
-test:Assertion a rdfs:Class ;
-    rdfs:label "Assertion" ;
-    rdfs:comment "A test assertion or validation check" ;
-    rdfs:subClassOf owl:Thing .
+cns:BenchmarkTestFramework a cns:TestingFramework ;
+    rdfs:label "Benchmark Test Framework" ;
+    rdfs:comment "Framework for performance benchmarking" ;
+    cns:testType "benchmark" ;
+    cns:performanceTier cns:MicrosecondTier .
 
-test:TestResult a rdfs:Class ;
-    rdfs:label "Test Result" ;
-    rdfs:comment "The result of a test execution" ;
-    rdfs:subClassOf owl:Thing .
-
-test:MockObject a rdfs:Class ;
-    rdfs:label "Mock Object" ;
-    rdfs:comment "A mock or stub object for testing" ;
-    rdfs:subClassOf owl:Thing .
-
-test:PerformanceTest a rdfs:Class ;
-    rdfs:label "Performance Test" ;
-    rdfs:comment "A test that measures performance characteristics" ;
-    rdfs:subClassOf test:TestCase .
-
-# ============================================================================
-# TEST FRAMEWORKS
-# ============================================================================
-
-test:CNSUnitTestFramework a test:TestFramework ;
-    rdfs:label "CNS Unit Test Framework" ;
-    rdfs:comment "High-performance unit testing framework for CNS" ;
-    test:cycleBudget 1000 ;
-    test:memoryBudget "10KB" ;
-    test:supportsAssertions test:BasicAssertion ;
-    test:supportsAssertions test:PerformanceAssertion ;
-    test:supportsAssertions test:StringAssertion .
-
-test:SevenTTestFramework a test:TestFramework ;
-    rdfs:label "7T Test Framework" ;
-    rdfs:comment "7-tick optimized testing framework" ;
-    test:cycleBudget 7 ;
-    test:memoryBudget "1KB" ;
-    test:supportsAssertions test:PerformanceAssertion ;
-    test:supportsAssertions test:CycleAssertion .
+cns:RegressionTestFramework a cns:TestingFramework ;
+    rdfs:label "Regression Test Framework" ;
+    rdfs:comment "Framework for regression testing" ;
+    cns:testType "regression" ;
+    cns:performanceTier cns:MicrosecondTier .
 
 # ============================================================================
 # TEST TYPES
 # ============================================================================
 
-test:UnitTest a test:TestCase ;
-    rdfs:label "Unit Test" ;
-    rdfs:comment "Tests individual functions or components" ;
-    test:scope "function" ;
-    test:isolation "high" ;
-    test:cycleBudget 1000 ;
-    test:category "core" .
+cns:TestType a rdfs:Class ;
+    rdfs:label "Test Type" ;
+    rdfs:comment "A type of test" .
 
-test:IntegrationTest a test:TestCase ;
-    rdfs:label "Integration Test" ;
-    rdfs:comment "Tests interactions between components" ;
-    test:scope "component" ;
-    test:isolation "medium" ;
-    test:cycleBudget 10000 ;
-    test:category "integration" .
+cns:FunctionalTest a cns:TestType ;
+    rdfs:label "Functional Test" ;
+    rdfs:comment "Test for functional correctness" .
 
-test:PerformanceTest a test:TestCase ;
+cns:PerformanceTest a cns:TestType ;
     rdfs:label "Performance Test" ;
-    rdfs:comment "Tests performance characteristics" ;
-    test:scope "system" ;
-    test:isolation "low" ;
-    test:cycleBudget 100000 ;
-    test:category "performance" .
+    rdfs:comment "Test for performance characteristics" .
 
-test:StressTest a test:TestCase ;
+cns:MemoryTest a cns:TestType ;
+    rdfs:label "Memory Test" ;
+    rdfs:comment "Test for memory usage and leaks" .
+
+cns:ConcurrencyTest a cns:TestType ;
+    rdfs:label "Concurrency Test" ;
+    rdfs:comment "Test for concurrent execution" .
+
+cns:StressTest a cns:TestType ;
     rdfs:label "Stress Test" ;
-    rdfs:comment "Tests system behavior under high load" ;
-    test:scope "system" ;
-    test:isolation "low" ;
-    test:cycleBudget 1000000 ;
-    test:category "stress" .
-
-test:RegressionTest a test:TestCase ;
-    rdfs:label "Regression Test" ;
-    rdfs:comment "Tests to prevent regression of functionality" ;
-    test:scope "feature" ;
-    test:isolation "high" ;
-    test:cycleBudget 5000 ;
-    test:category "regression" .
+    rdfs:comment "Test under high load conditions" .
 
 # ============================================================================
-# ASSERTION TYPES
+# TEST CASES
 # ============================================================================
 
-test:BasicAssertion a test:Assertion ;
-    rdfs:label "Basic Assertion" ;
-    rdfs:comment "Basic condition assertion" ;
-    test:macro "TEST_ASSERT" ;
-    test:cycleCost 5 ;
-    test:usage "General condition checking" .
+cns:TestCase a rdfs:Class ;
+    rdfs:label "Test Case" ;
+    rdfs:comment "A specific test case" .
 
-test:EqualityAssertion a test:Assertion ;
-    rdfs:label "Equality Assertion" ;
-    rdfs:comment "Equality comparison assertion" ;
-    test:macro "TEST_ASSERT_EQ" ;
-    test:cycleCost 3 ;
-    test:usage "Value comparison" .
+cns:SparqlTestCase a cns:TestCase ;
+    rdfs:label "SPARQL Test Case" ;
+    rdfs:comment "Test case for SPARQL functionality" ;
+    cns:testType cns:FunctionalTest ;
+    cns:performanceTier cns:SevenTickTier .
 
-test:StringAssertion a test:Assertion ;
-    rdfs:label "String Assertion" ;
-    rdfs:comment "String comparison assertion" ;
-    test:macro "TEST_ASSERT_STR_EQ" ;
-    test:cycleCost 10 ;
-    test:usage "String comparison" .
+cns:ShaclTestCase a cns:TestCase ;
+    rdfs:label "SHACL Test Case" ;
+    rdfs:comment "Test case for SHACL validation" ;
+    cns:testType cns:FunctionalTest ;
+    cns:performanceTier cns:SubMicrosecondTier .
 
-test:PerformanceAssertion a test:Assertion ;
-    rdfs:label "Performance Assertion" ;
-    rdfs:comment "Performance constraint assertion" ;
-    test:macro "TEST_ASSERT_PERFORMANCE" ;
-    test:cycleCost 50 ;
-    test:usage "Performance validation" .
+cns:CjinjaTestCase a cns:TestCase ;
+    rdfs:label "CJinja Test Case" ;
+    rdfs:comment "Test case for template rendering" ;
+    cns:testType cns:FunctionalTest ;
+    cns:performanceTier cns:SubMicrosecondTier .
 
-test:CycleAssertion a test:Assertion ;
+cns:TelemetryTestCase a cns:TestCase ;
+    rdfs:label "Telemetry Test Case" ;
+    rdfs:comment "Test case for telemetry functionality" ;
+    cns:testType cns:FunctionalTest ;
+    cns:performanceTier cns:SevenTickTier .
+
+cns:GatekeeperTestCase a cns:TestCase ;
+    rdfs:label "Gatekeeper Test Case" ;
+    rdfs:comment "Test case for quality gates" ;
+    cns:testType cns:FunctionalTest ;
+    cns:performanceTier cns:SubMicrosecondTier .
+
+cns:BenchmarkTestCase a cns:TestCase ;
+    rdfs:label "Benchmark Test Case" ;
+    rdfs:comment "Test case for performance benchmarking" ;
+    cns:testType cns:PerformanceTest ;
+    cns:performanceTier cns:MicrosecondTier .
+
+# ============================================================================
+# ASSERTIONS
+# ============================================================================
+
+cns:Assertion a rdfs:Class ;
+    rdfs:label "Assertion" ;
+    rdfs:comment "An assertion in a test case" .
+
+cns:CycleAssertion a cns:Assertion ;
     rdfs:label "Cycle Assertion" ;
-    rdfs:comment "CPU cycle constraint assertion" ;
-    test:macro "ASSERT_PERFORMANCE" ;
-    test:cycleCost 20 ;
-    test:usage "7-tick compliance" .
+    rdfs:comment "Assertion for cycle count validation" ;
+    cns:assertionType "performance" ;
+    cns:maxCycles 7 .
+
+cns:CorrectnessAssertion a cns:Assertion ;
+    rdfs:label "Correctness Assertion" ;
+    rdfs:comment "Assertion for functional correctness" ;
+    cns:assertionType "functional" .
+
+cns:MemoryAssertion a cns:Assertion ;
+    rdfs:label "Memory Assertion" ;
+    rdfs:comment "Assertion for memory usage validation" ;
+    cns:assertionType "memory" .
+
+cns:ThroughputAssertion a cns:Assertion ;
+    rdfs:label "Throughput Assertion" ;
+    rdfs:comment "Assertion for throughput validation" ;
+    cns:assertionType "performance" ;
+    cns:minThroughput 10.0 .
+
+cns:SigmaAssertion a cns:Assertion ;
+    rdfs:label "Sigma Assertion" ;
+    rdfs:comment "Assertion for Six Sigma validation" ;
+    cns:assertionType "quality" ;
+    cns:minSigma 4.0 .
 
 # ============================================================================
 # TEST SUITES
 # ============================================================================
 
-test:CoreTestSuite a test:TestSuite ;
-    rdfs:label "Core Test Suite" ;
-    rdfs:comment "Core CNS functionality tests" ;
-    test:includes test:ParserTest ;
-    test:includes test:EngineTest ;
-    test:includes test:CommandTest ;
-    test:category "core" ;
-    test:priority "high" .
+cns:TestSuite a rdfs:Class ;
+    rdfs:label "Test Suite" ;
+    rdfs:comment "A collection of related test cases" .
 
-test:PerformanceTestSuite a test:TestSuite ;
-    rdfs:label "Performance Test Suite" ;
-    rdfs:comment "Performance and optimization tests" ;
-    test:includes test:BenchmarkTest ;
-    test:includes test:OptimizationTest ;
-    test:category "performance" ;
-    test:priority "high" .
+cns:SparqlTestSuite a cns:TestSuite ;
+    rdfs:label "SPARQL Test Suite" ;
+    rdfs:comment "Test suite for SPARQL functionality" ;
+    cns:suiteType "functional" ;
+    cns:testCount 10 .
 
-test:IntegrationTestSuite a test:TestSuite ;
-    rdfs:label "Integration Test Suite" ;
-    rdfs:comment "Multi-command workflow tests" ;
-    test:includes test:WorkflowTest ;
-    test:includes test:PipelineTest ;
-    test:category "integration" ;
-    test:priority "medium" .
+cns:ShaclTestSuite a cns:TestSuite ;
+    rdfs:label "SHACL Test Suite" ;
+    rdfs:comment "Test suite for SHACL validation" ;
+    cns:suiteType "functional" ;
+    cns:testCount 8 .
 
-test:StressTestSuite a test:TestSuite ;
-    rdfs:label "Stress Test Suite" ;
-    rdfs:comment "High-load scenario tests" ;
-    test:includes test:LoadTest ;
-    test:includes test:ConcurrencyTest ;
-    test:category "stress" ;
-    test:priority "low" .
+cns:CjinjaTestSuite a cns:TestSuite ;
+    rdfs:label "CJinja Test Suite" ;
+    rdfs:comment "Test suite for template rendering" ;
+    cns:suiteType "functional" ;
+    cns:testCount 12 .
 
-# ============================================================================
-# SPECIFIC TEST CASES
-# ============================================================================
+cns:TelemetryTestSuite a cns:TestSuite ;
+    rdfs:label "Telemetry Test Suite" ;
+    rdfs:comment "Test suite for telemetry functionality" ;
+    cns:suiteType "functional" ;
+    cns:testCount 6 .
 
-test:ParserTest a test:TestCase ;
-    rdfs:label "Parser Test" ;
-    rdfs:comment "Tests command parsing functionality" ;
-    test:framework test:CNSUnitTestFramework ;
-    test:cycleBudget 200 ;
-    test:assertions test:BasicAssertion ;
-    test:assertions test:EqualityAssertion ;
-    test:category "core" .
+cns:GatekeeperTestSuite a cns:TestSuite ;
+    rdfs:label "Gatekeeper Test Suite" ;
+    rdfs:comment "Test suite for quality gates" ;
+    cns:suiteType "quality" ;
+    cns:testCount 4 .
 
-test:EngineTest a test:TestCase ;
-    rdfs:label "Engine Test" ;
-    rdfs:comment "Tests CNS engine functionality" ;
-    test:framework test:CNSUnitTestFramework ;
-    test:cycleBudget 500 ;
-    test:assertions test:BasicAssertion ;
-    test:assertions test:PerformanceAssertion ;
-    test:category "core" .
-
-test:CommandTest a test:TestCase ;
-    rdfs:label "Command Test" ;
-    rdfs:comment "Tests command execution" ;
-    test:framework test:CNSUnitTestFramework ;
-    test:cycleBudget 1000 ;
-    test:assertions test:BasicAssertion ;
-    test:assertions test:EqualityAssertion ;
-    test:category "core" .
-
-test:BenchmarkTest a test:TestCase ;
-    rdfs:label "Benchmark Test" ;
-    rdfs:comment "Tests benchmarking functionality" ;
-    test:framework test:CNSUnitTestFramework ;
-    test:cycleBudget 10000 ;
-    test:assertions test:PerformanceAssertion ;
-    test:category "performance" .
-
-test:OptimizationTest a test:TestCase ;
-    rdfs:label "Optimization Test" ;
-    rdfs:comment "Tests optimization algorithms" ;
-    test:framework test:CNSUnitTestFramework ;
-    test:cycleBudget 5000 ;
-    test:assertions test:PerformanceAssertion ;
-    test:category "performance" .
-
-test:WorkflowTest a test:TestCase ;
-    rdfs:label "Workflow Test" ;
-    rdfs:comment "Tests multi-command workflows" ;
-    test:framework test:CNSUnitTestFramework ;
-    test:cycleBudget 5000 ;
-    test:assertions test:BasicAssertion ;
-    test:category "integration" .
-
-test:PipelineTest a test:TestCase ;
-    rdfs:label "Pipeline Test" ;
-    rdfs:comment "Tests command pipelines" ;
-    test:framework test:CNSUnitTestFramework ;
-    test:cycleBudget 3000 ;
-    test:assertions test:BasicAssertion ;
-    test:category "integration" .
-
-test:LoadTest a test:TestCase ;
-    rdfs:label "Load Test" ;
-    rdfs:comment "Tests system under load" ;
-    test:framework test:CNSUnitTestFramework ;
-    test:cycleBudget 100000 ;
-    test:assertions test:PerformanceAssertion ;
-    test:category "stress" .
-
-test:ConcurrencyTest a test:TestCase ;
-    rdfs:label "Concurrency Test" ;
-    rdfs:comment "Tests concurrent operations" ;
-    test:framework test:CNSUnitTestFramework ;
-    test:cycleBudget 50000 ;
-    test:assertions test:BasicAssertion ;
-    test:category "stress" .
+cns:BenchmarkTestSuite a cns:TestSuite ;
+    rdfs:label "Benchmark Test Suite" ;
+    rdfs:comment "Test suite for performance benchmarking" ;
+    cns:suiteType "performance" ;
+    cns:testCount 15 .
 
 # ============================================================================
 # MOCK OBJECTS
 # ============================================================================
 
-test:FileSystemMock a test:MockObject ;
-    rdfs:label "File System Mock" ;
-    rdfs:comment "Mock file system operations" ;
-    test:mocks "file operations" ;
-    test:cycleCost 1 ;
-    test:usage "File operation testing" .
+cns:MockObject a rdfs:Class ;
+    rdfs:label "Mock Object" ;
+    rdfs:comment "A mock object for testing" .
 
-test:NetworkMock a test:MockObject ;
-    rdfs:label "Network Mock" ;
-    rdfs:comment "Mock network operations" ;
-    test:mocks "network operations" ;
-    test:cycleCost 5 ;
-    test:usage "Network operation testing" .
+cns:MockSpqlEngine a cns:MockObject ;
+    rdfs:label "Mock SPARQL Engine" ;
+    rdfs:comment "Mock SPARQL engine for testing" ;
+    cns:mockType "engine" ;
+    cns:mockBehavior "deterministic" .
 
-test:MemoryMock a test:MockObject ;
-    rdfs:label "Memory Mock" ;
-    rdfs:comment "Mock memory operations" ;
-    test:mocks "memory operations" ;
-    test:cycleCost 2 ;
-    test:usage "Memory operation testing" .
+cns:MockShaclEngine a cns:MockObject ;
+    rdfs:label "Mock SHACL Engine" ;
+    rdfs:comment "Mock SHACL engine for testing" ;
+    cns:mockType "engine" ;
+    cns:mockBehavior "deterministic" .
+
+cns:MockTelemetry a cns:MockObject ;
+    rdfs:label "Mock Telemetry" ;
+    rdfs:comment "Mock telemetry for testing" ;
+    cns:mockType "telemetry" ;
+    cns:mockBehavior "in-memory" .
+
+cns:MockBenchmark a cns:MockObject ;
+    rdfs:label "Mock Benchmark" ;
+    rdfs:comment "Mock benchmark for testing" ;
+    cns:mockType "benchmark" ;
+    cns:mockBehavior "simulated" .
 
 # ============================================================================
 # TEST RESULTS
 # ============================================================================
 
-test:PassResult a test:TestResult ;
+cns:TestResult a rdfs:Class ;
+    rdfs:label "Test Result" ;
+    rdfs:comment "Result of a test execution" .
+
+cns:PassResult a cns:TestResult ;
     rdfs:label "Pass Result" ;
     rdfs:comment "Test passed successfully" ;
-    test:status "PASS" ;
-    test:severity "info" .
+    cns:resultStatus "pass" .
 
-test:FailResult a test:TestResult ;
+cns:FailResult a cns:TestResult ;
     rdfs:label "Fail Result" ;
     rdfs:comment "Test failed" ;
-    test:status "FAIL" ;
-    test:severity "error" .
+    cns:resultStatus "fail" .
 
-test:SkipResult a test:TestResult ;
+cns:SkipResult a cns:TestResult ;
     rdfs:label "Skip Result" ;
     rdfs:comment "Test was skipped" ;
-    test:status "SKIP" ;
-    test:severity "warning" .
+    cns:resultStatus "skip" .
 
-test:TimeoutResult a test:TestResult ;
+cns:TimeoutResult a cns:TestResult ;
     rdfs:label "Timeout Result" ;
     rdfs:comment "Test timed out" ;
-    test:status "TIMEOUT" ;
-    test:severity "error" .
+    cns:resultStatus "timeout" .
+
+# ============================================================================
+# VALIDATION SHAPES
+# ============================================================================
+
+cns:ValidationShape a rdfs:Class ;
+    rdfs:label "Validation Shape" ;
+    rdfs:comment "A SHACL validation shape for testing" .
+
+cns:TestShape a cns:ValidationShape ;
+    rdfs:label "Test Shape" ;
+    rdfs:comment "SHACL shape for test validation" ;
+    cns:shapeType "test" ;
+    cns:validationLevel "strict" .
+
+cns:AssertionShape a cns:ValidationShape ;
+    rdfs:label "Assertion Shape" ;
+    rdfs:comment "SHACL shape for assertion validation" ;
+    cns:shapeType "assertion" ;
+    cns:validationLevel "strict" .
+
+cns:ResultShape a cns:ValidationShape ;
+    rdfs:label "Result Shape" ;
+    rdfs:comment "SHACL shape for result validation" ;
+    cns:shapeType "result" ;
+    cns:validationLevel "strict" .
 
 # ============================================================================
 # TESTING PROPERTIES
 # ============================================================================
 
-test:cycleBudget a rdf:Property ;
-    rdfs:label "cycle budget" ;
-    rdfs:comment "Maximum CPU cycles allowed for a test" ;
-    rdfs:domain test:TestCase ;
+cns:testType a rdf:Property ;
+    rdfs:label "test type" ;
+    rdfs:domain cns:TestingFramework ;
+    rdfs:range cns:TestType .
+
+cns:assertionType a rdf:Property ;
+    rdfs:label "assertion type" ;
+    rdfs:domain cns:Assertion ;
+    rdfs:range xsd:string .
+
+cns:maxCycles a rdf:Property ;
+    rdfs:label "maximum cycles" ;
+    rdfs:domain cns:Assertion ;
     rdfs:range xsd:integer .
 
-test:memoryBudget a rdf:Property ;
-    rdfs:label "memory budget" ;
-    rdfs:comment "Maximum memory usage allowed for a test" ;
-    rdfs:domain test:TestCase ;
-    rdfs:range rdfs:Literal .
+cns:minThroughput a rdf:Property ;
+    rdfs:label "minimum throughput" ;
+    rdfs:domain cns:Assertion ;
+    rdfs:range xsd:double .
 
-test:framework a rdf:Property ;
-    rdfs:label "framework" ;
-    rdfs:comment "Testing framework used by a test" ;
-    rdfs:domain test:TestCase ;
-    rdfs:range test:TestFramework .
+cns:minSigma a rdf:Property ;
+    rdfs:label "minimum sigma" ;
+    rdfs:domain cns:Assertion ;
+    rdfs:range xsd:double .
 
-test:assertions a rdf:Property ;
-    rdfs:label "assertions" ;
-    rdfs:comment "Assertions used by a test" ;
-    rdfs:domain test:TestCase ;
-    rdfs:range test:Assertion .
+cns:suiteType a rdf:Property ;
+    rdfs:label "suite type" ;
+    rdfs:domain cns:TestSuite ;
+    rdfs:range xsd:string .
 
-test:category a rdf:Property ;
-    rdfs:label "category" ;
-    rdfs:comment "Category of a test" ;
-    rdfs:domain test:TestCase ;
-    rdfs:range rdfs:Literal .
-
-test:priority a rdf:Property ;
-    rdfs:label "priority" ;
-    rdfs:comment "Priority of a test" ;
-    rdfs:domain test:TestCase ;
-    rdfs:range rdfs:Literal .
-
-test:scope a rdf:Property ;
-    rdfs:label "scope" ;
-    rdfs:comment "Scope of a test" ;
-    rdfs:domain test:TestCase ;
-    rdfs:range rdfs:Literal .
-
-test:isolation a rdf:Property ;
-    rdfs:label "isolation" ;
-    rdfs:comment "Isolation level of a test" ;
-    rdfs:domain test:TestCase ;
-    rdfs:range rdfs:Literal .
-
-test:includes a rdf:Property ;
-    rdfs:label "includes" ;
-    rdfs:comment "Test cases included in a test suite" ;
-    rdfs:domain test:TestSuite ;
-    rdfs:range test:TestCase .
-
-test:supportsAssertions a rdf:Property ;
-    rdfs:label "supports assertions" ;
-    rdfs:comment "Assertions supported by a framework" ;
-    rdfs:domain test:TestFramework ;
-    rdfs:range test:Assertion .
-
-test:macro a rdf:Property ;
-    rdfs:label "macro" ;
-    rdfs:comment "C macro for an assertion" ;
-    rdfs:domain test:Assertion ;
-    rdfs:range rdfs:Literal .
-
-test:cycleCost a rdf:Property ;
-    rdfs:label "cycle cost" ;
-    rdfs:comment "CPU cycle cost of an assertion" ;
-    rdfs:domain test:Assertion ;
+cns:testCount a rdf:Property ;
+    rdfs:label "test count" ;
+    rdfs:domain cns:TestSuite ;
     rdfs:range xsd:integer .
 
-test:usage a rdf:Property ;
-    rdfs:label "usage" ;
-    rdfs:comment "Usage description for an assertion" ;
-    rdfs:domain test:Assertion ;
-    rdfs:range rdfs:Literal .
+cns:mockType a rdf:Property ;
+    rdfs:label "mock type" ;
+    rdfs:domain cns:MockObject ;
+    rdfs:range xsd:string .
 
-test:mocks a rdf:Property ;
-    rdfs:label "mocks" ;
-    rdfs:comment "What a mock object mocks" ;
-    rdfs:domain test:MockObject ;
-    rdfs:range rdfs:Literal .
+cns:mockBehavior a rdf:Property ;
+    rdfs:label "mock behavior" ;
+    rdfs:domain cns:MockObject ;
+    rdfs:range xsd:string .
 
-test:status a rdf:Property ;
-    rdfs:label "status" ;
-    rdfs:comment "Status of a test result" ;
-    rdfs:domain test:TestResult ;
-    rdfs:range rdfs:Literal .
+cns:resultStatus a rdf:Property ;
+    rdfs:label "result status" ;
+    rdfs:domain cns:TestResult ;
+    rdfs:range xsd:string .
 
-test:severity a rdf:Property ;
-    rdfs:label "severity" ;
-    rdfs:comment "Severity of a test result" ;
-    rdfs:domain test:TestResult ;
-    rdfs:range rdfs:Literal .
+cns:shapeType a rdf:Property ;
+    rdfs:label "shape type" ;
+    rdfs:domain cns:ValidationShape ;
+    rdfs:range xsd:string .
+
+cns:validationLevel a rdf:Property ;
+    rdfs:label "validation level" ;
+    rdfs:domain cns:ValidationShape ;
+    rdfs:range xsd:string .
+
+cns:hasTestCase a rdf:Property ;
+    rdfs:label "has test case" ;
+    rdfs:domain cns:TestSuite ;
+    rdfs:range cns:TestCase .
+
+cns:hasAssertion a rdf:Property ;
+    rdfs:label "has assertion" ;
+    rdfs:domain cns:TestCase ;
+    rdfs:range cns:Assertion .
+
+cns:producesResult a rdf:Property ;
+    rdfs:label "produces result" ;
+    rdfs:domain cns:TestCase ;
+    rdfs:range cns:TestResult .
+
+cns:usesMock a rdf:Property ;
+    rdfs:label "uses mock" ;
+    rdfs:domain cns:TestCase ;
+    rdfs:range cns:MockObject .
+
+cns:validatesWith a rdf:Property ;
+    rdfs:label "validates with" ;
+    rdfs:domain cns:TestCase ;
+    rdfs:range cns:ValidationShape .
 
 # ============================================================================
-# TESTING RELATIONSHIPS
+# TEST CASE INSTANCES
 # ============================================================================
 
-cns:SPARQLEngine test:hasTest test:ParserTest ;
-    test:hasTest test:EngineTest ;
-    test:hasTest test:PerformanceTest .
+cns:sparqlQueryTest a cns:SparqlTestCase ;
+    cns:hasAssertion cns:CycleAssertion ;
+    cns:hasAssertion cns:CorrectnessAssertion ;
+    cns:usesMock cns:MockSpqlEngine ;
+    cns:validatesWith cns:TestShape ;
+    rdfs:label "SPARQL Query Test" ;
+    rdfs:comment "Test SPARQL query execution" .
 
-cns:SHACLEngine test:hasTest test:ParserTest ;
-    test:hasTest test:EngineTest ;
-    test:hasTest test:IntegrationTest .
+cns:sparqlCompileTest a cns:SparqlTestCase ;
+    cns:hasAssertion cns:CycleAssertion ;
+    cns:hasAssertion cns:CorrectnessAssertion ;
+    cns:usesMock cns:MockSpqlEngine ;
+    cns:validatesWith cns:TestShape ;
+    rdfs:label "SPARQL Compile Test" ;
+    rdfs:comment "Test SPARQL query compilation" .
 
-cns:CJinjaEngine test:hasTest test:ParserTest ;
-    test:hasTest test:EngineTest ;
-    test:hasTest test:PerformanceTest .
+cns:shaclValidateTest a cns:ShaclTestCase ;
+    cns:hasAssertion cns:CycleAssertion ;
+    cns:hasAssertion cns:CorrectnessAssertion ;
+    cns:usesMock cns:MockShaclEngine ;
+    cns:validatesWith cns:TestShape ;
+    rdfs:label "SHACL Validate Test" ;
+    rdfs:comment "Test SHACL validation" .
 
-cns:TelemetryEngine test:hasTest test:ParserTest ;
-    test:hasTest test:EngineTest ;
-    test:hasTest test:IntegrationTest .
+cns:cjinjaRenderTest a cns:CjinjaTestCase ;
+    cns:hasAssertion cns:CycleAssertion ;
+    cns:hasAssertion cns:CorrectnessAssertion ;
+    cns:validatesWith cns:TestShape ;
+    rdfs:label "CJinja Render Test" ;
+    rdfs:comment "Test template rendering" .
+
+cns:telemetrySpanTest a cns:TelemetryTestCase ;
+    cns:hasAssertion cns:CycleAssertion ;
+    cns:hasAssertion cns:CorrectnessAssertion ;
+    cns:usesMock cns:MockTelemetry ;
+    cns:validatesWith cns:TestShape ;
+    rdfs:label "Telemetry Span Test" ;
+    rdfs:comment "Test telemetry span creation" .
+
+cns:gatekeeperCorrectnessTest a cns:GatekeeperTestCase ;
+    cns:hasAssertion cns:CorrectnessAssertion ;
+    cns:hasAssertion cns:SigmaAssertion ;
+    cns:validatesWith cns:TestShape ;
+    rdfs:label "Gatekeeper Correctness Test" ;
+    rdfs:comment "Test gatekeeper correctness" .
+
+cns:gatekeeperCycleTest a cns:GatekeeperTestCase ;
+    cns:hasAssertion cns:CycleAssertion ;
+    cns:hasAssertion cns:ThroughputAssertion ;
+    cns:validatesWith cns:TestShape ;
+    rdfs:label "Gatekeeper Cycle Test" ;
+    rdfs:comment "Test gatekeeper cycle budget" .
+
+cns:benchmarkPerformanceTest a cns:BenchmarkTestCase ;
+    cns:hasAssertion cns:CycleAssertion ;
+    cns:hasAssertion cns:ThroughputAssertion ;
+    cns:usesMock cns:MockBenchmark ;
+    cns:validatesWith cns:TestShape ;
+    rdfs:label "Benchmark Performance Test" ;
+    rdfs:comment "Test performance benchmarking" .
+
+# ============================================================================
+# TEST SUITE RELATIONSHIPS
+# ============================================================================
+
+cns:SparqlTestSuite cns:hasTestCase cns:sparqlQueryTest .
+cns:SparqlTestSuite cns:hasTestCase cns:sparqlCompileTest .
+
+cns:ShaclTestSuite cns:hasTestCase cns:shaclValidateTest .
+
+cns:CjinjaTestSuite cns:hasTestCase cns:cjinjaRenderTest .
+
+cns:TelemetryTestSuite cns:hasTestCase cns:telemetrySpanTest .
+
+cns:GatekeeperTestSuite cns:hasTestCase cns:gatekeeperCorrectnessTest .
+cns:GatekeeperTestSuite cns:hasTestCase cns:gatekeeperCycleTest .
+
+cns:BenchmarkTestSuite cns:hasTestCase cns:benchmarkPerformanceTest .
+
+# ============================================================================
+# TEST RESULT RELATIONSHIPS
+# ============================================================================
+
+cns:sparqlQueryTest cns:producesResult cns:PassResult .
+cns:sparqlCompileTest cns:producesResult cns:PassResult .
+cns:shaclValidateTest cns:producesResult cns:PassResult .
+cns:cjinjaRenderTest cns:producesResult cns:PassResult .
+cns:telemetrySpanTest cns:producesResult cns:PassResult .
+cns:gatekeeperCorrectnessTest cns:producesResult cns:PassResult .
+cns:gatekeeperCycleTest cns:producesResult cns:PassResult .
+cns:benchmarkPerformanceTest cns:producesResult cns:PassResult .
 
 # ============================================================================
 # SHACL SHAPES FOR TESTING VALIDATION
 # ============================================================================
 
-test:TestCaseShape a sh:NodeShape ;
-    sh:targetClass test:TestCase ;
+cns:TestingFrameworkShape a sh:NodeShape ;
+    sh:targetClass cns:TestingFramework ;
     sh:property [
-        sh:path test:cycleBudget ;
+        sh:path cns:testType ;
+        sh:class cns:TestType ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
-        sh:datatype xsd:integer ;
-        sh:minInclusive 1 ;
-        sh:message "Every test case must have a cycle budget" ;
+        sh:message "Every testing framework must have exactly one test type"
     ] ;
     sh:property [
-        sh:path test:category ;
+        sh:path cns:hasPerformanceTier ;
+        sh:class cns:PerformanceMetric ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
-        sh:datatype xsd:string ;
-        sh:message "Every test case must have a category" ;
-    ] ;
-    sh:property [
-        sh:path test:framework ;
-        sh:minCount 1 ;
-        sh:maxCount 1 ;
-        sh:message "Every test case must have a framework" ;
+        sh:message "Every testing framework must have a performance tier"
     ] .
 
-test:AssertionShape a sh:NodeShape ;
-    sh:targetClass test:Assertion ;
+cns:TestCaseShape a sh:NodeShape ;
+    sh:targetClass cns:TestCase ;
     sh:property [
-        sh:path test:macro ;
+        sh:path cns:testType ;
+        sh:class cns:TestType ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
-        sh:datatype xsd:string ;
-        sh:message "Every assertion must have a macro" ;
+        sh:message "Every test case must have exactly one test type"
     ] ;
     sh:property [
-        sh:path test:cycleCost ;
+        sh:path cns:hasPerformanceTier ;
+        sh:class cns:PerformanceMetric ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
-        sh:datatype xsd:integer ;
-        sh:minInclusive 1 ;
-        sh:message "Every assertion must have a cycle cost" ;
+        sh:message "Every test case must have a performance tier"
+    ] ;
+    sh:property [
+        sh:path cns:hasAssertion ;
+        sh:class cns:Assertion ;
+        sh:minCount 1 ;
+        sh:message "Every test case must have at least one assertion"
     ] .
 
-test:TestSuiteShape a sh:NodeShape ;
-    sh:targetClass test:TestSuite ;
+cns:AssertionShape a sh:NodeShape ;
+    sh:targetClass cns:Assertion ;
     sh:property [
-        sh:path test:category ;
+        sh:path cns:assertionType ;
+        sh:datatype xsd:string ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
-        sh:datatype xsd:string ;
-        sh:message "Every test suite must have a category" ;
-    ] ;
+        sh:in ("performance" "functional" "memory" "quality") ;
+        sh:message "Assertion type must be performance, functional, memory, or quality"
+    ] .
+
+cns:TestSuiteShape a sh:NodeShape ;
+    sh:targetClass cns:TestSuite ;
     sh:property [
-        sh:path test:priority ;
+        sh:path cns:suiteType ;
+        sh:datatype xsd:string ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
-        sh:datatype xsd:string ;
-        sh:message "Every test suite must have a priority" ;
+        sh:in ("functional" "performance" "quality" "integration") ;
+        sh:message "Suite type must be functional, performance, quality, or integration"
     ] ;
     sh:property [
-        sh:path test:includes ;
+        sh:path cns:testCount ;
+        sh:datatype xsd:integer ;
         sh:minCount 1 ;
-        sh:message "Every test suite must include at least one test case" ;
+        sh:maxCount 1 ;
+        sh:minInclusive 1 ;
+        sh:message "Every test suite must have at least one test"
+    ] ;
+    sh:property [
+        sh:path cns:hasTestCase ;
+        sh:class cns:TestCase ;
+        sh:minCount 1 ;
+        sh:message "Every test suite must have at least one test case"
+    ] .
+
+cns:MockObjectShape a sh:NodeShape ;
+    sh:targetClass cns:MockObject ;
+    sh:property [
+        sh:path cns:mockType ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ("engine" "telemetry" "benchmark" "data") ;
+        sh:message "Mock type must be engine, telemetry, benchmark, or data"
+    ] ;
+    sh:property [
+        sh:path cns:mockBehavior ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ("deterministic" "in-memory" "simulated" "random") ;
+        sh:message "Mock behavior must be deterministic, in-memory, simulated, or random"
+    ] .
+
+cns:TestResultShape a sh:NodeShape ;
+    sh:targetClass cns:TestResult ;
+    sh:property [
+        sh:path cns:resultStatus ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ("pass" "fail" "skip" "timeout") ;
+        sh:message "Result status must be pass, fail, skip, or timeout"
+    ] .
+
+cns:ValidationShapeShape a sh:NodeShape ;
+    sh:targetClass cns:ValidationShape ;
+    sh:property [
+        sh:path cns:shapeType ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ("test" "assertion" "result" "data") ;
+        sh:message "Shape type must be test, assertion, result, or data"
+    ] ;
+    sh:property [
+        sh:path cns:validationLevel ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ("strict" "lenient" "warning") ;
+        sh:message "Validation level must be strict, lenient, or warning"
     ] . 

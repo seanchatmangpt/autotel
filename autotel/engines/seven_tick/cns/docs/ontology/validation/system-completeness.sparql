@@ -1,0 +1,44 @@
+# CNS System Completeness Validation
+# This query validates that all domains have the required components
+
+PREFIX cns: <https://schema.chatman.ai/cns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+# Check that all domains have associated commands
+SELECT ?domain ?domainLabel ?commandCount ?engineCount ?functionCount
+WHERE {
+  ?domain a cns:Domain .
+  ?domain rdfs:label ?domainLabel .
+  
+  # Count commands for this domain
+  {
+    SELECT ?domain (COUNT(?command) AS ?commandCount)
+    WHERE {
+      ?command cns:belongsToDomain ?domain .
+    }
+    GROUP BY ?domain
+  }
+  
+  # Count engines for this domain
+  {
+    SELECT ?domain (COUNT(?engine) AS ?engineCount)
+    WHERE {
+      ?domain cns:implementsEngine ?engine .
+    }
+    GROUP BY ?domain
+  }
+  
+  # Count functions for this domain (via commands)
+  {
+    SELECT ?domain (COUNT(DISTINCT ?function) AS ?functionCount)
+    WHERE {
+      ?command cns:belongsToDomain ?domain .
+      ?span cns:providesFunction ?function .
+      ?span rdfs:label ?spanLabel .
+      FILTER(CONTAINS(?spanLabel, ?domainLabel))
+    }
+    GROUP BY ?domain
+  }
+}
+ORDER BY ?domainLabel 

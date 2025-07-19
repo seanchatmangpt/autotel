@@ -1,459 +1,207 @@
-# CNS Ontology Documentation
+# CNS (Chatman Nano Stack) Enhanced Ontology
 
 ## Overview
 
-The CNS (Chatman Nano Stack) Ontology provides a comprehensive semantic model for the CNS system, enabling formal representation of system components, performance characteristics, architectural patterns, and relationships. This ontology serves as the foundation for automated reasoning, validation, and system understanding.
+The CNS Enhanced Ontology provides a comprehensive semantic model for the Chatman Nano Stack system, covering all major components, performance characteristics, architectural patterns, testing frameworks, and quality gates. The ontology is split into multiple focused files for better organization and maintainability.
 
-## Ontology Structure
+## Ontology Files
 
-The CNS ontology is organized into multiple specialized ontologies:
+### 1. Core Ontology Files
 
-```
-cns/docs/ontology/
-├── cns-core.ttl              # Core CNS concepts and functions
-├── cns-telemetry.ttl         # Telemetry spans and monitoring
-├── cns-enhanced.ttl          # Enhanced core ontology (v2.0)
-├── cns-performance.ttl       # Performance metrics and constraints
-├── cns-architecture.ttl      # System architecture and patterns
-└── README.md                 # This documentation
-```
+#### `cns-core.ttl` (Original)
+- **Purpose**: Basic telemetry spans and functions
+- **Content**: Core CNS classes, SPARQL/SHACL/CJinja functions and spans, design patterns
+- **Status**: Original file, maintained for backward compatibility
 
-## Ontology Namespaces
+#### `cns-telemetry.ttl` (Original)
+- **Purpose**: Telemetry-specific ontology
+- **Content**: Telemetry spans for all CNS components
+- **Status**: Original file, maintained for backward compatibility
 
-### Core Namespaces
-- **cns**: `https://schema.chatman.ai/cns#` - Core CNS concepts
-- **perf**: `https://schema.chatman.ai/performance#` - Performance concepts
-- **arch**: `https://schema.chatman.ai/architecture#` - Architecture concepts
+### 2. Enhanced Ontology Files
 
-### Standard Namespaces
-- **rdf**: `http://www.w3.org/1999/02/22-rdf-syntax-ns#` - RDF syntax
-- **rdfs**: `http://www.w3.org/2000/01/rdf-schema#` - RDF Schema
-- **owl**: `http://www.w3.org/2002/07/owl#` - Web Ontology Language
-- **sh**: `http://www.w3.org/ns/shacl#` - SHACL validation
-- **xsd**: `http://www.w3.org/2001/XMLSchema#` - XML Schema datatypes
+#### `cns-enhanced.ttl` (New)
+- **Purpose**: Complete system model with all major components
+- **Content**:
+  - Core system classes (TelemetrySpan, Function, Pattern, Domain, Command, Engine)
+  - Domain classes (SPARQL, SHACL, CJinja, Telemetry, Benchmark, Test, Gatekeeper, etc.)
+  - Engine classes (SPARQL, SHACL, CJinja, Telemetry, Gatekeeper, Benchmark)
+  - Command classes and domain-command relationships
+  - Performance tier classes (7-Tick, Sub-Microsecond, Microsecond)
+  - Memory model classes (Slab, Arena, Static allocators)
+  - Optimization classes (SIMD, Cache, Branch, Memory)
+  - Comprehensive function and span definitions
+  - SHACL validation shapes
 
-## Core Concepts
+#### `cns-performance.ttl` (New)
+- **Purpose**: Performance-focused ontology
+- **Content**:
+  - Performance constraints (7-Tick, Sub-Microsecond, Microsecond)
+  - Performance metrics (Cycle, Throughput, Latency, Memory)
+  - Benchmark types (Micro, Macro, Stress, Regression)
+  - Optimization strategies (SIMD, Cache, Branch, Memory, Algorithm)
+  - Performance patterns (Slab Allocation, Radix Sort, Command Queue, etc.)
+  - Benchmark instances for each domain
+  - Optimization instances
+  - Function-pattern relationships
 
-### 1. System Components
+#### `cns-architecture.ttl` (New)
+- **Purpose**: Architecture-focused ontology
+- **Content**:
+  - Architecture layers (Core Engine, Command, Domain, Telemetry, Benchmark)
+  - Component interfaces (Command, Domain, Engine, Telemetry)
+  - Architectural patterns (Command Registration, Domain Module, 7-Tick Enforcement, etc.)
+  - Deployment models (Standalone, Distributed, Embedded)
+  - Data flows (Command, Telemetry, Benchmark, Validation)
+  - Core components by layer
+  - Component relationships and dependencies
 
-#### CNS Engines
-```turtle
-cns:SPARQLEngine a cns:Engine ;
-    rdfs:label "SPARQL Engine" ;
-    cns:performanceTier cns:L1Tier ;
-    cns:implementsPattern cns:HashBasedLookup .
+#### `cns-testing.ttl` (New)
+- **Purpose**: Testing-focused ontology
+- **Content**:
+  - Testing frameworks (Unit, Integration, Benchmark, Regression)
+  - Test types (Functional, Performance, Memory, Concurrency, Stress)
+  - Test cases for each domain
+  - Assertions (Cycle, Correctness, Memory, Throughput, Sigma)
+  - Test suites for each domain
+  - Mock objects (SPARQL Engine, SHACL Engine, Telemetry, Benchmark)
+  - Test results (Pass, Fail, Skip, Timeout)
+  - Validation shapes for testing
 
-cns:SHACLEngine a cns:Engine ;
-    rdfs:label "SHACL Engine" ;
-    cns:performanceTier cns:L2Tier ;
-    cns:implementsPattern cns:ShapeCaching .
+## Key Concepts
 
-cns:CJinjaEngine a cns:Engine ;
-    rdfs:label "CJinja Engine" ;
-    cns:performanceTier cns:L2Tier ;
-    cns:implementsPattern cns:ASTCaching .
+### 1. Performance Tiers
+- **7-Tick Tier**: Critical operations optimized to complete within 7 CPU cycles (~10ns)
+- **Sub-Microsecond Tier**: Operations optimized for sub-microsecond performance
+- **Microsecond Tier**: Operations optimized for microsecond performance
 
-cns:TelemetryEngine a cns:Engine ;
-    rdfs:label "Telemetry Engine" ;
-    cns:performanceTier cns:L1Tier ;
-    cns:implementsPattern cns:CycleCounting .
-```
+### 2. Architecture Layers
+- **Core Engine Layer**: Low-level CNS engine with hash-based command dispatch
+- **Command Layer**: Command registration and routing layer
+- **Domain Layer**: Domain-based command organization layer
+- **Telemetry Layer**: OpenTelemetry integration layer
+- **Benchmark Layer**: Performance validation and regression testing layer
 
-#### Performance Tiers
-```turtle
-cns:L1Tier a cns:PerformanceTier ;
-    rdfs:label "L1 Tier (7-tick)" ;
-    perf:maxCycles 7 ;
-    perf:maxTime "10"^^xsd:integer ;
-    perf:timeUnit "ns" .
+### 3. Design Patterns
+- **Slab Allocator**: Lock-free slab allocator for small objects
+- **Radix Sort**: Deterministic O(n) sorting for ORDER BY
+- **Command Queue**: Lock-free work packet queue
+- **String ID Map**: Replaces strcmp with 1-cycle ID comparison
+- **Roaring Bitset**: Fast set operations on sparse data
 
-cns:L2Tier a cns:PerformanceTier ;
-    rdfs:label "L2 Tier (sub-100ns)" ;
-    perf:maxCycles 100 ;
-    perf:maxTime "100"^^xsd:integer ;
-    perf:timeUnit "ns" .
-
-cns:L3Tier a cns:PerformanceTier ;
-    rdfs:label "L3 Tier (sub-μs)" ;
-    perf:maxCycles 1000 ;
-    perf:maxTime "1000"^^xsd:integer ;
-    perf:timeUnit "ns" .
-```
-
-### 2. Performance Model
-
-#### Performance Metrics
-```turtle
-perf:Latency a perf:PerformanceMetric ;
-    rdfs:label "Latency" ;
-    perf:unit "nanoseconds" ;
-    perf:measurementType "time" .
-
-perf:Throughput a perf:PerformanceMetric ;
-    rdfs:label "Throughput" ;
-    perf:unit "ops/sec" ;
-    perf:measurementType "rate" .
-
-perf:MemoryUsage a perf:PerformanceMetric ;
-    rdfs:label "Memory Usage" ;
-    perf:unit "bytes" ;
-    perf:measurementType "memory" .
-```
-
-#### Performance Constraints
-```turtle
-perf:SevenTickConstraint a perf:PerformanceConstraint ;
-    rdfs:label "7-Tick Performance Constraint" ;
-    perf:maxCycles 7 ;
-    perf:maxTime "10"^^xsd:integer ;
-    perf:timeUnit "ns" ;
-    perf:priority "critical" .
-```
-
-### 3. Architecture Model
-
-#### Architecture Layers
-```turtle
-arch:CLILayer a arch:ArchitectureLayer ;
-    rdfs:label "CLI Layer" ;
-    arch:layerNumber 1 ;
-    arch:responsibility "User interaction and command parsing" .
-
-arch:DomainLayer a arch:ArchitectureLayer ;
-    rdfs:label "Domain Layer" ;
-    arch:layerNumber 2 ;
-    arch:responsibility "Domain-specific functionality" .
-
-arch:CoreLayer a arch:ArchitectureLayer ;
-    rdfs:label "Core Layer" ;
-    arch:layerNumber 3 ;
-    arch:responsibility "Core system operations" .
-
-arch:PerformanceLayer a arch:ArchitectureLayer ;
-    rdfs:label "Performance Layer" ;
-    arch:layerNumber 4 ;
-    arch:responsibility "Performance monitoring and optimization" .
-
-arch:PlatformLayer a arch:ArchitectureLayer ;
-    rdfs:label "Platform Layer" ;
-    arch:layerNumber 5 ;
-    arch:responsibility "Platform-specific optimizations" .
-```
-
-#### Architectural Patterns
-```turtle
-arch:DomainDrivenDesign a arch:ArchitecturalPattern ;
-    rdfs:label "Domain-Driven Design" ;
-    arch:principle "Domain separation" ;
-    arch:principle "Clear boundaries" ;
-    arch:principle "Ubiquitous language" .
-
-arch:LayeredArchitecture a arch:ArchitecturalPattern ;
-    rdfs:label "Layered Architecture" ;
-    arch:principle "Separation of concerns" ;
-    arch:principle "Dependency direction" ;
-    arch:principle "Interface contracts" .
-```
-
-## Key Relationships
-
-### 1. Component Relationships
-```turtle
-# Component implements interfaces
-cns:SPARQLEngine arch:implements arch:EngineInterface .
-
-# Component uses patterns
-cns:SPARQLEngine arch:usesPattern arch:DomainDrivenDesign .
-
-# Component deployment
-cns:SPARQLEngine arch:deployedAs arch:MonolithicDeployment .
-
-# Component dependencies
-cns:SHACLEngine cns:dependsOn cns:SPARQLEngine .
-```
-
-### 2. Performance Relationships
-```turtle
-# Component performance metrics
-cns:SPARQLEngine perf:hasMetric perf:Latency ;
-    perf:hasMetric perf:Throughput .
-
-# Component performance constraints
-cns:SPARQLEngine perf:hasConstraint perf:L1TierConstraint .
-
-# Component optimization strategies
-cns:SPARQLEngine perf:usesStrategy perf:MemoryOptimization ;
-    perf:usesStrategy perf:AlgorithmOptimization .
-
-# Component benchmarking
-cns:SPARQLEngine perf:measuredBy perf:LatencyBenchmark ;
-    perf:measuredBy perf:ThroughputBenchmark .
-```
-
-### 3. Data Flow Relationships
-```turtle
-# Command flow through system
-arch:CommandFlow a arch:DataFlow ;
-    arch:source arch:CLILayer ;
-    arch:target arch:DomainLayer ;
-    arch:dataType "command" ;
-    arch:flowType "synchronous" .
-
-# Telemetry flow
-arch:TelemetryFlow a arch:DataFlow ;
-    arch:source arch:PerformanceLayer ;
-    arch:target cns:TelemetryEngine ;
-    arch:dataType "metrics" ;
-    arch:flowType "asynchronous" .
-```
-
-## Validation with SHACL
-
-The ontology includes SHACL shapes for validation:
-
-### Component Validation
-```turtle
-cns:ComponentShape a sh:NodeShape ;
-    sh:targetClass cns:Component ;
-    sh:property [
-        sh:path rdfs:label ;
-        sh:minCount 1 ;
-        sh:maxCount 1 ;
-        sh:datatype xsd:string ;
-    ] ;
-    sh:property [
-        sh:path cns:performanceTier ;
-        sh:minCount 1 ;
-        sh:maxCount 1 ;
-    ] .
-```
-
-### Function Validation
-```turtle
-cns:FunctionShape a sh:NodeShape ;
-    sh:targetClass cns:Function ;
-    sh:property [
-        sh:path cns:cycleCost ;
-        sh:minCount 1 ;
-        sh:maxCount 1 ;
-        sh:datatype xsd:integer ;
-        sh:minInclusive 1 ;
-    ] ;
-    sh:property [
-        sh:path cns:performanceTier ;
-        sh:minCount 1 ;
-        sh:maxCount 1 ;
-    ] .
-```
-
-### Performance Constraint Validation
-```turtle
-perf:PerformanceConstraintShape a sh:NodeShape ;
-    sh:targetClass perf:PerformanceConstraint ;
-    sh:property [
-        sh:path perf:maxCycles ;
-        sh:minCount 1 ;
-        sh:maxCount 1 ;
-        sh:datatype xsd:integer ;
-        sh:minInclusive 1 ;
-    ] ;
-    sh:property [
-        sh:path perf:maxTime ;
-        sh:minCount 1 ;
-        sh:maxCount 1 ;
-        sh:datatype xsd:integer ;
-        sh:minInclusive 1 ;
-    ] .
-```
+### 4. Quality Gates
+- **Correctness**: Functional correctness validation
+- **Cycle Budget**: Performance constraint validation
+- **Throughput**: Throughput requirement validation
+- **Ontology**: Ontology parsing validation
 
 ## Usage Examples
 
-### 1. Querying System Components
-
-#### Find all L1 Tier components:
+### 1. Querying Functions by Performance Tier
 ```sparql
 PREFIX cns: <https://schema.chatman.ai/cns#>
-PREFIX perf: <https://schema.chatman.ai/performance#>
 
-SELECT ?component ?label
+SELECT ?function ?cycleCost
 WHERE {
-    ?component a cns:Component ;
-               cns:performanceTier cns:L1Tier ;
-               rdfs:label ?label .
+  ?function a cns:Function ;
+           cns:hasPerformanceTier cns:SevenTickTier ;
+           cns:cycleCost ?cycleCost .
+  FILTER(?cycleCost <= 7)
 }
 ```
 
-#### Find components using specific optimization strategies:
+### 2. Finding Components by Architecture Layer
 ```sparql
 PREFIX cns: <https://schema.chatman.ai/cns#>
-PREFIX perf: <https://schema.chatman.ai/performance#>
 
-SELECT ?component ?strategy
+SELECT ?component ?layer
 WHERE {
-    ?component perf:usesStrategy ?strategy .
-    ?strategy rdfs:label ?strategyLabel .
-    FILTER(CONTAINS(?strategyLabel, "Memory"))
+  ?component cns:belongsToLayer ?layer .
+  ?layer rdfs:label ?layerName .
+  FILTER(CONTAINS(?layerName, "Core"))
 }
 ```
 
-### 2. Performance Analysis
-
-#### Find components exceeding performance constraints:
+### 3. Discovering Test Cases for a Domain
 ```sparql
 PREFIX cns: <https://schema.chatman.ai/cns#>
-PREFIX perf: <https://schema.chatman.ai/performance#>
 
-SELECT ?component ?constraint ?maxCycles
+SELECT ?testCase ?assertion
 WHERE {
-    ?component perf:hasConstraint ?constraint .
-    ?constraint perf:maxCycles ?maxCycles .
-    ?component cns:cycleCost ?actualCycles .
-    FILTER(?actualCycles > ?maxCycles)
+  ?testSuite cns:hasTestCase ?testCase .
+  ?testCase a cns:SparqlTestCase ;
+           cns:hasAssertion ?assertion .
 }
 ```
 
-#### Find optimization opportunities:
+### 4. Analyzing Performance Patterns
 ```sparql
 PREFIX cns: <https://schema.chatman.ai/cns#>
-PREFIX perf: <https://schema.chatman.ai/performance#>
 
-SELECT ?component ?metric ?optimization
+SELECT ?function ?pattern ?cycleCost
 WHERE {
-    ?component perf:hasMetric ?metric .
-    ?optimization perf:targetMetric ?metric .
-    ?optimization rdfs:label ?optLabel .
-    MINUS {
-        ?component perf:usesStrategy ?optimization .
-    }
+  ?function cns:implementsPattern ?pattern .
+  ?pattern cns:cycleCost ?cycleCost .
+  FILTER(?cycleCost <= 5)
 }
 ```
 
-### 3. Architecture Analysis
+## Validation
 
-#### Find data flows between layers:
-```sparql
-PREFIX arch: <https://schema.chatman.ai/architecture#>
+Each ontology file includes SHACL validation shapes to ensure semantic correctness:
 
-SELECT ?flow ?source ?target ?dataType
-WHERE {
-    ?flow a arch:DataFlow ;
-          arch:source ?source ;
-          arch:target ?target ;
-          arch:dataType ?dataType .
-    ?source a arch:ArchitectureLayer .
-    ?target a arch:ArchitectureLayer .
-}
-```
-
-#### Find components by architectural pattern:
-```sparql
-PREFIX cns: <https://schema.chatman.ai/cns#>
-PREFIX arch: <https://schema.chatman.ai/architecture#>
-
-SELECT ?component ?pattern
-WHERE {
-    ?component arch:usesPattern ?pattern .
-    ?pattern rdfs:label ?patternLabel .
-    ?component rdfs:label ?componentLabel .
-}
-```
+- **Function Validation**: Every function must have an API signature and cycle cost
+- **Command Validation**: Every command must belong to exactly one domain
+- **Performance Validation**: Performance constraints must have valid cycle and time limits
+- **Testing Validation**: Test cases must have assertions and proper types
+- **Architecture Validation**: Components must belong to layers and implement interfaces
 
 ## Integration with CNS System
 
-### 1. Runtime Integration
+The ontology is designed to integrate with the CNS system in several ways:
 
-The ontology can be used for runtime validation and reasoning:
+1. **Code Generation**: Ontology can drive code generation for telemetry instrumentation
+2. **Validation**: SHACL shapes can validate system configuration
+3. **Documentation**: Ontology provides semantic documentation of system components
+4. **Testing**: Test cases and assertions can be derived from ontology
+5. **Performance Monitoring**: Performance tiers and constraints guide monitoring
 
-```c
-// Validate component performance against constraints
-bool validate_performance_constraints(cns_component_t* component) {
-    // Query ontology for component constraints
-    // Compare against actual performance measurements
-    // Return validation result
-}
+## File Relationships
 
-// Find optimization strategies for underperforming components
-cns_optimization_t* find_optimizations(cns_component_t* component) {
-    // Query ontology for applicable optimization strategies
-    // Return list of optimization techniques
-}
 ```
-
-### 2. Build-time Integration
-
-The ontology can guide build-time optimizations:
-
-```c
-// Apply optimization strategies based on ontology
-void apply_optimizations(cns_component_t* component) {
-    // Query ontology for component's optimization strategies
-    // Apply compiler flags and optimizations accordingly
-}
-
-// Validate architecture compliance
-bool validate_architecture(cns_system_t* system) {
-    // Query ontology for architectural constraints
-    // Validate system structure against constraints
-}
+cns-core.ttl (Original)
+    ↓ (extends)
+cns-enhanced.ttl (New)
+    ↓ (specializes)
+├── cns-performance.ttl (Performance aspects)
+├── cns-architecture.ttl (Architecture aspects)
+└── cns-testing.ttl (Testing aspects)
 ```
-
-### 3. Documentation Generation
-
-The ontology can generate comprehensive documentation:
-
-```c
-// Generate component documentation
-void generate_component_docs(cns_component_t* component) {
-    // Query ontology for component information
-    // Generate markdown documentation
-}
-
-// Generate performance reports
-void generate_performance_report(cns_system_t* system) {
-    // Query ontology for performance metrics and constraints
-    // Generate performance analysis report
-}
-```
-
-## Benefits of the Enhanced Ontology
-
-### 1. Formal System Representation
-- **Semantic Clarity**: Formal representation of system concepts
-- **Relationship Modeling**: Explicit modeling of component relationships
-- **Constraint Validation**: Formal validation of system constraints
-
-### 2. Automated Reasoning
-- **Performance Analysis**: Automated analysis of performance characteristics
-- **Optimization Discovery**: Discovery of optimization opportunities
-- **Architecture Validation**: Validation of architectural compliance
-
-### 3. System Understanding
-- **Component Discovery**: Discovery of system components and relationships
-- **Impact Analysis**: Analysis of changes on system performance
-- **Dependency Tracking**: Tracking of component dependencies
-
-### 4. Documentation and Communication
-- **Standardized Vocabulary**: Common vocabulary for system concepts
-- **Automated Documentation**: Generation of system documentation
-- **Knowledge Sharing**: Sharing of system knowledge across teams
 
 ## Future Enhancements
 
-### 1. Extended Performance Model
-- **Dynamic Performance**: Runtime performance adaptation
-- **Predictive Analysis**: Performance prediction based on patterns
-- **Resource Optimization**: Resource usage optimization
+1. **Dynamic Ontology**: Runtime ontology updates based on system behavior
+2. **Performance Analytics**: Integration with performance monitoring data
+3. **Automated Validation**: Continuous validation of system against ontology
+4. **Code Generation**: Automated generation of telemetry and validation code
+5. **Visualization**: Ontology visualization tools for system understanding
 
-### 2. Advanced Validation
-- **Temporal Constraints**: Time-based performance constraints
-- **Contextual Validation**: Context-aware validation rules
-- **Adaptive Constraints**: Constraints that adapt to system state
+## Contributing
 
-### 3. Integration Capabilities
-- **External Systems**: Integration with external monitoring systems
-- **Real-time Updates**: Real-time ontology updates from system metrics
-- **Machine Learning**: ML-based performance optimization
+When adding new components to the CNS system:
 
----
+1. **Update Core Ontology**: Add new classes and properties to `cns-enhanced.ttl`
+2. **Add Performance Data**: Include performance characteristics in `cns-performance.ttl`
+3. **Document Architecture**: Model architectural relationships in `cns-architecture.ttl`
+4. **Create Tests**: Define test cases and assertions in `cns-testing.ttl`
+5. **Validate**: Ensure all new additions pass SHACL validation
 
-*This ontology provides a comprehensive semantic foundation for understanding, validating, and optimizing the CNS system while maintaining the strict 7-tick performance requirements.* 
+## References
+
+- [CNS Documentation](../README.md)
+- [Architecture Overview](../ARCHITECTURE.md)
+- [Performance Guide](../performance/README.md)
+- [Testing Guide](../testing/README.md)
+- [SHACL Specification](https://www.w3.org/TR/shacl/)
+- [RDF Schema](https://www.w3.org/TR/rdf-schema/)
+- [OWL Specification](https://www.w3.org/TR/owl2-overview/) 
