@@ -4,7 +4,11 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <time.h>
+
+// Architecture-specific headers
+#if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
+#endif
 
 // Benchmark framework version
 #define SEVEN_TICK_BENCHMARK_VERSION "1.0.0"

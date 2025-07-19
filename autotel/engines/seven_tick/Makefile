@@ -130,9 +130,27 @@ $(OPTIMIZED_LIB): $(OPTIMIZED_OBJS)
 c_src/sparql7t_optimized.o: c_src/sparql7t_optimized.c c_src/sparql7t_optimized.h
 	$(CC) $(CFLAGS) -O3 -march=native -fPIC -c $< -o $@
 
-# Process mining demo
+# Process mining demos
 process_mining_demo: examples/process_mining_demo.c $(PM7T_LIB)
 	$(CC) $(CFLAGS) -o $@ $< -L. -lpm7t -lm
+
+healthcare_demo: examples/demo_01_healthcare_process_mining.c $(PM7T_LIB)
+	$(CC) $(CFLAGS) -o $@ $< -L. -lpm7t -lm
+
+ecommerce_demo: examples/demo_02_ecommerce_process_mining.c $(PM7T_LIB)
+	$(CC) $(CFLAGS) -o $@ $< -L. -lpm7t -lm
+
+manufacturing_demo: examples/demo_03_manufacturing_process_mining.c $(PM7T_LIB)
+	$(CC) $(CFLAGS) -o $@ $< -L. -lpm7t -lm
+
+financial_demo: examples/demo_04_financial_process_mining.c $(PM7T_LIB)
+	$(CC) $(CFLAGS) -o $@ $< -L. -lpm7t -lm
+
+itservice_demo: examples/demo_05_itservice_process_mining.c $(PM7T_LIB)
+	$(CC) $(CFLAGS) -o $@ $< -L. -lpm7t -lm
+
+# Build all process mining demos
+process_mining_demos: healthcare_demo ecommerce_demo manufacturing_demo financial_demo itservice_demo
 
 # PM7T benchmarks
 pm7t_benchmarks: benchmarks/pm7t_benchmarks.c $(PM7T_LIB)
@@ -158,8 +176,8 @@ benchmarks/7t_benchmark_framework.o: benchmarks/7t_benchmark_framework.c benchma
 	$(CC) $(CFLAGS) -O3 -march=native -c $< -o $@
 
 # Benchmark suite
-$(BENCHMARK_SUITE_BIN): benchmarks/7t_benchmark_suite.c $(BENCHMARK_FRAMEWORK_LIB) $(TPOT_LIB) $(TELEMETRY_LIB)
-	$(CC) $(CFLAGS) -O3 -march=native -o $@ $< -L. -l7t_benchmark_framework -ltpot -ltelemetry7t -lm
+$(BENCHMARK_SUITE_BIN): benchmarks/7t_benchmark_suite.c $(BENCHMARK_FRAMEWORK_LIB) 
+	$(CC) $(CFLAGS) -O3 -march=native -o $@ $< -L. -l7t_benchmark_framework -lm
 
 # Run benchmark suite
 benchmark-suite: $(BENCHMARK_SUITE_BIN)

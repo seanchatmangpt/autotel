@@ -4,7 +4,9 @@
 #include <string.h>
 #include <math.h>
 #include <sys/sysctl.h>
+#if defined(__x86_64__) || defined(__i386__)
 #include <cpuid.h>
+#endif
 
 // Cycle distribution implementation
 CycleDistribution *cycle_distribution_create(size_t capacity)
@@ -286,17 +288,17 @@ void benchmark_result_print(BenchmarkResult *result)
   printf("\n=== Benchmark Result: %s ===\n", result->test_name);
   printf("Operations: %zu\n", result->operations);
   printf("Total time: %.3f ms (%.0f ns)\n", result->total_time_ns / 1000000.0, (double)result->total_time_ns);
-  printf("Total cycles: %lu\n", result->total_cycles);
+  printf("Total cycles: %llu\n", result->total_cycles);
   printf("Average cycles per operation: %.2f\n", result->avg_cycles_per_op);
   printf("Average time per operation: %.2f ns\n", result->avg_time_ns_per_op);
   printf("Throughput: %.0f ops/sec\n", result->ops_per_sec);
   printf("\nCycle Distribution:\n");
-  printf("  Min: %lu cycles\n", result->min_cycles);
+  printf("  Min: %llu cycles\n", result->min_cycles);
   printf("  P50: %.1f cycles\n", result->p50_cycles);
   printf("  P95: %.1f cycles\n", result->p95_cycles);
   printf("  P99: %.1f cycles\n", result->p99_cycles);
   printf("  P99.9: %.1f cycles\n", result->p99_9_cycles);
-  printf("  Max: %lu cycles\n", result->max_cycles);
+  printf("  Max: %llu cycles\n", result->max_cycles);
   printf("\nTarget Achievement:\n");
   printf("  Operations within ≤%d cycles: %zu/%zu (%.1f%%)\n",
          SEVEN_TICK_TARGET_CYCLES, result->operations_within_target, result->operations,
@@ -372,9 +374,9 @@ HardwareInfo *detect_hardware_capabilities(void)
     return NULL;
 
   // Simplified hardware detection
-  info->avx2_support = __builtin_cpu_supports("avx2");
-  info->avx512_support = __builtin_cpu_supports("avx512f");
-  info->sse4_2_support = __builtin_cpu_supports("sse4.2");
+  info->avx2_support = 0;
+  info->avx512_support = 0;
+  info->sse4_2_support = 0;
   info->l1_cache_size = 32 * 1024;       // Assume 32KB
   info->l2_cache_size = 256 * 1024;      // Assume 256KB
   info->l3_cache_size = 8 * 1024 * 1024; // Assume 8MB
