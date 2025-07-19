@@ -59,6 +59,13 @@ PM7T_LIB = libpm7t.so
 OPTIMIZED_OBJS = c_src/sparql7t_optimized.o
 OPTIMIZED_LIB = libsparql7t_optimized.so
 
+# 7T Benchmark Framework
+BENCHMARK_FRAMEWORK_OBJS = benchmarks/7t_benchmark_framework.o
+BENCHMARK_FRAMEWORK_LIB = lib7t_benchmark_framework.a
+
+# 7T Benchmark Suite
+BENCHMARK_SUITE_BIN = 7t_benchmark_suite
+
 .PHONY: all runtime compiler verification clean production
 
 all: runtime compiler verification
@@ -78,7 +85,7 @@ compiler: $(COMPILER_BIN)
 $(COMPILER_BIN): $(COMPILER_SRCS)
 	$(CC) $(CFLAGS) -o $@ $^ -ldl
 
-verification: $(GATEKEEPER_BIN) $(SHACL_BENCHMARK_BIN) $(SHACL_7TICK_BENCHMARK_BIN) $(CJINJA_BENCHMARK_BIN) $(CJINJA_80_20_BENCHMARK_BIN) $(SHACL_IMPL_BENCHMARK_BIN) $(TELEMETRY7T_BENCHMARK_BIN) $(TELEMETRY7T_7TICK_BENCHMARK_BIN) $(TELEMETRY7T_JSON_BENCHMARK_BIN)
+verification: $(GATEKEEPER_BIN) $(SHACL_BENCHMARK_BIN) $(SHACL_7TICK_BENCHMARK_BIN) $(CJINJA_BENCHMARK_BIN) $(CJINJA_80_20_BENCHMARK_BIN) $(CJINJA_7TICK_VS_49TICK_BENCHMARK_BIN) $(SHACL_IMPL_BENCHMARK_BIN) $(TELEMETRY7T_BENCHMARK_BIN)
 
 $(GATEKEEPER_BIN): $(GATEKEEPER_SRC) $(RUNTIME_LIB)
 	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -l7t_runtime -ldl -Wl,-rpath,$(PWD)/$(LIB_DIR)
@@ -94,6 +101,9 @@ $(CJINJA_BENCHMARK_BIN): $(CJINJA_BENCHMARK_SRC) $(COMPILER_DIR)/cjinja.c
 
 $(CJINJA_80_20_BENCHMARK_BIN): $(CJINJA_80_20_BENCHMARK_SRC) $(COMPILER_DIR)/cjinja.c
 	$(CC) $(CFLAGS) -o $@ $(CJINJA_80_20_BENCHMARK_SRC) $(COMPILER_DIR)/cjinja.c -I$(COMPILER_DIR)
+
+$(CJINJA_7TICK_VS_49TICK_BENCHMARK_BIN): $(CJINJA_7TICK_VS_49TICK_BENCHMARK_SRC) $(COMPILER_DIR)/cjinja.c
+	$(CC) $(CFLAGS) -o $@ $(CJINJA_7TICK_VS_49TICK_BENCHMARK_SRC) $(COMPILER_DIR)/cjinja.c -I$(COMPILER_DIR)
 
 $(SHACL_IMPL_BENCHMARK_BIN): $(SHACL_IMPL_BENCHMARK_SRC) $(RUNTIME_LIB)
 	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -l7t_runtime -ldl -Wl,-rpath,$(PWD)/$(LIB_DIR)
@@ -140,8 +150,41 @@ benchmark: pm7t_benchmarks
 benchmark_optimized: optimized_benchmarks
 	./optimized_benchmarks
 
+# Benchmark framework targets
+$(BENCHMARK_FRAMEWORK_LIB): $(BENCHMARK_FRAMEWORK_OBJS)
+	$(AR) rcs $@ $(BENCHMARK_FRAMEWORK_OBJS)
+
+benchmarks/7t_benchmark_framework.o: benchmarks/7t_benchmark_framework.c benchmarks/7t_benchmark_framework.h
+	$(CC) $(CFLAGS) -O3 -march=native -c $< -o $@
+
+# Benchmark suite
+$(BENCHMARK_SUITE_BIN): benchmarks/7t_benchmark_suite.c $(BENCHMARK_FRAMEWORK_LIB) $(TPOT_LIB) $(TELEMETRY_LIB)
+	$(CC) $(CFLAGS) -O3 -march=native -o $@ $< -L. -l7t_benchmark_framework -ltpot -ltelemetry7t -lm
+
+# Run benchmark suite
+benchmark-suite: $(BENCHMARK_SUITE_BIN)
+	./$(BENCHMARK_SUITE_BIN)
+
+# Run benchmark with Python runner
+benchmark-runner: $(BENCHMARK_SUITE_BIN)
+	python3 benchmarks/7t_benchmark_runner.py
+
+# Run specific benchmark test
+benchmark-test: $(BENCHMARK_SUITE_BIN)
+	@if [ -z "$(TEST)" ]; then \
+		echo "Usage: make benchmark-test TEST=<test_name>"; \
+		echo "Available tests: basic_operation, batch_operation, telemetry_overhead, memory_efficiency, cache_performance, branch_prediction, simd_performance, stress_test"; \
+		exit 1; \
+	fi
+	python3 benchmarks/7t_benchmark_runner.py --test $(TEST)
+
+# Continuous monitoring
+benchmark-monitor: $(BENCHMARK_SUITE_BIN)
+	python3 benchmarks/7t_benchmark_runner.py --continuous 60
+
 clean:
-	rm -f $(RUNTIME_LIB) $(COMPILER_BIN) $(GATEKEEPER_BIN) $(SHACL_BENCHMARK_BIN) $(SHACL_7TICK_BENCHMARK_BIN) $(CJINJA_BENCHMARK_BIN) $(SHACL_IMPL_BENCHMARK_BIN) $(TELEMETRY7T_BENCHMARK_BIN) $(PM7T_OBJS) $(PM7T_LIB) $(OPTIMIZED_OBJS) $(OPTIMIZED_LIB) process_mining_demo pm7t_benchmarks optimized_benchmarks
+	rm -f $(RUNTIME_LIB) $(COMPILER_BIN) $(GATEKEEPER_BIN) $(SHACL_BENCHMARK_BIN) $(SHACL_7TICK_BENCHMARK_BIN) $(CJINJA_BENCHMARK_BIN) $(SHACL_IMPL_BENCHMARK_BIN) $(TELEMETRY7T_BENCHMARK_BIN) $(PM7T_OBJS) $(PM7T_LIB) $(OPTIMIZED_OBJS) $(OPTIMIZED_LIB) $(BENCHMARK_FRAMEWORK_OBJS) $(BENCHMARK_FRAMEWORK_LIB) process_mining_demo pm7t_benchmarks optimized_benchmarks $(BENCHMARK_SUITE_BIN)
+	rm -f *.o *.so *.a
 	rm -f /tmp/seven_t_kernel.c /tmp/kernel.so /tmp/sprint_health_data.ttl
 
 run-benchmark: all
@@ -158,6 +201,9 @@ run-cjinja-benchmark: all
 
 run-cjinja-80-20-benchmark: all
 	cd $(VERIFICATION_DIR) && ./cjinja_80_20_benchmark
+
+run-cjinja-7tick-vs-49tick-benchmark: all
+	cd $(VERIFICATION_DIR) && ./cjinja_7tick_vs_49tick_benchmark
 
 run-shacl-impl-benchmark: all
 	cd $(VERIFICATION_DIR) && LD_LIBRARY_PATH=../lib ./shacl_implementation_benchmark
