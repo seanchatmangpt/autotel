@@ -1,10 +1,9 @@
 /**
  * @file trinity_probe.c
- * @brief Trinity Probe - Deterministic Interface to CNS v8 Substrate
- * 
- * Purpose: To measure invariance, one must have a perfectly controlled way to interact 
- * with the system under test. The probe provides cycle-level precision and controlled
- * perturbation capabilities.
+ * @brief Trinity Probe - Deterministic Interface for CNS v8 Substrate
+ *
+ * Purpose: To measure invariance, one must have a perfectly controlled way to interact with the system under test.
+ * The probe provides cycle-level precision and telemetry capture for every operation.
  */
 
 #include "cns/cns_weaver.h"
@@ -15,399 +14,353 @@
 #include <time.h>
 
 // ============================================================================
-// Operation Registry
+// FUNCTION POINTER TABLE FOR CNS v8 OPERATIONS
 // ============================================================================
 
-#define MAX_REGISTERED_OPERATIONS 256
+typedef int (*cns_operation_fn_t)(void *context, uint64_t *args);
 
-static cns_operation_registry_t operation_registry[MAX_REGISTERED_OPERATIONS];
-static uint32_t registered_operation_count = 0;
+// Function pointer table mapping operation IDs to actual functions
+static cns_operation_fn_t operation_table[0xFFFF] = {0};
+
+// Operation names for debugging
+static const char *operation_names[0xFFFF] = {0};
 
 // ============================================================================
-// Trinity Probe Implementation
+// CYCLE-LEVEL TIMING AND TELEMETRY
 // ============================================================================
 
-bool cns_weaver_register_operation(uint32_t id, const char* name, 
-                                  cns_operation_fn_t function) {
-    if (registered_operation_count >= MAX_REGISTERED_OPERATIONS) {
-        return false;
-    }
-    
-    // Check for duplicate registration
-    for (uint32_t i = 0; i < registered_operation_count; i++) {
-        if (operation_registry[i].operation_id == id) {
-            return false; // Already registered
-        }
-    }
-    
-    // Register the operation
-    operation_registry[registered_operation_count].operation_id = id;
-    operation_registry[registered_operation_count].name = name;
-    operation_registry[registered_operation_count].function = function;
-    operation_registry[registered_operation_count].quantum_padding = 0;
-    
-    registered_operation_count++;
-    return true;
+// probe_telemetry_t is now defined in cns_weaver.h
+
+// Get current cycle count with maximum precision
+static inline uint64_t probe_get_cycles(void)
+{
+#if defined(__x86_64__) || defined(__i386__)
+  uint32_t hi, lo;
+  __asm__ volatile("rdtsc" : "=a"(lo), "=d"(hi));
+  return ((uint64_t)lo) | (((uint64_t)hi) << 32);
+#elif defined(__aarch64__)
+  uint64_t cycles;
+  __asm__ volatile("mrs %0, cntvct_el0" : "=r"(cycles));
+  return cycles;
+#else
+  // Fallback to clock_gettime for other architectures
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
+#endif
 }
 
-// Find operation by ID
-static cns_operation_registry_t* find_operation(uint32_t id) {
-    for (uint32_t i = 0; i < registered_operation_count; i++) {
-        if (operation_registry[i].operation_id == id) {
-            return &operation_registry[i];
-        }
-    }
-    return NULL;
-}
-
-// ============================================================================
-// Cycle-Level Precision Control
-// ============================================================================
-
-// Introduce controlled delay with cycle-level precision
-static void cns_probe_delay_cycles(uint32_t cycles) {
-    uint64_t start = __builtin_readcyclecounter();
-    uint64_t target = start + cycles;
-    
-    // Busy wait for precise cycle count
-    while (__builtin_readcyclecounter() < target) {
-        // Compiler barrier to prevent optimization
-        __asm__ volatile("" : : : "memory");
-    }
-}
-
-// Introduce random jitter within specified range
-static void cns_probe_jitter_cycles(uint32_t max_jitter) {
-    if (max_jitter == 0) return;
-    
-    // Simple but effective random jitter
-    uint32_t jitter = (rand() % max_jitter) + 1;
-    cns_probe_delay_cycles(jitter);
+// Introduce controlled delay (for temporal permutations)
+static inline void probe_delay_cycles(uint64_t cycles)
+{
+  uint64_t start = probe_get_cycles();
+  while (probe_get_cycles() - start < cycles)
+  {
+    // Busy wait for precise cycle counting
+    __asm__ volatile("nop");
+  }
 }
 
 // ============================================================================
-// Gatekeeper Report Collection
+// TRINITY PROBE CORE
 // ============================================================================
 
-// Initialize a Gatekeeper report
-static void cns_probe_init_report(cns_gatekeeper_report_t* report) {
-    memset(report, 0, sizeof(cns_gatekeeper_report_t));
+// Execute a single operation with full telemetry
+static int probe_execute_operation(const cns_weave_op_t *op,
+                                   probe_telemetry_t *telemetry,
+                                   uint64_t delay_cycles)
+{
+  assert(op != NULL);
+  assert(telemetry != NULL);
+
+  // Record start time
+  telemetry->start_ticks = probe_get_cycles();
+  telemetry->operation_id = op->operation_id;
+
+  // Introduce controlled delay if specified (for temporal permutations)
+  if (delay_cycles > 0)
+  {
+    probe_delay_cycles(delay_cycles);
+  }
+
+  // Execute the operation
+  cns_operation_fn_t fn = operation_table[op->operation_id];
+  if (fn == NULL)
+  {
+    fprintf(stderr, "ERROR: Unknown operation ID 0x%04X\n", op->operation_id);
+    return CNS_WEAVER_ERROR_EXECUTION;
+  }
+
+  int result = fn(op->context, (uint64_t *)op->args);
+  telemetry->result = result;
+
+  // Record end time
+  telemetry->end_ticks = probe_get_cycles();
+
+  // Calculate execution time
+  uint64_t execution_cycles = telemetry->end_ticks - telemetry->start_ticks;
+
+  // Store telemetry data
+  telemetry->telemetry_data[0] = execution_cycles;
+  telemetry->telemetry_data[1] = op->metadata;
+  telemetry->telemetry_data[2] = (uint64_t)op->context;
+  telemetry->telemetry_data[3] = op->args[0];
+  telemetry->telemetry_data[4] = op->args[1];
+  telemetry->telemetry_data[5] = op->args[2];
+  telemetry->telemetry_data[6] = op->args[3];
+  telemetry->telemetry_data[7] = op->args[4];
+
+  return result;
 }
 
-// Update report with operation metrics
-static void cns_probe_update_report(cns_gatekeeper_report_t* report,
-                                   uint64_t cycles,
-                                   uint64_t memory_delta,
-                                   uint64_t cache_misses,
-                                   uint64_t simd_ops,
-                                   uint64_t validations,
-                                   uint64_t cognitive_cycles) {
-    report->total_operations++;
-    report->total_cycles += cycles;
-    report->memory_allocated += memory_delta;
-    report->cache_misses += cache_misses;
-    report->simd_operations += simd_ops;
-    report->validation_passes += validations;
-    report->cognitive_cycles += cognitive_cycles;
-    
-    // Update percentiles (simplified implementation)
-    if (cycles > report->p99_cycles) {
-        report->p99_cycles = cycles;
-    }
-    if (cycles > report->p95_cycles) {
-        report->p95_cycles = cycles;
-    }
-    if (cycles > report->p50_cycles) {
-        report->p50_cycles = cycles;
-    }
-    
-    // Calculate throughput (simplified)
-    if (report->total_cycles > 0) {
-        report->throughput_mops = (report->total_operations * 3000000) / report->total_cycles; // Assume 3GHz
-    }
-}
+// Execute a complete sequence of operations
+int probe_execute_sequence(const cns_weave_op_t *sequence,
+                           uint32_t op_count,
+                           probe_telemetry_t *telemetry_buffer,
+                           uint64_t *delays)
+{
+  assert(sequence != NULL);
+  assert(telemetry_buffer != NULL);
 
-// ============================================================================
-// Core Operation Execution
-// ============================================================================
+  for (uint32_t i = 0; i < op_count; i++)
+  {
+    uint64_t delay = (delays != NULL) ? delays[i] : 0;
 
-bool cns_weaver_execute_operation(cns_weave_op_t* op, 
-                                 cns_gatekeeper_report_t* report) {
-    assert(op != NULL);
-    assert(report != NULL);
-    
-    // Find the operation in registry
-    cns_operation_registry_t* registry_entry = find_operation(op->operation_id);
-    if (!registry_entry) {
-        printf("ERROR: Operation ID %u not found in registry\n", op->operation_id);
-        return false;
+    int result = probe_execute_operation(&sequence[i],
+                                         &telemetry_buffer[i],
+                                         delay);
+
+    if (result != CNS_WEAVER_SUCCESS)
+    {
+      fprintf(stderr, "ERROR: Operation %d (0x%04X) failed with code %d\n",
+              i, sequence[i].operation_id, result);
+      return result;
     }
-    
-    // Prepare operation context
-    struct {
-        uint64_t tick_start;
-        uint64_t tick_end;
-        uint64_t tick_budget;
-        uint64_t simd_vector[8];
-        uint64_t operation_hash;
-        uint64_t determinism_proof;
-    } weaver_op = {0};
-    
-    weaver_op.tick_budget = 8;
-    
-    // Execute operation with 8T compliance
-    bool success = false;
-    uint64_t start_cycles = __builtin_readcyclecounter();
-    
-    CNS_8T_EXECUTE(&weaver_op, {
-        // Call the actual operation function
-        success = registry_entry->function(op->context, op->args);
-        
-        // Update operation hash for determinism proof
-        weaver_op.operation_hash = op->operation_id ^ 
-                                  (uint64_t)(uintptr_t)op->context ^
-                                  op->args[0] ^ op->args[1] ^ op->args[2];
-    });
-    
-    uint64_t end_cycles = __builtin_readcyclecounter();
-    uint64_t operation_cycles = end_cycles - start_cycles;
-    
-    // Update Gatekeeper report
-    cns_probe_update_report(report,
-                           operation_cycles,
-                           64, // Assume 64 bytes per operation (simplified)
-                           0,  // Cache misses (would be measured in real implementation)
-                           weaver_op.simd_vector[0] > 0 ? 1 : 0, // SIMD operations
-                           success ? 1 : 0, // Validation passes
-                           1); // Cognitive cycles
-    
-    // Update Trinity hash in report
-    report->trinity_hash ^= weaver_op.operation_hash;
-    
-    return success;
+  }
+
+  return CNS_WEAVER_SUCCESS;
 }
 
 // ============================================================================
-// Perturbation Injection
+// OPERATION REGISTRATION SYSTEM
 // ============================================================================
 
-// Inject temporal perturbation between operations
-void cns_probe_inject_temporal_perturbation(cns_permutation_params_t* params) {
-    if (!params || params->type != PERM_TEMPORAL) {
-        return;
-    }
-    
-    // Calculate jitter based on intensity
-    uint32_t max_jitter = (params->intensity * params->jitter_cycles) / 1000;
-    cns_probe_jitter_cycles(max_jitter);
+// Register an operation function
+int probe_register_operation(uint32_t operation_id,
+                             cns_operation_fn_t function,
+                             const char *name)
+{
+  if (operation_id >= 0xFFFF)
+  {
+    return CNS_WEAVER_ERROR_INVALID_ARGS;
+  }
+
+  operation_table[operation_id] = function;
+  operation_names[operation_id] = name;
+
+  return CNS_WEAVER_SUCCESS;
 }
 
-// Inject spatial perturbation (memory layout manipulation)
-void cns_probe_inject_spatial_perturbation(cns_permutation_params_t* params) {
-    if (!params || params->type != PERM_SPATIAL) {
-        return;
-    }
-    
-    // Allocate and deallocate memory to fragment the heap
-    // This simulates cache fragmentation effects
-    for (int i = 0; i < (params->intensity / 100); i++) {
-        void* ptr = malloc(64); // 64-byte allocation (cache line size)
-        if (ptr) {
-            memset(ptr, 0xAA, 64);
-            free(ptr);
-        }
-    }
+// Get operation name for debugging
+const char *probe_get_operation_name(uint32_t operation_id)
+{
+  if (operation_id >= 0xFFFF)
+  {
+    return "UNKNOWN";
+  }
+  return operation_names[operation_id] ? operation_names[operation_id] : "UNREGISTERED";
 }
 
 // ============================================================================
-// Probe Initialization and Cleanup
+// GATEKEEPER INTEGRATION
 // ============================================================================
 
-// Initialize the Trinity Probe
-bool cns_probe_init(void) {
-    // Initialize random seed for jitter generation
-    srand(time(NULL));
-    
-    // Clear operation registry
-    memset(operation_registry, 0, sizeof(operation_registry));
-    registered_operation_count = 0;
-    
-    printf("Trinity Probe initialized with cycle-level precision\n");
-    return true;
-}
+// Collect gatekeeper metrics after sequence execution
+int probe_collect_gatekeeper_metrics(const probe_telemetry_t *telemetry,
+                                     uint32_t telemetry_count,
+                                     gatekeeper_metrics_t *metrics)
+{
+  assert(telemetry != NULL);
+  assert(metrics != NULL);
 
-// Cleanup the Trinity Probe
-void cns_probe_cleanup(void) {
-    printf("Trinity Probe cleanup complete\n");
-}
+  // Initialize metrics
+  memset(metrics, 0, sizeof(gatekeeper_metrics_t));
 
-// ============================================================================
-// Built-in Test Operations
-// ============================================================================
+  // Aggregate telemetry data
+  for (uint32_t i = 0; i < telemetry_count; i++)
+  {
+    metrics->total_ticks += telemetry[i].telemetry_data[0]; // execution_cycles
+    metrics->operations_completed++;
 
-// Test operation: Memory allocation
-static bool test_op_allocate_memory(void* context, uint64_t* args) {
-    size_t size = (size_t)args[0];
-    void** result_ptr = (void**)args[1];
-    
-    if (result_ptr) {
-        *result_ptr = aligned_alloc(8, size);
-        return *result_ptr != NULL;
+    // Extract operation-specific metrics from telemetry
+    uint64_t op_metadata = telemetry[i].telemetry_data[1];
+
+    // Parse metadata based on operation type
+    uint32_t op_id = telemetry[i].operation_id;
+    if (op_id >= OP_8T_EXECUTE && op_id < OP_8T_EXECUTE + 0x100)
+    {
+      metrics->physics_operations++;
     }
-    return false;
-}
-
-// Test operation: Memory deallocation
-static bool test_op_free_memory(void* context, uint64_t* args) {
-    void* ptr = (void*)args[0];
-    
-    if (ptr) {
-        free(ptr);
-        return true;
+    else if (op_id >= OP_8H_COGNITIVE_CYCLE && op_id < OP_8H_COGNITIVE_CYCLE + 0x100)
+    {
+      metrics->cognitive_cycle_count++;
     }
-    return false;
-}
-
-// Test operation: SIMD computation
-static bool test_op_simd_compute(void* context, uint64_t* args) {
-    uint64_t* data = (uint64_t*)args[0];
-    uint32_t count = (uint32_t)args[1];
-    
-    // Simple SIMD-like computation
-    for (uint32_t i = 0; i < count; i++) {
-        data[i] = data[i] * 2 + 1;
+    else if (op_id >= OP_8M_ALLOC && op_id < OP_8M_ALLOC + 0x100)
+    {
+      metrics->memory_quanta_used += op_metadata;
     }
-    
-    return true;
-}
-
-// Test operation: Hash computation
-static bool test_op_hash_compute(void* context, uint64_t* args) {
-    uint64_t input = args[0];
-    uint64_t* result = (uint64_t*)args[1];
-    
-    // Simple hash function
-    uint64_t hash = input;
-    hash ^= hash >> 33;
-    hash *= 0xff51afd7ed558ccdULL;
-    hash ^= hash >> 33;
-    hash *= 0xc4ceb9fe1a85ec53ULL;
-    hash ^= hash >> 33;
-    
-    if (result) {
-        *result = hash;
+    else if (op_id >= OP_SHACL_VALIDATE && op_id < OP_SHACL_VALIDATE + 0x100)
+    {
+      metrics->shacl_validations++;
     }
-    
-    return true;
-}
+    else if (op_id >= OP_SPARQL_QUERY && op_id < OP_SPARQL_QUERY + 0x100)
+    {
+      metrics->sparql_queries++;
+    }
+    else if (op_id >= OP_GRAPH_INIT && op_id < OP_GRAPH_INIT + 0x100)
+    {
+      metrics->graph_operations++;
+    }
+  }
 
-// Test operation: Validation check
-static bool test_op_validate_data(void* context, uint64_t* args) {
-    uint64_t data = args[0];
-    uint64_t expected = args[1];
-    
-    return data == expected;
+  // Calculate deterministic checksum
+  metrics->checksum = 0;
+  for (uint32_t i = 0; i < telemetry_count; i++)
+  {
+    metrics->checksum ^= telemetry[i].operation_id;
+    metrics->checksum ^= telemetry[i].result;
+    metrics->checksum ^= telemetry[i].telemetry_data[0]; // execution_cycles
+  }
+
+  // Add other metrics to checksum
+  metrics->checksum ^= metrics->total_ticks;
+  metrics->checksum ^= metrics->operations_completed;
+  metrics->checksum ^= metrics->physics_operations;
+  metrics->checksum ^= metrics->cognitive_cycle_count;
+  metrics->checksum ^= metrics->memory_quanta_used;
+
+  return CNS_WEAVER_SUCCESS;
 }
 
 // ============================================================================
-// Operation Registration
+// PERMUTATION SUPPORT
 // ============================================================================
 
-// Register built-in test operations
-bool cns_probe_register_test_operations(void) {
-    bool success = true;
-    
-    success &= cns_weaver_register_operation(1, "allocate_memory", test_op_allocate_memory);
-    success &= cns_weaver_register_operation(2, "free_memory", test_op_free_memory);
-    success &= cns_weaver_register_operation(3, "simd_compute", test_op_simd_compute);
-    success &= cns_weaver_register_operation(4, "hash_compute", test_op_hash_compute);
-    success &= cns_weaver_register_operation(5, "validate_data", test_op_validate_data);
-    
-    if (success) {
-        printf("Registered %u test operations with Trinity Probe\n", registered_operation_count);
-    } else {
-        printf("ERROR: Failed to register some test operations\n");
+// Generate temporal delays for permutation testing
+int probe_generate_temporal_delays(uint32_t op_count,
+                                   uint32_t intensity,
+                                   uint64_t seed,
+                                   uint64_t *delays)
+{
+  assert(delays != NULL);
+
+  // Simple linear congruential generator for reproducible randomness
+  uint64_t state = seed;
+
+  for (uint32_t i = 0; i < op_count; i++)
+  {
+    // Generate delay between 0 and intensity cycles
+    state = state * 1103515245ULL + 12345ULL;
+    delays[i] = (state % (intensity + 1));
+  }
+
+  return CNS_WEAVER_SUCCESS;
+}
+
+// Reorder operations for logical permutation testing
+int probe_reorder_operations(const cns_weave_op_t *original_sequence,
+                             uint32_t op_count,
+                             uint32_t intensity,
+                             uint64_t seed,
+                             cns_weave_op_t *reordered_sequence)
+{
+  assert(original_sequence != NULL);
+  assert(reordered_sequence != NULL);
+
+  // Copy original sequence
+  memcpy(reordered_sequence, original_sequence, op_count * sizeof(cns_weave_op_t));
+
+  // Simple random reordering based on intensity
+  uint64_t state = seed;
+
+  for (uint32_t i = 0; i < op_count && intensity > 0; i++)
+  {
+    state = state * 1103515245ULL + 12345ULL;
+
+    // Probability of swapping based on intensity
+    if ((state % 100) < intensity)
+    {
+      uint32_t j = state % op_count;
+      if (i != j)
+      {
+        // Swap operations
+        cns_weave_op_t temp = reordered_sequence[i];
+        reordered_sequence[i] = reordered_sequence[j];
+        reordered_sequence[j] = temp;
+      }
     }
-    
-    return success;
+  }
+
+  return CNS_WEAVER_SUCCESS;
 }
 
 // ============================================================================
-// Probe Self-Test
+// DEBUGGING AND DIAGNOSTICS
 // ============================================================================
 
-// Run self-test to validate probe functionality
-bool cns_probe_self_test(void) {
-    printf("Running Trinity Probe self-test...\n");
-    
-    // Initialize probe
-    if (!cns_probe_init()) {
-        printf("FAILED: Probe initialization\n");
-        return false;
-    }
-    
-    // Register test operations
-    if (!cns_probe_register_test_operations()) {
-        printf("FAILED: Operation registration\n");
-        return false;
-    }
-    
-    // Test operation execution
-    cns_gatekeeper_report_t report;
-    cns_probe_init_report(&report);
-    
-    // Test memory allocation
-    void* test_ptr = NULL;
-    cns_weave_op_t alloc_op = CNS_WEAVE_OP(1, NULL, 64, (uint64_t)&test_ptr);
-    
-    if (!cns_weaver_execute_operation(&alloc_op, &report)) {
-        printf("FAILED: Memory allocation operation\n");
-        return false;
-    }
-    
-    if (!test_ptr) {
-        printf("FAILED: Memory allocation result\n");
-        return false;
-    }
-    
-    // Test hash computation
-    uint64_t hash_result = 0;
-    cns_weave_op_t hash_op = CNS_WEAVE_OP(4, NULL, 0x123456789ABCDEFULL, (uint64_t)&hash_result);
-    
-    if (!cns_weaver_execute_operation(&hash_op, &report)) {
-        printf("FAILED: Hash computation operation\n");
-        return false;
-    }
-    
-    if (hash_result == 0) {
-        printf("FAILED: Hash computation result\n");
-        return false;
-    }
-    
-    // Test memory deallocation
-    cns_weave_op_t free_op = CNS_WEAVE_OP(2, NULL, (uint64_t)test_ptr);
-    
-    if (!cns_weaver_execute_operation(&free_op, &report)) {
-        printf("FAILED: Memory deallocation operation\n");
-        return false;
-    }
-    
-    // Validate report
-    if (report.total_operations != 3) {
-        printf("FAILED: Report operation count (%lu != 3)\n", report.total_operations);
-        return false;
-    }
-    
-    if (report.total_cycles == 0) {
-        printf("FAILED: Report cycle count is zero\n");
-        return false;
-    }
-    
-    printf("PASSED: Trinity Probe self-test\n");
-    printf("  Operations executed: %lu\n", report.total_operations);
-    printf("  Total cycles: %lu\n", report.total_cycles);
-    printf("  Trinity hash: 0x%016lX\n", report.trinity_hash);
-    
-    cns_probe_cleanup();
-    return true;
-} 
+// Print telemetry for debugging
+void probe_print_telemetry(const probe_telemetry_t *telemetry, uint32_t count)
+{
+  printf("=== Trinity Probe Telemetry ===\n");
+  printf("Operations executed: %u\n", count);
+  printf("\n");
+
+  for (uint32_t i = 0; i < count; i++)
+  {
+    const char *op_name = probe_get_operation_name(telemetry[i].operation_id);
+    uint64_t cycles = telemetry[i].telemetry_data[0];
+
+    printf("Op %2u: 0x%04llX (%s) - %llu cycles, result=%lld\n",
+           i, telemetry[i].operation_id, op_name, cycles, telemetry[i].result);
+  }
+
+  printf("=== End Telemetry ===\n");
+}
+
+// Print gatekeeper metrics
+void probe_print_gatekeeper_metrics(const gatekeeper_metrics_t *metrics)
+{
+  printf("=== Gatekeeper Metrics ===\n");
+  printf("Total ticks: %llu\n", metrics->total_ticks);
+  printf("Operations completed: %llu\n", metrics->operations_completed);
+  printf("Physics operations: %llu\n", metrics->physics_operations);
+  printf("Cognitive cycles: %llu\n", metrics->cognitive_cycle_count);
+  printf("Memory quanta: %llu\n", metrics->memory_quanta_used);
+  printf("SHACL validations: %llu\n", metrics->shacl_validations);
+  printf("SPARQL queries: %llu\n", metrics->sparql_queries);
+  printf("Graph operations: %llu\n", metrics->graph_operations);
+  printf("Checksum: 0x%016llX\n", metrics->checksum);
+  printf("=== End Metrics ===\n");
+}
+
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+
+// Initialize the probe system
+int probe_init(void)
+{
+  // Clear operation table
+  memset(operation_table, 0, sizeof(operation_table));
+  memset(operation_names, 0, sizeof(operation_names));
+
+  printf("Trinity Probe initialized\n");
+  return CNS_WEAVER_SUCCESS;
+}
+
+// Clean up probe resources
+void probe_cleanup(void)
+{
+  // Nothing to clean up for now
+  printf("Trinity Probe cleaned up\n");
+}

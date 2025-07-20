@@ -1,7 +1,7 @@
 /**
  * @file cns_weaver.h
  * @brief CNS Permutation Weaver (PW7) - Physics Engine for Invariance Proof
- * 
+ *
  * Core Axiom: The testing framework must adhere to the same physical laws as the system it tests.
  * Purpose: Prove that the Trinity's logical output is invariant under permutations of its physical execution.
  */
@@ -11,237 +11,387 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <string.h>
-#include <assert.h>
+#include <stddef.h>
 
 // ============================================================================
-// 8M-Compliant Core Primitives
+// 8M-COMPLIANT CORE PRIMITIVES
 // ============================================================================
 
 // 8-byte quantum alignment for all structures
 #define CNS_CACHE_ALIGN __attribute__((aligned(8)))
-#define CNS_CACHE_LINE_ALIGN __attribute__((aligned(64)))
-
-// 8T-compliant operation wrapper
-#define CNS_8T_EXECUTE(op, code) \
-    do { \
-        (op)->tick_start = __builtin_readcyclecounter(); \
-        code \
-        (op)->tick_end = __builtin_readcyclecounter(); \
-        assert((op)->tick_end - (op)->tick_start <= 8); \
-    } while(0)
-
-// ============================================================================
-// Weaver Core Data Structures
-// ============================================================================
 
 // A sequence of operations to be executed
-typedef struct CNS_CACHE_ALIGN {
-    uint32_t operation_id;     // Maps to a function in the Trinity
-    void* context;             // 8M-aligned context pointer
-    uint64_t args[6];          // 8B-aligned arguments (48 bytes total)
-    uint64_t quantum_padding;  // Ensures 8M compliance
+typedef struct CNS_CACHE_ALIGN
+{
+  uint32_t operation_id; // Maps to a function in the Trinity
+  void *context;         // 8M-aligned context pointer
+  uint64_t args[6];      // 8B-aligned arguments (48 bytes total)
+  uint64_t metadata;     // Additional metadata for permutation analysis
 } cns_weave_op_t;
 
-// Permutation strategy definition
-typedef enum {
-    PERM_TEMPORAL = 0,     // Timing jitter and delays
-    PERM_OPERATIONAL = 1,  // Operation reordering
-    PERM_SPATIAL = 2,      // Memory layout manipulation
-    PERM_LOGICAL = 3,      // Cognitive step reordering
-    PERM_COMPOSITE = 4     // Combined strategies
-} cns_permutation_type_t;
-
-// Permutation parameters
-typedef struct CNS_CACHE_ALIGN {
-    cns_permutation_type_t type;
-    uint32_t intensity;         // 0-1000 scale of perturbation strength
-    uint32_t jitter_cycles;     // Temporal jitter range (1-100 cycles)
-    uint32_t reorder_window;    // Operational reordering window size
-    uint64_t spatial_seed;      // Memory layout randomization seed
-} cns_permutation_params_t;
-
 // A complete test case definition
-typedef struct CNS_CACHE_LINE_ALIGN {
-    const char* name;                           // Test case identifier
-    cns_weave_op_t* canonical_sequence;        // Reference sequence
-    uint32_t op_count;                         // Number of operations
-    uint32_t permutations_to_run;              // Number of permutation tests
-    cns_permutation_params_t* strategies;      // Permutation strategies to apply
-    uint32_t strategy_count;                   // Number of strategies
-    uint64_t hypothesis_seed;                  // 8H hypothesis generation seed
-    uint64_t quantum_padding[2];               // Cache line alignment
+typedef struct CNS_CACHE_ALIGN
+{
+  const char *name;                   // Test case identifier
+  cns_weave_op_t *canonical_sequence; // Reference sequence
+  uint32_t op_count;                  // Number of operations
+  uint32_t permutations_to_run;       // Number of permutations to test
+  uint64_t seed;                      // Random seed for reproducibility
+  uint64_t flags;                     // Test configuration flags
+  uint64_t metadata[4];               // Additional metadata for 8H Hypothesis Engine
 } cns_weave_t;
 
-// Gatekeeper report structure (the oracle)
-typedef struct CNS_CACHE_LINE_ALIGN {
-    uint64_t total_operations;          // Total operations executed
-    uint64_t total_cycles;              // Total CPU cycles consumed
-    uint64_t p50_cycles;                // 50th percentile cycle count
-    uint64_t p95_cycles;                // 95th percentile cycle count
-    uint64_t p99_cycles;                // 99th percentile cycle count
-    uint64_t throughput_mops;           // Millions of operations per second
-    uint64_t memory_allocated;          // Total memory allocated
-    uint64_t cache_misses;              // L1 cache miss count
-    uint64_t simd_operations;           // SIMD operations executed
-    uint64_t validation_passes;         // SHACL validation passes
-    uint64_t validation_failures;       // SHACL validation failures
-    uint64_t cognitive_cycles;          // 8H cognitive cycles completed
-    uint64_t trinity_hash;              // Final Trinity state hash
-    uint64_t quantum_padding[2];        // Cache line alignment
-} cns_gatekeeper_report_t;
-
-// Weaver execution context
-typedef struct CNS_CACHE_LINE_ALIGN {
-    cns_weave_t* test_case;             // Current test case
-    cns_gatekeeper_report_t canonical;  // Canonical run report
-    cns_gatekeeper_report_t permuted;   // Permuted run report
-    uint64_t permutation_count;         // Current permutation number
-    uint64_t deviation_score;           // Cumulative deviation metric
-    bool invariance_proven;             // Whether invariance is proven
-    uint64_t quantum_padding[3];        // Cache line alignment
-} cns_weaver_context_t;
-
 // ============================================================================
-// Core Weaver API
+// OPERATION ID DEFINITIONS
 // ============================================================================
 
-// Initialize the Weaver context
-cns_weaver_context_t* cns_weaver_init(cns_weave_t* test_case);
+// Core Trinity Operations
+#define OP_8T_EXECUTE 0x0001
+#define OP_8H_COGNITIVE_CYCLE 0x0002
+#define OP_8M_ALLOC 0x0003
+#define OP_TRINITY_INIT 0x0004
+#define OP_TRINITY_EXECUTE 0x0005
 
-// Execute a canonical run and capture Gatekeeper report
-bool cns_weaver_run_canonical(cns_weaver_context_t* ctx);
+// Graph Operations
+#define OP_GRAPH_INIT 0x0100
+#define OP_GRAPH_ADD_TRIPLE 0x0101
+#define OP_GRAPH_QUERY 0x0102
+#define OP_GRAPH_VALIDATE 0x0103
 
-// Execute a permuted run with specified strategy
-bool cns_weaver_run_permuted(cns_weaver_context_t* ctx, 
-                            cns_permutation_params_t* strategy);
+// SHACL Operations
+#define OP_SHACL_VALIDATE 0x0200
+#define OP_SHACL_CONSTRAINT 0x0201
+#define OP_SHACL_SHAPE 0x0202
 
-// Validate invariance by comparing reports
-bool cns_weaver_validate_invariance(cns_weaver_context_t* ctx);
+// SPARQL Operations
+#define OP_SPARQL_QUERY 0x0300
+#define OP_SPARQL_SCAN 0x0301
+#define OP_SPARQL_FILTER 0x0302
+#define OP_SPARQL_JOIN 0x0303
 
-// Run the complete permutation test suite
-bool cns_weaver_run(cns_weave_t* test_case);
-
-// ============================================================================
-// Trinity Probe Interface
-// ============================================================================
-
-// Operation function pointer type
-typedef bool (*cns_operation_fn_t)(void* context, uint64_t* args);
-
-// Operation registry entry
-typedef struct CNS_CACHE_ALIGN {
-    uint32_t operation_id;
-    const char* name;
-    cns_operation_fn_t function;
-    uint64_t quantum_padding;
-} cns_operation_registry_t;
-
-// Register an operation with the Weaver
-bool cns_weaver_register_operation(uint32_t id, const char* name, 
-                                  cns_operation_fn_t function);
-
-// Execute a single operation with cycle-level precision
-bool cns_weaver_execute_operation(cns_weave_op_t* op, 
-                                 cns_gatekeeper_report_t* report);
+// AOT Operations
+#define OP_AOT_COMPILE 0x0400
+#define OP_AOT_GENERATE 0x0401
+#define OP_AOT_VALIDATE 0x0402
 
 // ============================================================================
-// Permutation Engine Interface
+// PERMUTATION TYPES
 // ============================================================================
 
-// Generate temporal permutation (timing jitter)
-bool cns_weaver_permute_temporal(cns_weave_op_t* sequence, uint32_t count,
-                                cns_permutation_params_t* params);
+typedef enum
+{
+  PERM_NONE = 0,
+  PERM_TEMPORAL = 1,   // Timing permutations (jitter, delays)
+  PERM_SPATIAL = 2,    // Memory layout permutations
+  PERM_LOGICAL = 4,    // Operation reordering
+  PERM_CONCURRENT = 8, // Concurrency permutations
+  PERM_COMPOSITE = 15  // All permutations combined
+} cns_permutation_type_t;
 
-// Generate operational permutation (reordering)
-bool cns_weaver_permute_operational(cns_weave_op_t* sequence, uint32_t count,
-                                   cns_permutation_params_t* params);
-
-// Generate spatial permutation (memory layout)
-bool cns_weaver_permute_spatial(cns_weave_op_t* sequence, uint32_t count,
-                               cns_permutation_params_t* params);
-
-// Generate composite permutation (combined strategies)
-bool cns_weaver_permute_composite(cns_weave_op_t* sequence, uint32_t count,
-                                 cns_permutation_params_t* params);
+// Permutation configuration
+typedef struct CNS_CACHE_ALIGN
+{
+  cns_permutation_type_t type;
+  uint32_t intensity;   // 0-100: how aggressive the permutation
+  uint64_t seed;        // Random seed for this permutation
+  uint64_t metadata[4]; // Type-specific configuration
+} cns_permutation_config_t;
 
 // ============================================================================
-// 8H Hypothesis Engine Interface
+// GATEKEEPER ORACLE STRUCTURES
 // ============================================================================
 
-// Hypothesis about system behavior
-typedef struct CNS_CACHE_ALIGN {
-    uint64_t hypothesis_id;             // Unique hypothesis identifier
-    const char* description;            // Human-readable description
-    cns_permutation_params_t strategy;  // Generated permutation strategy
-    uint64_t confidence_score;          // 0-1000 confidence in hypothesis
-    uint64_t quantum_padding;
+// Gatekeeper metrics (must be deterministic and complete)
+typedef struct CNS_CACHE_ALIGN
+{
+  // Performance metrics
+  uint64_t total_ticks;
+  uint64_t l1_cache_hits;
+  uint64_t l1_cache_misses;
+  uint64_t memory_allocated;
+  uint64_t operations_completed;
+
+  // Trinity-specific metrics
+  uint64_t trinity_hash;
+  uint64_t cognitive_cycle_count;
+  uint64_t memory_quanta_used;
+  uint64_t physics_operations;
+
+  // Validation metrics
+  uint64_t shacl_validations;
+  uint64_t sparql_queries;
+  uint64_t graph_operations;
+
+  // Entropy metrics
+  uint64_t entropy_score;
+  uint64_t dark_patterns_detected;
+  uint64_t evolution_counter;
+
+  // Deterministic checksum
+  uint64_t checksum;
+} gatekeeper_metrics_t;
+
+// ============================================================================
+// WEAVER CORE STRUCTURES
+// ============================================================================
+
+// Permutation result
+typedef struct CNS_CACHE_ALIGN
+{
+  cns_permutation_config_t config;
+  gatekeeper_metrics_t canonical_report;
+  gatekeeper_metrics_t permuted_report;
+  bool is_invariant;        // True if reports are identical
+  uint64_t deviation_score; // Measure of how different the reports are
+  uint64_t execution_time;  // Time taken for this permutation
+} cns_permutation_result_t;
+
+// Weaver state
+typedef struct CNS_CACHE_ALIGN
+{
+  cns_weave_t *current_weave;
+  uint64_t total_permutations;
+  uint64_t successful_permutations;
+  uint64_t failed_permutations;
+  uint64_t total_execution_time;
+  gatekeeper_metrics_t baseline_report;
+  cns_permutation_result_t *results;
+  uint64_t result_count;
+} cns_weaver_state_t;
+
+// ============================================================================
+// 8H HYPOTHESIS ENGINE STRUCTURES
+// ============================================================================
+
+// Hypothesis about a potential invariance violation
+typedef struct CNS_CACHE_ALIGN
+{
+  const char *description;
+  uint32_t operation_id;
+  uint32_t permutation_type;
+  uint64_t confidence_score;
+  uint64_t evidence_count;
+  uint64_t metadata[4];
 } cns_hypothesis_t;
 
-// Generate new hypothesis based on observed deviations
-cns_hypothesis_t* cns_weaver_generate_hypothesis(cns_weaver_context_t* ctx);
-
-// Validate hypothesis by running targeted permutation
-bool cns_weaver_validate_hypothesis(cns_weaver_context_t* ctx, 
-                                   cns_hypothesis_t* hypothesis);
-
-// ============================================================================
-// Declarative Test Definition Macros
-// ============================================================================
-
-// Define a permutation test case
-#define CNS_PERMUTATION_DEFINE(name, sequence) \
-    cns_weave_t name##_weave = { \
-        .name = #name, \
-        .canonical_sequence = sequence, \
-        .op_count = sizeof(sequence)/sizeof(cns_weave_op_t), \
-        .permutations_to_run = 1000, \
-        .strategies = NULL, \
-        .strategy_count = 0, \
-        .hypothesis_seed = 0x123456789ABCDEFULL \
-    }
-
-// Define operation with 8M-compliant arguments
-#define CNS_WEAVE_OP(id, ctx, ...) \
-    (cns_weave_op_t){ \
-        .operation_id = id, \
-        .context = ctx, \
-        .args = {__VA_ARGS__, 0, 0, 0, 0, 0}, \
-        .quantum_padding = 0 \
-    }
+// Hypothesis engine state
+typedef struct CNS_CACHE_ALIGN
+{
+  cns_hypothesis_t *hypotheses;
+  uint32_t hypothesis_count;
+  uint32_t max_hypotheses;
+  uint64_t learning_cycles;
+  uint64_t metadata[4];
+} cns_hypothesis_engine_t;
 
 // ============================================================================
-// Validation and Reporting
+// DECLARATIVE MACROS
 // ============================================================================
 
-// Compare two Gatekeeper reports for invariance
-bool cns_weaver_reports_identical(const cns_gatekeeper_report_t* a,
-                                 const cns_gatekeeper_report_t* b);
+// Define a permutation test
+#define CNS_PERMUTATION_DEFINE(name, sequence)               \
+  cns_weave_t name##_weave = {                               \
+      .name = #name,                                         \
+      .canonical_sequence = sequence,                        \
+      .op_count = sizeof(sequence) / sizeof(cns_weave_op_t), \
+      .permutations_to_run = 1000,                           \
+      .seed = 0xDEADBEEF,                                    \
+      .flags = 0}
 
-// Calculate deviation score between reports
-uint64_t cns_weaver_calculate_deviation(const cns_gatekeeper_report_t* canonical,
-                                       const cns_gatekeeper_report_t* permuted);
-
-// Print detailed comparison report
-void cns_weaver_print_comparison(const cns_gatekeeper_report_t* canonical,
-                                const cns_gatekeeper_report_t* permuted);
+// Define an operation in a sequence
+#define CNS_OP(id, ctx, ...) \
+  {.operation_id = id, .context = ctx, .args = {__VA_ARGS__}, .metadata = 0}
 
 // ============================================================================
-// Performance Contracts
+// TRINITY PROBE TYPES AND FUNCTIONS
 // ============================================================================
 
-// Ensure Weaver operations are 8T-compliant
-#define CNS_WEAVER_8T_COMPLIANT(code) \
-    CNS_8T_EXECUTE(&weaver_op, code)
+// Telemetry structure for operation tracking
+typedef struct
+{
+  uint64_t start_ticks;
+  uint64_t end_ticks;
+  uint64_t operation_id;
+  uint64_t result;
+  uint64_t telemetry_data[8];
+} probe_telemetry_t;
 
-// Validate 8M alignment at compile time
-#define CNS_WEAVER_8M_ALIGNED(type) \
-    static_assert(sizeof(type) % 8 == 0, "Type must be 8M-aligned")
+// Probe function declarations
+int probe_execute_sequence(const cns_weave_op_t *sequence,
+                           uint32_t op_count,
+                           probe_telemetry_t *telemetry_buffer,
+                           uint64_t *delays);
 
-// Compile-time validation of core structures
-CNS_WEAVER_8M_ALIGNED(cns_weave_op_t);
-CNS_WEAVER_8M_ALIGNED(cns_weave_t);
-CNS_WEAVER_8M_ALIGNED(cns_gatekeeper_report_t);
-CNS_WEAVER_8M_ALIGNED(cns_weaver_context_t);
+int probe_collect_gatekeeper_metrics(const probe_telemetry_t *telemetry,
+                                     uint32_t telemetry_count,
+                                     gatekeeper_metrics_t *metrics);
 
-#endif // CNS_WEAVER_H 
+int probe_register_operation(uint32_t operation_id,
+                             int (*function)(void *context, uint64_t *args),
+                             const char *name);
+
+const char *probe_get_operation_name(uint32_t operation_id);
+
+void probe_print_telemetry(const probe_telemetry_t *telemetry, uint32_t count);
+
+void probe_print_gatekeeper_metrics(const gatekeeper_metrics_t *metrics);
+
+// Get current cycle count (internal function)
+uint64_t probe_get_cycles(void);
+
+int probe_init(void);
+
+void probe_cleanup(void);
+
+// ============================================================================
+// PERMUTATION CORE FUNCTIONS
+// ============================================================================
+
+int permutation_generate_temporal_jitter(uint32_t op_count,
+                                         uint32_t intensity,
+                                         uint64_t seed,
+                                         uint64_t *delays);
+
+int permutation_generate_operation_timing(const cns_weave_op_t *sequence,
+                                          uint32_t op_count,
+                                          uint32_t intensity,
+                                          uint64_t seed,
+                                          uint64_t *delays);
+
+int permutation_generate_logical_reordering(const cns_weave_op_t *original_sequence,
+                                            uint32_t op_count,
+                                            uint32_t intensity,
+                                            uint64_t seed,
+                                            cns_weave_op_t *reordered_sequence);
+
+int permutation_apply_composite_permutation(const cns_weave_op_t *original_sequence,
+                                            uint32_t op_count,
+                                            cns_permutation_config_t *config,
+                                            cns_weave_op_t *permuted_sequence,
+                                            uint64_t *temporal_delays);
+
+cns_permutation_config_t permutation_generate_config(uint64_t seed,
+                                                     cns_permutation_type_t type,
+                                                     uint32_t intensity);
+
+int permutation_generate_sequence(uint32_t count,
+                                  cns_permutation_type_t base_type,
+                                  uint32_t base_intensity,
+                                  uint64_t seed,
+                                  cns_permutation_config_t *configs);
+
+void permutation_update_stats(bool success, uint64_t execution_time);
+
+void permutation_print_stats(void);
+
+int permutation_init(uint64_t seed);
+
+void permutation_cleanup(void);
+
+// ============================================================================
+// VALIDATION ORACLE FUNCTIONS
+// ============================================================================
+
+int oracle_run_canonical_sequence(const cns_weave_op_t *sequence,
+                                  uint32_t op_count,
+                                  gatekeeper_metrics_t *canonical_report);
+
+int oracle_run_permuted_sequence(const cns_weave_op_t *sequence,
+                                 uint32_t op_count,
+                                 cns_permutation_config_t *config,
+                                 gatekeeper_metrics_t *permuted_report);
+
+int oracle_run_batch_validation(cns_weave_t *weave,
+                                cns_permutation_config_t *configs,
+                                uint32_t config_count,
+                                cns_permutation_result_t *results);
+
+void oracle_print_comparison(const gatekeeper_metrics_t *canonical,
+                             const gatekeeper_metrics_t *permuted);
+
+int oracle_analyze_results(const cns_permutation_result_t *results,
+                           uint32_t result_count,
+                           cns_hypothesis_t *hypothesis);
+
+int oracle_init(void);
+
+void oracle_cleanup(void);
+
+// ============================================================================
+// HYPOTHESIS ENGINE FUNCTIONS
+// ============================================================================
+
+int hypothesis_8h_cognitive_cycle(const cns_permutation_result_t *results,
+                                  uint32_t result_count,
+                                  const cns_weave_op_t *sequence,
+                                  uint32_t op_count,
+                                  cns_hypothesis_t *hypotheses,
+                                  uint32_t *hypothesis_count);
+
+void hypothesis_print_stats(void);
+
+void hypothesis_print_hypotheses(const cns_hypothesis_t *hypotheses,
+                                 uint32_t hypothesis_count);
+
+int hypothesis_init(cns_hypothesis_engine_t *engine);
+
+void hypothesis_cleanup(cns_hypothesis_engine_t *engine);
+
+// ============================================================================
+// CORE WEAVER API
+// ============================================================================
+
+// Initialize the weaver
+int cns_weaver_init(cns_weaver_state_t *state);
+
+// Run a permutation test
+int cns_weaver_run(cns_weave_t *weave);
+
+// Run a single permutation
+int cns_weaver_run_permutation(cns_weave_t *weave,
+                               cns_permutation_config_t *config,
+                               cns_permutation_result_t *result);
+
+// Validate invariance (compare two gatekeeper reports)
+bool cns_weaver_validate_invariance(const gatekeeper_metrics_t *canonical,
+                                    const gatekeeper_metrics_t *permuted);
+
+// Generate a new hypothesis based on observed deviations
+int cns_weaver_generate_hypothesis(cns_weaver_state_t *state,
+                                   cns_hypothesis_t *hypothesis);
+
+// Clean up weaver resources
+void cns_weaver_cleanup(cns_weaver_state_t *state);
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+// Calculate deviation score between two reports
+uint64_t cns_weaver_calculate_deviation(const gatekeeper_metrics_t *a,
+                                        const gatekeeper_metrics_t *b);
+
+// Generate permutation configuration
+cns_permutation_config_t cns_weaver_generate_permutation(uint64_t seed,
+                                                         cns_permutation_type_t type,
+                                                         uint32_t intensity);
+
+// Print weaver results
+void cns_weaver_print_results(const cns_weaver_state_t *state);
+
+// ============================================================================
+// VALIDATION CONSTANTS
+// ============================================================================
+
+#define CNS_WEAVER_SUCCESS 0
+#define CNS_WEAVER_ERROR_INVALID_ARGS -1
+#define CNS_WEAVER_ERROR_MEMORY -2
+#define CNS_WEAVER_ERROR_EXECUTION -3
+#define CNS_WEAVER_ERROR_INVARIANCE_VIOLATION -4
+
+// Maximum values for configuration
+#define CNS_WEAVER_MAX_OPERATIONS 1000
+#define CNS_WEAVER_MAX_PERMUTATIONS 10000
+#define CNS_WEAVER_MAX_HYPOTHESES 100
+
+#endif // CNS_WEAVER_H

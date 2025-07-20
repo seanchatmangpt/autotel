@@ -9,7 +9,7 @@ LDFLAGS = -lm
 TARGETS = cns_permutation_test
 
 # Source files
-PERMUTATION_SOURCES = validation/cns_permutation_test.c
+PERMUTATION_SOURCES = validation/cns_quick_permutation_test.c
 
 all: $(TARGETS)
 

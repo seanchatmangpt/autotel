@@ -1,0 +1,132 @@
+# CNS Permutation Weaver (PW7) - Fifth Epoch Invariance Testing
+# Build system with hardware-aware optimizations
+
+CC = gcc
+CFLAGS = -std=c99 -Wall -Wextra -O3 -march=native -mtune=native
+CFLAGS += -mavx512f -mavx512dq -mavx512vl -mavx512bw -mavx512cd
+CFLAGS += -fno-stack-protector -fno-common -fno-builtin
+CFLAGS += -D_GNU_SOURCE -DNDEBUG
+CFLAGS += -DCNS_CACHE_LINE_SIZE=64
+CFLAGS += -DCNS_8T_OPTIMIZATION=1
+CFLAGS += -DCNS_8H_OPTIMIZATION=1
+CFLAGS += -DCNS_8M_OPTIMIZATION=1
+
+# Include directories
+INCLUDES = -I./include -I./include/cns
+
+# Source directories
+SRCDIR = src/weaver
+OBJDIR = obj/weaver
+BINDIR = bin
+
+# Source files
+SOURCES = $(wildcard $(SRCDIR)/*.c)
+OBJECTS = $(SOURCES:$(SRCDIR)/%.c=$(OBJDIR)/%.o)
+
+# Target executable
+TARGET = $(BINDIR)/cns_weaver
+
+# Default target
+all: $(TARGET)
+
+# Create directories
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
+
+$(BINDIR):
+	mkdir -p $(BINDIR)
+
+# Compile source files
+$(OBJDIR)/%.o: $(SRCDIR)/%.c | $(OBJDIR)
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+# Link executable
+$(TARGET): $(OBJECTS) | $(BINDIR)
+	$(CC) $(CFLAGS) $(OBJECTS) -o $@ -lm
+
+# Clean build artifacts
+clean:
+	rm -rf $(OBJDIR) $(BINDIR)
+
+# Install (copy to system path)
+install: $(TARGET)
+	sudo cp $(TARGET) /usr/local/bin/
+
+# Uninstall
+uninstall:
+	sudo rm -f /usr/local/bin/cns_weaver
+
+# Run tests
+test: $(TARGET)
+	$(TARGET)
+
+# Debug build
+debug: CFLAGS += -g -DDEBUG -O0
+debug: $(TARGET)
+
+# Profile build
+profile: CFLAGS += -pg -g
+profile: $(TARGET)
+
+# Performance build (maximum optimization)
+perf: CFLAGS += -Ofast -flto -march=skylake-avx512 -mtune=skylake-avx512
+perf: $(TARGET)
+
+# Static analysis
+analyze: CFLAGS += -fanalyzer
+analyze: $(TARGET)
+
+# Check for memory leaks
+memcheck: $(TARGET)
+	valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all $(TARGET)
+
+# Performance profiling
+perf-profile: $(TARGET)
+	perf record -g $(TARGET)
+	perf report
+
+# Hardware-specific builds
+skylake: CFLAGS += -march=skylake-avx512 -mtune=skylake-avx512
+skylake: $(TARGET)
+
+zen: CFLAGS += -march=znver2 -mtune=znver2
+zen: $(TARGET)
+
+arm64: CFLAGS += -march=armv8-a -mtune=cortex-a72
+arm64: $(TARGET)
+
+# Documentation
+docs:
+	@echo "=== CNS Permutation Weaver Documentation ==="
+	@echo "Build targets:"
+	@echo "  all        - Build weaver (default)"
+	@echo "  debug      - Build with debug symbols"
+	@echo "  profile    - Build with profiling support"
+	@echo "  perf       - Build with maximum optimization"
+	@echo "  test       - Run weaver tests"
+	@echo "  clean      - Remove build artifacts"
+	@echo "  install    - Install to system"
+	@echo "  uninstall  - Remove from system"
+	@echo ""
+	@echo "Hardware-specific builds:"
+	@echo "  skylake    - Optimized for Intel Skylake"
+	@echo "  zen        - Optimized for AMD Zen"
+	@echo "  arm64      - Optimized for ARM64"
+	@echo ""
+	@echo "Analysis tools:"
+	@echo "  analyze    - Static analysis"
+	@echo "  memcheck   - Memory leak detection"
+	@echo "  perf-profile - Performance profiling"
+
+# Show build configuration
+config:
+	@echo "=== CNS Permutation Weaver Build Configuration ==="
+	@echo "Compiler: $(CC)"
+	@echo "Flags: $(CFLAGS)"
+	@echo "Includes: $(INCLUDES)"
+	@echo "Source dir: $(SRCDIR)"
+	@echo "Object dir: $(OBJDIR)"
+	@echo "Binary dir: $(BINDIR)"
+	@echo "Target: $(TARGET)"
+
+.PHONY: all clean install uninstall test debug profile perf analyze memcheck perf-profile skylake zen arm64 docs config 
