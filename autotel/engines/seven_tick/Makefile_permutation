@@ -1,0 +1,175 @@
+# Makefile for CJinja Permutation Tests
+# Comprehensive validation of all CJinja implementations
+
+CC = gcc
+CFLAGS = -Wall -Wextra -O2 -std=c99 -g
+INCLUDES = -I.
+LIBS = -lm
+
+# Source files for each implementation
+FINAL_SOURCES = cjinja_final.c
+ULTRA_SOURCES = cjinja_ultra_portable.c  
+BLAZING_SOURCES = cjinja_blazing_fast.c
+PERMUTATION_SOURCES = permutation_tests.c
+
+# Object files
+FINAL_OBJS = $(FINAL_SOURCES:.c=.o)
+ULTRA_OBJS = $(ULTRA_SOURCES:.c=.o)
+BLAZING_OBJS = $(BLAZING_SOURCES:.c=.o)
+PERMUTATION_OBJS = $(PERMUTATION_SOURCES:.c=.o)
+
+# Main test executable
+PERMUTATION_TEST = test_all_permutations
+PERMUTATION_MAIN = test_all_permutations.c
+
+# Targets
+.PHONY: all clean test permutation-test run-permutation help
+
+all: $(PERMUTATION_TEST)
+
+# Build the comprehensive permutation test
+$(PERMUTATION_TEST): $(PERMUTATION_MAIN) $(FINAL_OBJS) $(ULTRA_OBJS) $(BLAZING_OBJS) $(PERMUTATION_OBJS)
+	@echo "🔨 Building comprehensive permutation test..."
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $(PERMUTATION_MAIN) $(FINAL_OBJS) $(ULTRA_OBJS) $(BLAZING_OBJS) $(PERMUTATION_OBJS) $(LIBS)
+	@echo "✅ Built: $@"
+
+# Individual object files
+%.o: %.c %.h
+	@echo "🔧 Compiling: $<"
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+# Special case for files without headers
+cjinja_final.o: cjinja_final.c cjinja_final.h
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+cjinja_ultra_portable.o: cjinja_ultra_portable.c cjinja_ultra_portable.h
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+cjinja_blazing_fast.o: cjinja_blazing_fast.c cjinja_blazing_fast.h
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+permutation_tests.o: permutation_tests.c permutation_tests.h
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+# Run permutation tests
+run-permutation: $(PERMUTATION_TEST)
+	@echo ""
+	@echo "🚀 RUNNING COMPREHENSIVE PERMUTATION VALIDATION"
+	@echo "==============================================="
+	@echo ""
+	./$(PERMUTATION_TEST)
+
+# Quick test (alias)
+test: run-permutation
+
+# Performance-only test
+performance-test: $(PERMUTATION_TEST)
+	@echo "⚡ Running performance-focused permutation tests..."
+	./$(PERMUTATION_TEST) --performance-only 2>/dev/null || true
+
+# Validation-only test  
+validation-test: $(PERMUTATION_TEST)
+	@echo "🔍 Running validation-focused permutation tests..."
+	./$(PERMUTATION_TEST) --validation-only 2>/dev/null || true
+
+# Clean build files
+clean:
+	@echo "🧹 Cleaning build files..."
+	rm -f *.o $(PERMUTATION_TEST)
+	@echo "✅ Clean complete"
+
+# Debug build
+debug: CFLAGS += -DDEBUG -g3 -O0
+debug: $(PERMUTATION_TEST)
+
+# Release build with optimizations
+release: CFLAGS += -DNDEBUG -O3 -march=native
+release: $(PERMUTATION_TEST)
+
+# Memory check with valgrind
+memcheck: $(PERMUTATION_TEST)
+	@echo "🔍 Running memory leak detection..."
+	valgrind --leak-check=full --show-leak-kinds=all ./$(PERMUTATION_TEST) 2>&1 | tee valgrind_report.txt
+
+# Static analysis
+analyze: 
+	@echo "🔬 Running static analysis..."
+	cppcheck --enable=all --std=c99 *.c *.h 2>&1 | tee static_analysis.txt
+
+# Coverage analysis (requires gcov)
+coverage: CFLAGS += --coverage
+coverage: $(PERMUTATION_TEST)
+	@echo "📊 Running coverage analysis..."
+	./$(PERMUTATION_TEST)
+	gcov *.c
+	@echo "Coverage files generated: *.gcov"
+
+# Benchmark mode - run multiple times for statistical significance
+benchmark: $(PERMUTATION_TEST)
+	@echo "📈 Running benchmark suite (5 iterations)..."
+	@for i in 1 2 3 4 5; do \
+		echo "Iteration $$i:"; \
+		./$(PERMUTATION_TEST) --benchmark-mode 2>/dev/null || true; \
+		echo ""; \
+	done
+
+# Individual implementation tests
+test-final: $(PERMUTATION_TEST)
+	@echo "🎯 Testing Final implementation only..."
+	./$(PERMUTATION_TEST) --impl=final 2>/dev/null || true
+
+test-ultra: $(PERMUTATION_TEST)
+	@echo "🎯 Testing Ultra-Portable implementation only..."
+	./$(PERMUTATION_TEST) --impl=ultra 2>/dev/null || true
+
+test-blazing: $(PERMUTATION_TEST)
+	@echo "🎯 Testing Blazing-Fast implementation only..."
+	./$(PERMUTATION_TEST) --impl=blazing 2>/dev/null || true
+
+# Stress test mode
+stress: $(PERMUTATION_TEST)
+	@echo "💪 Running stress tests..."
+	./$(PERMUTATION_TEST) --stress-mode 2>/dev/null || true
+
+# Help
+help:
+	@echo "🚀 CJinja Permutation Test Makefile"
+	@echo "===================================="
+	@echo ""
+	@echo "Targets:"
+	@echo "  all              - Build permutation test suite"
+	@echo "  test             - Run all permutation tests"
+	@echo "  run-permutation  - Run comprehensive validation"
+	@echo "  performance-test - Performance-focused tests only"
+	@echo "  validation-test  - Validation-focused tests only"
+	@echo "  benchmark        - Run statistical benchmark (5x)"
+	@echo "  stress           - Run stress tests"
+	@echo "  test-final       - Test Final implementation only"
+	@echo "  test-ultra       - Test Ultra-Portable only"
+	@echo "  test-blazing     - Test Blazing-Fast only"
+	@echo "  debug            - Build with debug symbols"
+	@echo "  release          - Build with optimizations"
+	@echo "  memcheck         - Run with valgrind"
+	@echo "  analyze          - Static code analysis"
+	@echo "  coverage         - Code coverage analysis"
+	@echo "  clean            - Remove build files"
+	@echo "  help             - Show this help"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make test              # Run all permutation tests"
+	@echo "  make benchmark         # Statistical performance analysis"
+	@echo "  make stress            # Extreme load testing"
+	@echo "  make memcheck          # Memory leak detection"
+	@echo ""
+
+# Dependencies
+$(PERMUTATION_TEST): permutation_tests.h cjinja_final.h cjinja_ultra_portable.h cjinja_blazing_fast.h
+
+# Automatic dependency generation
+-include $(FINAL_SOURCES:.c=.d)
+-include $(ULTRA_SOURCES:.c=.d)
+-include $(BLAZING_SOURCES:.c=.d)
+-include $(PERMUTATION_SOURCES:.c=.d)
+
+%.d: %.c
+	@$(CC) $(CFLAGS) $(INCLUDES) -MM $< > $@

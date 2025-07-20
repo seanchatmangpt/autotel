@@ -1,0 +1,24 @@
+PREFIX : <http://example.org/sprint_health#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+# Query 1: Find all patients with their appointments and doctors
+SELECT ?patient ?patientName ?appointment ?doctor ?doctorName ?date
+WHERE {
+    ?patient a :Patient .
+    ?patient :hasName ?patientName .
+    ?patient :hasAppointment ?appointment .
+    ?appointment :attendedBy ?doctor .
+    ?appointment :hasDate ?date .
+    ?doctor :hasName ?doctorName .
+}
+
+# Query 2: Find patients with high blood pressure
+SELECT ?patient ?patientName ?measurement ?value
+WHERE {
+    ?patient a :Patient .
+    ?patient :hasName ?patientName .
+    ?patient :hasMeasurement ?measurement .
+    ?measurement a :BloodPressure .
+    ?measurement :hasValue ?value .
+    FILTER (?value > 140)
+}

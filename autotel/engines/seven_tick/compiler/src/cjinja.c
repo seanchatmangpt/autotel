@@ -391,7 +391,7 @@ char *cjinja_render_with_loops(const char *template_str, CJinjaContext *ctx)
 
                 // Parse for loop: {% for item in items %}
                 const char *var_start = pos;
-                while (*pos && *pos != ' ' && *pos != 'i')
+                while (*pos && *pos != ' ')
                     pos++;
                 size_t var_len = pos - var_start;
                 char *var_name = malloc(var_len + 1);
@@ -415,12 +415,16 @@ char *cjinja_render_with_loops(const char *template_str, CJinjaContext *ctx)
                 strncpy(array_name, array_start, array_len);
                 array_name[array_len] = '\0';
 
-                // Find end of for block
-                while (*pos && strncmp(pos, "{% endfor %}", 12) != 0)
+                // Skip to end of {% for ... %} block
+                while (*pos && strncmp(pos, "%}", 2) != 0)
                     pos++;
+                if (strncmp(pos, "%}", 2) == 0)
+                    pos += 2;
 
-                // Get loop body
+                // Capture loop body start
                 const char *body_start = pos;
+
+                // Find end of for block
                 while (*pos && strncmp(pos, "{% endfor %}", 12) != 0)
                     pos++;
                 size_t body_len = pos - body_start;
@@ -1571,7 +1575,7 @@ char *cjinja_render_with_loops_optimized(const char *template_str, CJinjaContext
 
                 // Parse for loop: {% for item in items %}
                 const char *var_start = pos;
-                while (*pos && *pos != ' ' && *pos != 'i')
+                while (*pos && *pos != ' ')
                     pos++;
                 size_t var_len = pos - var_start;
                 char *var_name = malloc(var_len + 1);
@@ -1595,12 +1599,16 @@ char *cjinja_render_with_loops_optimized(const char *template_str, CJinjaContext
                 strncpy(array_name, array_start, array_len);
                 array_name[array_len] = '\0';
 
-                // Find end of for block
-                while (*pos && strncmp(pos, "{% endfor %}", 12) != 0)
+                // Skip to end of {% for ... %} block
+                while (*pos && strncmp(pos, "%}", 2) != 0)
                     pos++;
+                if (strncmp(pos, "%}", 2) == 0)
+                    pos += 2;
 
-                // Get loop body
+                // Capture loop body start
                 const char *body_start = pos;
+
+                // Find end of for block
                 while (*pos && strncmp(pos, "{% endfor %}", 12) != 0)
                     pos++;
                 size_t body_len = pos - body_start;

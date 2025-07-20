@@ -1,0 +1,130 @@
+# SPARQL Benchmark Makefile
+# Builds and runs SPARQL 80/20 benchmarks with AOT support
+
+CC = clang
+CFLAGS = -O3 -march=native -flto -ffast-math -Wall -Wextra -std=c11
+LDFLAGS = -flto -lm -lpthread
+
+# Enable SIMD optimizations
+ifeq ($(shell uname -m),x86_64)
+    CFLAGS += -mavx2 -mfma -msse4.2
+endif
+
+ifeq ($(shell uname -m),arm64)
+    # For ARM64/M1, remove -march=native as it conflicts with -mcpu
+    CFLAGS := $(filter-out -march=native,$(CFLAGS))
+    CFLAGS += -mcpu=apple-m1
+endif
+
+# Include paths
+INCLUDES = -Iinclude -I../include -I. -Isrc
+
+# SPARQL benchmark targets
+SPARQL_80_20_TARGET = sparql_80_20_benchmark
+SPARQL_80_20_AOT_TARGET = sparql_80_20_aot_benchmark
+SPARQL_AOT_TARGET = sparql_aot_benchmark
+SPARQL_CORRECTED_TARGET = sparql_corrected_benchmark
+SPARQL_REALISTIC_TARGET = sparql_realistic_benchmark
+
+# Source files needed for benchmarks
+SPARQL_ENGINE_SRC = src/engines/sparql.c
+SPARQL_ENGINE_OBJ = $(SPARQL_ENGINE_SRC:.c=.o)
+
+# All targets
+ALL_TARGETS = $(SPARQL_80_20_TARGET) $(SPARQL_80_20_AOT_TARGET) $(SPARQL_AOT_TARGET) $(SPARQL_CORRECTED_TARGET)
+
+# Default target
+all: $(ALL_TARGETS)
+
+# Build SPARQL 80/20 benchmark (simple version)
+$(SPARQL_80_20_TARGET): sparql_80_20_benchmark.c
+	$(CC) $(CFLAGS) $(INCLUDES) $(LDFLAGS) -o $@ $<
+	@echo "✅ Built $@"
+
+# Build SPARQL 80/20 AOT benchmark (comprehensive version)
+$(SPARQL_80_20_AOT_TARGET): sparql_80_20_aot_benchmark.c $(SPARQL_ENGINE_OBJ)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS)
+	@echo "✅ Built $@"
+
+# Build SPARQL AOT benchmark
+$(SPARQL_AOT_TARGET): sparql_aot_benchmark.c $(SPARQL_ENGINE_OBJ)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS)
+	@echo "✅ Built $@"
+
+# Build SPARQL corrected benchmark
+$(SPARQL_CORRECTED_TARGET): sparql_corrected_benchmark.c $(SPARQL_ENGINE_OBJ)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS)
+	@echo "✅ Built $@"
+
+# Compile object files
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+
+# Run simple 80/20 benchmark
+run-80-20: $(SPARQL_80_20_TARGET)
+	@echo "🚀 Running SPARQL 80/20 benchmark (simple)..."
+	./$(SPARQL_80_20_TARGET)
+
+# Run comprehensive AOT benchmark
+run-80-20-aot: $(SPARQL_80_20_AOT_TARGET)
+	@echo "🚀 Running SPARQL 80/20 AOT benchmark (comprehensive)..."
+	./$(SPARQL_80_20_AOT_TARGET)
+
+# Run all SPARQL benchmarks
+run-all: $(ALL_TARGETS)
+	@echo "🚀 Running all SPARQL benchmarks..."
+	@echo "\n=== SPARQL 80/20 Simple ==="
+	-./$(SPARQL_80_20_TARGET)
+	@echo "\n=== SPARQL 80/20 AOT Comprehensive ==="
+	-./$(SPARQL_80_20_AOT_TARGET)
+	@echo "\n=== SPARQL AOT Benchmark ==="
+	-./$(SPARQL_AOT_TARGET)
+	@echo "\n=== SPARQL Corrected Benchmark ==="
+	-./$(SPARQL_CORRECTED_TARGET)
+
+# Generate comparison report
+compare: run-all
+	@echo "\n📊 Generating comparison report..."
+	@echo "Check sparql_80_20_aot_results.json for detailed metrics"
+
+# Clean build artifacts
+clean:
+	rm -f $(ALL_TARGETS) $(SPARQL_ENGINE_OBJ)
+	rm -f sparql_80_20_aot_results.json
+	rm -f *.o
+	@echo "✅ Cleaned SPARQL benchmark artifacts"
+
+# Quick test build
+test: $(SPARQL_80_20_AOT_TARGET)
+	@echo "🧪 Testing SPARQL AOT benchmark..."
+	./$(SPARQL_80_20_AOT_TARGET) | head -n 50
+
+# Debug build
+debug: CFLAGS += -g -DDEBUG -O0
+debug: CFLAGS := $(filter-out -O3 -flto,$(CFLAGS))
+debug: LDFLAGS := $(filter-out -flto,$(LDFLAGS))
+debug: clean $(SPARQL_80_20_AOT_TARGET)
+	@echo "🐛 Debug build complete"
+
+# Help
+help:
+	@echo "SPARQL Benchmark Makefile"
+	@echo "========================"
+	@echo ""
+	@echo "Targets:"
+	@echo "  make                - Build all SPARQL benchmarks"
+	@echo "  make run-80-20      - Run simple 80/20 benchmark"
+	@echo "  make run-80-20-aot  - Run comprehensive AOT benchmark"
+	@echo "  make run-all        - Run all benchmarks"
+	@echo "  make compare        - Generate comparison report"
+	@echo "  make test           - Quick test of AOT benchmark"
+	@echo "  make debug          - Build debug version"
+	@echo "  make clean          - Clean build artifacts"
+	@echo ""
+	@echo "Benchmarks:"
+	@echo "  $(SPARQL_80_20_TARGET) - Simple 80/20 pattern test"
+	@echo "  $(SPARQL_80_20_AOT_TARGET) - Comprehensive AOT vs interpreted"
+	@echo "  $(SPARQL_AOT_TARGET) - Full AOT benchmark"
+	@echo "  $(SPARQL_CORRECTED_TARGET) - Corrected SPARQL benchmark"
+
+.PHONY: all run-80-20 run-80-20-aot run-all compare clean test debug help

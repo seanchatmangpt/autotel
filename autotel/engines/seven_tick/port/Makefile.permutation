@@ -1,0 +1,47 @@
+# CNS v8 Architecture - Permutation Testing Makefile
+# Comprehensive correctness validation across all input combinations
+
+CC = gcc
+CFLAGS = -O3 -march=native -flto -Wall -Wextra -std=c99 -DNDEBUG -I./include
+LDFLAGS = -lm
+
+# Target binaries
+TARGETS = cns_permutation_test
+
+# Source files
+PERMUTATION_SOURCES = validation/cns_permutation_test.c
+
+all: $(TARGETS)
+
+cns_permutation_test: $(PERMUTATION_SOURCES)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+# Run permutation testing
+permutation: cns_permutation_test
+	@echo "Running CNS v8 Architecture Permutation Testing..."
+	@echo "=================================================="
+	@./cns_permutation_test
+
+# Quick permutation test (reduced combinations)
+quick_permutation: cns_permutation_test
+	@echo "Running Quick Permutation Test (reduced combinations)..."
+	@echo "======================================================="
+	@PERMUTATION_QUICK=1 ./cns_permutation_test
+
+# Clean build artifacts
+clean:
+	rm -f $(TARGETS) *.o
+
+# Help target
+help:
+	@echo "CNS v8 Architecture - Permutation Testing"
+	@echo "========================================="
+	@echo ""
+	@echo "Targets:"
+	@echo "  all              - Build permutation test"
+	@echo "  permutation      - Run comprehensive permutation testing"
+	@echo "  quick_permutation - Run quick permutation test"
+	@echo "  clean            - Clean build artifacts"
+	@echo "  help             - Show this help"
+
+.PHONY: all permutation quick_permutation clean help 

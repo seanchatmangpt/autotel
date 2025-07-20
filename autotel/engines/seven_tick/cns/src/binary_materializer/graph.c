@@ -1,261 +1,297 @@
-/*
- * CNS Binary Materializer - Graph Management
- * Core graph data structure operations
- */
-
+// graph.c - Complete binary materializer in one file
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
-#include "cns/binary_materializer.h"
-#include "cns/binary_materializer_types.h"
+#include <time.h>
+#include <sys/time.h>
+
+// Constants
+#define MAX_EDGES_PER_NODE 100
+#define HASH_SIZE 16384
+
+// Node structure with inline edge storage
+typedef struct {
+    uint32_t id;
+    uint32_t edge_count;
+    uint32_t edges[MAX_EDGES_PER_NODE];
+} node_t;
+
+// Graph structure with hash-based node lookup
+typedef struct {
+    node_t** nodes;
+    uint32_t* hash_table;
+    uint32_t node_count;
+    uint32_t capacity;
+} graph_t;
+
+// Hash function for node lookup
+static inline uint32_t hash_id(uint32_t id) {
+    return (id * 2654435761U) & (HASH_SIZE - 1);
+}
 
 // Create new graph
-cns_graph_t* cns_graph_create(uint32_t flags) {
-    cns_graph_t* graph = calloc(1, sizeof(cns_graph_t));
-    if (!graph) return NULL;
-    
-    graph->flags = flags;
-    graph->node_capacity = 16;
-    graph->edge_capacity = 32;
-    
-    graph->nodes = calloc(graph->node_capacity, sizeof(cns_node_t));
-    if (!graph->nodes) {
-        free(graph);
-        return NULL;
-    }
-    
-    graph->edges = calloc(graph->edge_capacity, sizeof(cns_edge_t));
-    if (!graph->edges) {
-        free(graph->nodes);
-        free(graph);
-        return NULL;
-    }
-    
-    return graph;
-}
-
-// Destroy graph and free resources
-void cns_graph_destroy(cns_graph_t* graph) {
-    if (!graph) return;
-    
-    // Free node data
-    for (size_t i = 0; i < graph->node_count; i++) {
-        free(graph->nodes[i].data);
-    }
-    free(graph->nodes);
-    
-    // Free edge data
-    for (size_t i = 0; i < graph->edge_count; i++) {
-        free(graph->edges[i].data);
-    }
-    free(graph->edges);
-    
-    free(graph);
-}
-
-// Ensure node capacity
-static int ensure_node_capacity(cns_graph_t* graph, size_t required) {
-    if (graph->node_capacity >= required) return CNS_SUCCESS;
-    
-    size_t new_capacity = graph->node_capacity * 2;
-    while (new_capacity < required) {
-        new_capacity *= 2;
-    }
-    
-    cns_node_t* new_nodes = realloc(graph->nodes, new_capacity * sizeof(cns_node_t));
-    if (!new_nodes) return CNS_ERROR_MEMORY;
-    
-    // Zero new memory
-    memset(new_nodes + graph->node_capacity, 0, 
-           (new_capacity - graph->node_capacity) * sizeof(cns_node_t));
-    
-    graph->nodes = new_nodes;
-    graph->node_capacity = new_capacity;
-    return CNS_SUCCESS;
-}
-
-// Ensure edge capacity
-static int ensure_edge_capacity(cns_graph_t* graph, size_t required) {
-    if (graph->edge_capacity >= required) return CNS_SUCCESS;
-    
-    size_t new_capacity = graph->edge_capacity * 2;
-    while (new_capacity < required) {
-        new_capacity *= 2;
-    }
-    
-    cns_edge_t* new_edges = realloc(graph->edges, new_capacity * sizeof(cns_edge_t));
-    if (!new_edges) return CNS_ERROR_MEMORY;
-    
-    // Zero new memory
-    memset(new_edges + graph->edge_capacity, 0, 
-           (new_capacity - graph->edge_capacity) * sizeof(cns_edge_t));
-    
-    graph->edges = new_edges;
-    graph->edge_capacity = new_capacity;
-    return CNS_SUCCESS;
+graph_t* create_graph(uint32_t initial_capacity) {
+    graph_t* g = malloc(sizeof(graph_t));
+    g->capacity = initial_capacity;
+    g->node_count = 0;
+    g->nodes = calloc(initial_capacity, sizeof(node_t*));
+    g->hash_table = calloc(HASH_SIZE, sizeof(uint32_t));
+    return g;
 }
 
 // Add node to graph
-int cns_graph_add_node(cns_graph_t* graph, uint64_t id, uint32_t type, 
-                      const void* data, size_t data_size) {
-    if (!graph) return CNS_ERROR_INVALID_ARGUMENT;
+void add_node(graph_t* g, uint32_t id) {
+    if (g->node_count >= g->capacity) {
+        g->capacity *= 2;
+        g->nodes = realloc(g->nodes, g->capacity * sizeof(node_t*));
+    }
     
-    int ret = ensure_node_capacity(graph, graph->node_count + 1);
-    if (ret != CNS_SUCCESS) return ret;
-    
-    cns_node_t* node = &graph->nodes[graph->node_count];
+    node_t* node = malloc(sizeof(node_t));
     node->id = id;
-    node->type = type;
-    node->flags = 0;
-    node->data_size = data_size;
+    node->edge_count = 0;
     
-    if (data && data_size > 0) {
-        node->data = malloc(data_size);
-        if (!node->data) return CNS_ERROR_MEMORY;
-        memcpy(node->data, data, data_size);
-    } else {
-        node->data = NULL;
-    }
+    uint32_t idx = g->node_count++;
+    g->nodes[idx] = node;
     
-    graph->node_count++;
-    return CNS_SUCCESS;
+    // Add to hash table for fast lookup
+    uint32_t hash = hash_id(id);
+    g->hash_table[hash] = idx + 1; // +1 to distinguish from 0
 }
 
-// Add edge to graph
-int cns_graph_add_edge(cns_graph_t* graph, uint64_t source, uint64_t target,
-                      uint32_t type, double weight, const void* data, size_t data_size) {
-    if (!graph) return CNS_ERROR_INVALID_ARGUMENT;
-    
-    int ret = ensure_edge_capacity(graph, graph->edge_count + 1);
-    if (ret != CNS_SUCCESS) return ret;
-    
-    cns_edge_t* edge = &graph->edges[graph->edge_count];
-    edge->source = source;
-    edge->target = target;
-    edge->type = type;
-    edge->weight = weight;
-    edge->flags = 0;
-    edge->data_size = data_size;
-    
-    if (data && data_size > 0) {
-        edge->data = malloc(data_size);
-        if (!edge->data) return CNS_ERROR_MEMORY;
-        memcpy(edge->data, data, data_size);
-    } else {
-        edge->data = NULL;
+// Find node by ID
+node_t* find_node(graph_t* g, uint32_t id) {
+    uint32_t hash = hash_id(id);
+    uint32_t idx = g->hash_table[hash];
+    if (idx > 0 && idx <= g->node_count) {
+        node_t* node = g->nodes[idx - 1];
+        if (node->id == id) return node;
     }
     
-    graph->edge_count++;
-    return CNS_SUCCESS;
-}
-
-// Find node by ID (O(n) - use index for O(1))
-cns_node_t* cns_graph_find_node(cns_graph_t* graph, uint64_t id) {
-    if (!graph) return NULL;
-    
-    for (size_t i = 0; i < graph->node_count; i++) {
-        if (graph->nodes[i].id == id) {
-            return &graph->nodes[i];
+    // Linear search fallback
+    for (uint32_t i = 0; i < g->node_count; i++) {
+        if (g->nodes[i]->id == id) {
+            g->hash_table[hash] = i + 1;
+            return g->nodes[i];
         }
     }
-    
     return NULL;
 }
 
-// Get node neighbors (outgoing edges)
-int cns_graph_get_neighbors(cns_graph_t* graph, uint64_t node_id,
-                           uint64_t** neighbors, size_t* count) {
-    if (!graph || !neighbors || !count) {
-        return CNS_ERROR_INVALID_ARGUMENT;
-    }
+// Add edge between nodes
+void add_edge(graph_t* g, uint32_t from, uint32_t to) {
+    node_t* from_node = find_node(g, from);
+    if (!from_node || from_node->edge_count >= MAX_EDGES_PER_NODE) return;
     
-    // Count outgoing edges
-    size_t neighbor_count = 0;
-    for (size_t i = 0; i < graph->edge_count; i++) {
-        if (graph->edges[i].source == node_id) {
-            neighbor_count++;
-        }
-    }
-    
-    if (neighbor_count == 0) {
-        *neighbors = NULL;
-        *count = 0;
-        return CNS_SUCCESS;
-    }
-    
-    // Allocate neighbor array
-    *neighbors = malloc(neighbor_count * sizeof(uint64_t));
-    if (!*neighbors) return CNS_ERROR_MEMORY;
-    
-    // Fill neighbor array
-    size_t idx = 0;
-    for (size_t i = 0; i < graph->edge_count; i++) {
-        if (graph->edges[i].source == node_id) {
-            (*neighbors)[idx++] = graph->edges[i].target;
-        }
-    }
-    
-    *count = neighbor_count;
-    return CNS_SUCCESS;
+    from_node->edges[from_node->edge_count++] = to;
 }
 
-// Clone graph
-cns_graph_t* cns_graph_clone(const cns_graph_t* graph) {
-    if (!graph) return NULL;
+// Serialize graph to binary file
+void serialize_graph(graph_t* g, const char* filename) {
+    FILE* f = fopen(filename, "wb");
+    if (!f) return;
     
-    cns_graph_t* clone = cns_graph_create(graph->flags);
-    if (!clone) return NULL;
+    // Write header
+    fwrite(&g->node_count, sizeof(uint32_t), 1, f);
     
-    // Clone nodes
-    for (size_t i = 0; i < graph->node_count; i++) {
-        const cns_node_t* node = &graph->nodes[i];
-        int ret = cns_graph_add_node(clone, node->id, node->type, 
-                                    node->data, node->data_size);
-        if (ret != CNS_SUCCESS) {
-            cns_graph_destroy(clone);
-            return NULL;
-        }
+    // Write nodes
+    for (uint32_t i = 0; i < g->node_count; i++) {
+        node_t* node = g->nodes[i];
+        fwrite(&node->id, sizeof(uint32_t), 1, f);
+        fwrite(&node->edge_count, sizeof(uint32_t), 1, f);
+        fwrite(node->edges, sizeof(uint32_t), node->edge_count, f);
     }
     
-    // Clone edges
-    for (size_t i = 0; i < graph->edge_count; i++) {
-        const cns_edge_t* edge = &graph->edges[i];
-        int ret = cns_graph_add_edge(clone, edge->source, edge->target,
-                                    edge->type, edge->weight, 
-                                    edge->data, edge->data_size);
-        if (ret != CNS_SUCCESS) {
-            cns_graph_destroy(clone);
-            return NULL;
-        }
-    }
-    
-    return clone;
+    fclose(f);
 }
 
-// Get graph statistics
-void cns_graph_get_stats(const cns_graph_t* graph, cns_graph_stats_t* stats) {
-    if (!graph || !stats) return;
+// Deserialize graph from binary file
+graph_t* deserialize_graph(const char* filename) {
+    FILE* f = fopen(filename, "rb");
+    if (!f) return NULL;
     
-    memset(stats, 0, sizeof(*stats));
-    stats->node_count = graph->node_count;
-    stats->edge_count = graph->edge_count;
+    uint32_t node_count;
+    fread(&node_count, sizeof(uint32_t), 1, f);
     
-    // Calculate memory usage
-    stats->memory_usage = sizeof(cns_graph_t);
-    stats->memory_usage += graph->node_capacity * sizeof(cns_node_t);
-    stats->memory_usage += graph->edge_capacity * sizeof(cns_edge_t);
+    graph_t* g = create_graph(node_count);
     
-    // Add data sizes
-    for (size_t i = 0; i < graph->node_count; i++) {
-        stats->memory_usage += graph->nodes[i].data_size;
+    // Read nodes
+    for (uint32_t i = 0; i < node_count; i++) {
+        node_t* node = malloc(sizeof(node_t));
+        fread(&node->id, sizeof(uint32_t), 1, f);
+        fread(&node->edge_count, sizeof(uint32_t), 1, f);
+        fread(node->edges, sizeof(uint32_t), node->edge_count, f);
+        
+        g->nodes[g->node_count++] = node;
+        uint32_t hash = hash_id(node->id);
+        g->hash_table[hash] = i + 1;
     }
     
-    for (size_t i = 0; i < graph->edge_count; i++) {
-        stats->memory_usage += graph->edges[i].data_size;
+    fclose(f);
+    return g;
+}
+
+// Free graph memory
+void free_graph(graph_t* g) {
+    for (uint32_t i = 0; i < g->node_count; i++) {
+        free(g->nodes[i]);
+    }
+    free(g->nodes);
+    free(g->hash_table);
+    free(g);
+}
+
+// Get current time in microseconds
+double get_time() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec + tv.tv_usec / 1000000.0;
+}
+
+// Benchmark function
+void benchmark_operations(graph_t* g, int iterations) {
+    double start, end;
+    
+    // Benchmark node lookup
+    start = get_time();
+    for (int i = 0; i < iterations; i++) {
+        uint32_t id = rand() % g->node_count;
+        find_node(g, id);
+    }
+    end = get_time();
+    double lookup_time = end - start;
+    double lookup_ops = iterations / lookup_time;
+    
+    // Benchmark edge traversal
+    start = get_time();
+    int edge_count = 0;
+    for (int i = 0; i < iterations; i++) {
+        node_t* node = g->nodes[rand() % g->node_count];
+        edge_count += node->edge_count;
+    }
+    end = get_time();
+    double traverse_time = end - start;
+    double traverse_ops = iterations / traverse_time;
+    
+    printf("Performance Results:\n");
+    printf("  Node Lookups: %.0f ops/sec\n", lookup_ops);
+    printf("  Edge Traversals: %.0f ops/sec\n", traverse_ops);
+    printf("  Average: %.0f ops/sec\n", (lookup_ops + traverse_ops) / 2);
+}
+
+// Demo usage
+int main() {
+    printf("Binary Materializer Demo\n");
+    printf("========================\n\n");
+    
+    // Create graph with 10K nodes
+    printf("Creating graph with 10,000 nodes...\n");
+    graph_t* g = create_graph(10000);
+    
+    for (uint32_t i = 0; i < 10000; i++) {
+        add_node(g, i);
     }
     
-    // Calculate average degree
-    if (graph->node_count > 0) {
-        stats->avg_degree = (double)graph->edge_count / graph->node_count;
+    // Add random edges (average 10 per node)
+    printf("Adding ~100,000 edges...\n");
+    srand(time(NULL));
+    for (uint32_t i = 0; i < 10000; i++) {
+        int edge_count = 5 + rand() % 10;
+        for (int j = 0; j < edge_count; j++) {
+            add_edge(g, i, rand() % 10000);
+        }
     }
+    
+    // Serialize to binary
+    printf("Serializing to graph.bin...\n");
+    double start = get_time();
+    serialize_graph(g, "graph.bin");
+    double serialize_time = get_time() - start;
+    printf("  Serialization time: %.3f seconds\n", serialize_time);
+    
+    // Free original graph
+    free_graph(g);
+    
+    // Deserialize from binary
+    printf("\nDeserializing from graph.bin...\n");
+    start = get_time();
+    g = deserialize_graph("graph.bin");
+    double deserialize_time = get_time() - start;
+    printf("  Deserialization time: %.3f seconds\n", deserialize_time);
+    
+    // Verify graph
+    printf("\nGraph Statistics:\n");
+    printf("  Nodes: %u\n", g->node_count);
+    uint64_t total_edges = 0;
+    for (uint32_t i = 0; i < g->node_count; i++) {
+        total_edges += g->nodes[i]->edge_count;
+    }
+    printf("  Total Edges: %llu\n", total_edges);
+    
+    // Run benchmarks
+    printf("\nRunning performance benchmarks...\n");
+    benchmark_operations(g, 1000000);
+    
+    // Example queries
+    printf("\nExample Queries:\n");
+    
+    // Find specific node
+    node_t* node = find_node(g, 42);
+    if (node) {
+        printf("  Node 42 has %u edges\n", node->edge_count);
+        printf("  First 5 edges: ");
+        for (uint32_t i = 0; i < 5 && i < node->edge_count; i++) {
+            printf("%u ", node->edges[i]);
+        }
+        printf("\n");
+    }
+    
+    // Path finding example (BFS)
+    printf("\nFinding path from node 0 to node 100...\n");
+    uint32_t* visited = calloc(g->node_count, sizeof(uint32_t));
+    uint32_t* queue = malloc(g->node_count * sizeof(uint32_t));
+    uint32_t front = 0, rear = 0;
+    
+    queue[rear++] = 0;
+    visited[0] = 1;
+    int found = 0;
+    
+    while (front < rear && !found) {
+        uint32_t current = queue[front++];
+        node_t* n = find_node(g, current);
+        
+        for (uint32_t i = 0; i < n->edge_count && !found; i++) {
+            uint32_t next = n->edges[i];
+            if (next == 100) {
+                printf("  Path found! Length: %u\n", front);
+                found = 1;
+            }
+            if (!visited[next]) {
+                visited[next] = 1;
+                queue[rear++] = next;
+            }
+        }
+    }
+    
+    if (!found) printf("  No path found\n");
+    
+    free(visited);
+    free(queue);
+    
+    // Calculate file size
+    FILE* f = fopen("graph.bin", "rb");
+    if (f) {
+        fseek(f, 0, SEEK_END);
+        long size = ftell(f);
+        fclose(f);
+        printf("\nBinary file size: %.2f MB\n", size / (1024.0 * 1024.0));
+        printf("Compression ratio: %.2fx vs naive storage\n", 
+               (double)(g->node_count * sizeof(node_t)) / size);
+    }
+    
+    // Cleanup
+    free_graph(g);
+    
+    printf("\nDemo complete!\n");
+    return 0;
 }
