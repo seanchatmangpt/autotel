@@ -1,0 +1,44 @@
+# CNS 8H Reasoning Engine Standalone Makefile
+# Build configuration for the 8-hop cognitive cycle (no dependencies)
+
+CC = clang
+CFLAGS = -Wall -Wextra -O3 -march=native -std=c11
+LDFLAGS = -lm
+
+# Enable all optimizations for 8-tick compliance
+CFLAGS += -ffast-math -funroll-loops -ftree-vectorize
+CFLAGS += -mavx2 -mfma
+
+# Target
+TARGET = cns_8h_standalone
+
+.PHONY: all clean run benchmark
+
+all: $(TARGET)
+
+# Build standalone 8H reasoning engine
+$(TARGET): cns_8h_reasoning_standalone.c
+	$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
+
+# Run the demonstration
+run: $(TARGET)
+	./$(TARGET)
+
+# Performance benchmark
+benchmark: $(TARGET)
+	@echo "Running 8H performance benchmark..."
+	@echo "===================================="
+	@time ./$(TARGET) | grep -E "(cycles|Performance|Hop [0-9])" || ./$(TARGET)
+
+# Clean build artifacts
+clean:
+	rm -f $(TARGET) *.o
+
+# Help
+help:
+	@echo "CNS 8H Reasoning Engine Standalone Build:"
+	@echo "  make          - Build the standalone engine"
+	@echo "  make run      - Run the demonstration"
+	@echo "  make benchmark - Run performance benchmarks"
+	@echo "  make clean    - Clean build artifacts"
+	@echo "  make help     - Show this help message"

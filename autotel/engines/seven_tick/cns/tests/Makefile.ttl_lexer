@@ -1,0 +1,77 @@
+# TTL Lexer Test Suite Makefile
+# 7-tick compliant build configuration
+
+CC = clang
+CFLAGS = -O3 -march=native -std=c11 -Wall -Wextra -Werror
+CFLAGS += -I../ -I../include
+CFLAGS += -D__ARM_NEON -DUSE_SIMD_OPTIMIZATION
+
+# Enable sanitizers for memory leak detection
+SANITIZE_FLAGS = -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer
+DEBUG_FLAGS = -g -DDEBUG
+
+# Source files
+LEXER_SRC = ../lean_sigma_lexer.c
+TEST_SRC = test_ttl_lexer.c
+OBJS = lean_sigma_lexer.o test_ttl_lexer.o
+
+# Targets
+TARGET = test_ttl_lexer
+TARGET_DEBUG = test_ttl_lexer_debug
+TARGET_BENCH = test_ttl_lexer_bench
+
+.PHONY: all test clean benchmark debug coverage
+
+all: $(TARGET)
+
+# Standard build
+$(TARGET): $(TEST_SRC) $(LEXER_SRC)
+	$(CC) $(CFLAGS) -o $@ $^
+
+# Debug build with sanitizers
+debug: $(TARGET_DEBUG)
+
+$(TARGET_DEBUG): $(TEST_SRC) $(LEXER_SRC)
+	$(CC) $(CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS) -o $@ $^
+
+# Benchmark build with maximum optimization
+benchmark: $(TARGET_BENCH)
+
+$(TARGET_BENCH): $(TEST_SRC) $(LEXER_SRC)
+	$(CC) -O3 -march=native -flto -ffast-math -o $@ $^
+
+# Run tests
+test: $(TARGET)
+	@echo "Running TTL Lexer Test Suite..."
+	@./$(TARGET)
+
+# Run debug tests with sanitizers
+test-debug: $(TARGET_DEBUG)
+	@echo "Running TTL Lexer Test Suite (Debug mode with sanitizers)..."
+	@./$(TARGET_DEBUG)
+
+# Run performance benchmarks
+bench: $(TARGET_BENCH)
+	@echo "Running TTL Lexer Performance Benchmarks..."
+	@./$(TARGET_BENCH)
+
+# Code coverage
+coverage: $(TEST_SRC) $(LEXER_SRC)
+	$(CC) $(CFLAGS) -fprofile-arcs -ftest-coverage -o $(TARGET)_cov $^
+	./$(TARGET)_cov
+	gcov $(LEXER_SRC)
+	@echo "Coverage report generated. Check *.gcov files."
+
+# Memory leak check with valgrind
+memcheck: $(TARGET)
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./$(TARGET)
+
+# Clean build artifacts
+clean:
+	rm -f $(TARGET) $(TARGET_DEBUG) $(TARGET_BENCH) $(TARGET)_cov
+	rm -f *.o *.gcov *.gcda *.gcno
+	rm -rf *.dSYM
+
+# Run all validation checks
+validate: test test-debug bench coverage
+	@echo "All validation checks completed!"

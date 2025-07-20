@@ -1,0 +1,32 @@
+# Build directories
+obj/
+bin/
+
+# Object files
+*.o
+*.d
+
+# Executables
+ttl-parser
+test-runner
+
+# Editor files
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test outputs
+*.out
+*.log
+valgrind-*.txt
+
+# Coverage
+*.gcda
+*.gcno
+*.gcov
+coverage/

@@ -1,0 +1,182 @@
+# CNS 8T Makefile - L1-Optimized Numerical Substrate
+# Extends the 7T substrate with L1 cache optimization and numerical precision
+
+CC = clang
+CXX = clang++
+CFLAGS = -O3 -march=native -flto -ffast-math -Wall -Wextra -std=c11 -DCNS_8T_ENABLED=1
+CXXFLAGS = -O3 -march=native -flto -ffast-math -Wall -Wextra -std=c++17 -DCNS_8T_ENABLED=1
+LDFLAGS = -flto -lm -lpthread
+INCLUDES = -Iinclude -I../include -I../../c_src -I../../benchmarks -I../../tests -I.
+
+# Platform-specific optimizations
+ifeq ($(shell uname -m),x86_64)
+    CFLAGS += -mavx2 -mfma -msse4.2
+    CXXFLAGS += -mavx2 -mfma -msse4.2
+else ifeq ($(shell uname -m),arm64)
+    # ARM64 optimizations
+    CFLAGS += -mcpu=apple-m1
+    CXXFLAGS += -mcpu=apple-m1
+endif
+
+# 8T Source files
+8T_CORE_SRCS = src/8t/arena_l1.c src/8t/numerical.c src/8t/graph_l1.c src/8t/8t_context.c src/8t/simd_detect.c
+8T_TEST_SRCS = tests/8t/test_8t_simple.c
+8T_BENCH_SRCS = benchmarks/8t/bench_8t.c
+
+# Object files
+8T_CORE_OBJS = $(8T_CORE_SRCS:.c=.o)
+8T_TEST_OBJS = $(8T_TEST_SRCS:.c=.o)
+8T_BENCH_OBJS = $(8T_BENCH_SRCS:.c=.o)
+
+# Targets
+8T_LIB = lib8t.a
+8T_TEST = test_8t
+8T_BENCH = bench_8t
+
+# Default target
+all: $(8T_LIB) $(8T_TEST) $(8T_BENCH)
+
+# Build 8T library
+$(8T_LIB): $(8T_CORE_OBJS)
+	ar rcs $@ $^
+	@echo "✓ Built 8T library: $(8T_LIB)"
+
+# Build 8T test suite
+$(8T_TEST): $(8T_TEST_OBJS) $(8T_LIB)
+	$(CC) $(LDFLAGS) -o $@ $^
+	@echo "✓ Built 8T test suite: $(8T_TEST)"
+
+# Build 8T benchmark suite
+$(8T_BENCH): $(8T_BENCH_OBJS) $(8T_LIB)
+	$(CC) $(LDFLAGS) -o $@ $^
+	@echo "✓ Built 8T benchmark suite: $(8T_BENCH)"
+
+# Compile source files
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+
+# Run tests
+test: $(8T_TEST)
+	@echo "Running 8T unit tests..."
+	./$(8T_TEST)
+
+# Run benchmarks
+bench: $(8T_BENCH)
+	@echo "Running 8T benchmarks..."
+	./$(8T_BENCH)
+
+# Quick test with basic operations
+quick-test: $(8T_TEST)
+	@echo "Running quick 8T validation..."
+	./$(8T_TEST) | grep -E "(✓|✗|Summary)"
+
+# Performance validation - ensure 8T compliance
+validate-8t: $(8T_BENCH)
+	@echo "Validating 8T performance constraints..."
+	@./$(8T_BENCH) | grep "8T✓" | wc -l > .8t_passes
+	@total_tests=$$(./$(8T_BENCH) | grep -c "│.*│.*│.*│.*│.*│"); \
+	passes=$$(cat .8t_passes); \
+	echo "8T Compliance: $$passes/$$total_tests tests passed"; \
+	if [ $$passes -eq $$total_tests ]; then \
+		echo "✓ All operations meet 8-tick constraint"; \
+	else \
+		echo "✗ Some operations exceed 8-tick limit"; \
+		exit 1; \
+	fi
+	@rm -f .8t_passes
+
+# Memory test - check for leaks and alignment
+memory-test: $(8T_TEST)
+	@echo "Running memory safety tests..."
+	@if command -v valgrind >/dev/null 2>&1; then \
+		valgrind --leak-check=full --track-origins=yes ./$(8T_TEST); \
+	else \
+		echo "valgrind not available, running basic memory test"; \
+		./$(8T_TEST); \
+	fi
+
+# Cache analysis - analyze L1 cache performance
+cache-analysis: $(8T_BENCH)
+	@echo "Analyzing L1 cache performance..."
+	@./$(8T_BENCH) | grep "L1 Eff" | awk -F'│' '{print $$6}' | sed 's/%//' | awk '{sum+=$$1; count++} END {if(count>0) print "Average L1 Efficiency:", sum/count "%"}'
+
+# SIMD validation - check SIMD operations
+simd-test: $(8T_BENCH)
+	@echo "Validating SIMD operations..."
+	@./$(8T_BENCH) | grep "SIMD"
+
+# Profile build for performance analysis
+profile: CFLAGS += -pg -g
+profile: CXXFLAGS += -pg -g
+profile: LDFLAGS += -pg
+profile: clean $(8T_BENCH)
+	@echo "✓ Built profiling version of 8T benchmark"
+
+# Debug build
+debug: CFLAGS += -g -DDEBUG -O0 -fsanitize=address
+debug: CXXFLAGS += -g -DDEBUG -O0 -fsanitize=address
+debug: LDFLAGS += -fsanitize=address
+debug: clean $(8T_TEST)
+	@echo "✓ Built debug version with AddressSanitizer"
+
+# Clean build artifacts
+clean:
+	rm -f $(8T_CORE_OBJS) $(8T_TEST_OBJS) $(8T_BENCH_OBJS)
+	rm -f $(8T_LIB) $(8T_TEST) $(8T_BENCH)
+	rm -f gmon.out .8t_passes
+	@echo "✓ Cleaned 8T build artifacts"
+
+# Install 8T library
+install: $(8T_LIB)
+	@mkdir -p /usr/local/lib /usr/local/include/cns/8t
+	install -m 644 $(8T_LIB) /usr/local/lib/
+	install -m 644 include/cns/8t/8t.h /usr/local/include/cns/8t/
+	@echo "✓ Installed 8T library to /usr/local"
+
+# Uninstall 8T library
+uninstall:
+	rm -f /usr/local/lib/$(8T_LIB)
+	rm -rf /usr/local/include/cns/8t
+	@echo "✓ Uninstalled 8T library"
+
+# Generate performance report
+report: $(8T_BENCH)
+	@echo "Generating 8T performance report..."
+	@./$(8T_BENCH) > 8t_performance_report.txt
+	@echo "✓ Performance report saved to 8t_performance_report.txt"
+
+# Integration with main CNS build
+integrate:
+	@echo "Integrating 8T with main CNS build system..."
+	@if ! grep -q "8T_ENABLED" Makefile; then \
+		echo "# 8T Integration" >> Makefile; \
+		echo "ifeq (\$$(CNS_8T_ENABLED),1)" >> Makefile; \
+		echo "    CFLAGS += -DCNS_8T_ENABLED=1" >> Makefile; \
+		echo "    INCLUDES += -Iinclude/cns/8t" >> Makefile; \
+		echo "    8T_OBJS = \$$(wildcard src/8t/*.o)" >> Makefile; \
+		echo "    ALL_OBJS += \$$(8T_OBJS)" >> Makefile; \
+		echo "endif" >> Makefile; \
+		echo "✓ Added 8T integration to main Makefile"; \
+	else \
+		echo "✓ 8T already integrated with main build system"; \
+	fi
+
+# Help
+help:
+	@echo "8T Makefile targets:"
+	@echo "  make           - Build 8T library, tests, and benchmarks"
+	@echo "  make test      - Run 8T unit tests"
+	@echo "  make bench     - Run 8T benchmarks"
+	@echo "  make quick-test - Quick validation test"
+	@echo "  make validate-8t - Validate 8-tick performance constraints"
+	@echo "  make memory-test - Run memory safety tests"
+	@echo "  make cache-analysis - Analyze L1 cache performance"
+	@echo "  make simd-test - Validate SIMD operations"
+	@echo "  make profile   - Build profiling version"
+	@echo "  make debug     - Build debug version with sanitizers"
+	@echo "  make clean     - Remove build artifacts"
+	@echo "  make install   - Install 8T library system-wide"
+	@echo "  make report    - Generate performance report"
+	@echo "  make integrate - Integrate with main CNS build"
+
+.PHONY: all test bench quick-test validate-8t memory-test cache-analysis simd-test profile debug clean install uninstall report integrate help

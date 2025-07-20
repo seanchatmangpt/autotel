@@ -1,0 +1,56 @@
+# CNS Semantic Stack Makefile
+# Builds integrated TTL/OWL/SHACL/SPARQL implementation
+
+CC = clang
+CFLAGS = -O3 -march=native -Wall -Wextra -std=c11 -D_GNU_SOURCE
+CFLAGS += -I../../include -I../../ttl-parser/include -I../..
+CFLAGS += -DCNS_SEMANTIC_STACK_TEST
+
+# Enable AVX2 if available
+CFLAGS += -mavx2
+
+# Source files
+SEMANTIC_SRCS = cns_semantic_stack.c
+TTL_PARSER_SRCS = ../../ttl-parser/src/parser.c \
+                  ../../ttl-parser/src/lexer.c \
+                  ../../ttl-parser/src/ast.c \
+                  ../../ttl-parser/src/visitor.c \
+                  ../../ttl-parser/src/token.c \
+                  ../../ttl-parser/src/error.c \
+                  ../../ttl-parser/src/diagnostic.c
+
+# Object files
+SEMANTIC_OBJS = $(SEMANTIC_SRCS:.c=.o)
+TTL_PARSER_OBJS = $(TTL_PARSER_SRCS:.c=.o)
+
+# Target executable
+TARGET = cns_semantic_stack
+
+# Libraries
+LIBS = -lpthread -lm
+
+.PHONY: all clean test
+
+all: $(TARGET)
+
+$(TARGET): $(SEMANTIC_OBJS) $(TTL_PARSER_OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+test: $(TARGET)
+	./$(TARGET) test.ttl
+
+clean:
+	rm -f $(SEMANTIC_OBJS) $(TTL_PARSER_OBJS) $(TARGET)
+
+# Performance profiling target
+profile: CFLAGS += -pg
+profile: $(TARGET)
+	./$(TARGET) test.ttl
+	gprof $(TARGET) gmon.out > profile.txt
+
+# Assembly output for optimization analysis
+%.s: %.c
+	$(CC) $(CFLAGS) -S -o $@ $<

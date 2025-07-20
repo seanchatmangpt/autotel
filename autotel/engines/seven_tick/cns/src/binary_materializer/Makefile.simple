@@ -1,0 +1,36 @@
+# Simple Makefile for CNS Binary Materializer
+
+CC = clang
+CFLAGS = -O3 -Wall -Wextra -I../../include -march=native -ffast-math
+LDFLAGS = -lm
+
+# Source files
+SRCS = simple_impl.c
+OBJS = $(SRCS:.c=.o)
+
+# Test files
+TEST_SRCS = ../../tests/binary_materializer/test_simple.c
+TEST_OBJS = $(TEST_SRCS:.c=.o)
+
+# Targets
+LIB = libcns_binary_simple.a
+TEST = test_binary_simple
+
+.PHONY: all clean test
+
+all: $(LIB)
+
+$(LIB): $(OBJS)
+	ar rcs $@ $^
+
+test: $(TEST)
+	./$(TEST)
+
+$(TEST): $(TEST_OBJS) $(LIB)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+clean:
+	rm -f $(OBJS) $(TEST_OBJS) $(LIB) $(TEST)

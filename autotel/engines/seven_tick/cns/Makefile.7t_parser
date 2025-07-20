@@ -1,0 +1,144 @@
+# Makefile for 7T TTL Parser
+# CNS Seven-Tick Engine
+# Optimized for deterministic 7-tick performance
+
+CC = gcc
+CFLAGS = -std=c11 -O3 -Wall -Wextra -Werror -march=native -mtune=native
+CFLAGS += -DCNS_7T_OPTIMIZED -DNDEBUG
+LDFLAGS = -lm
+
+# Directories
+SRC_DIR = src
+INCLUDE_DIR = include
+TEST_DIR = tests
+BUILD_DIR = build
+
+# Include paths
+INCLUDES = -I$(INCLUDE_DIR) -I.
+
+# Source files
+PARSER_SRCS = $(SRC_DIR)/lexer.c $(SRC_DIR)/parser.c
+TEST_SRCS = $(TEST_DIR)/test_7t_parser.c
+
+# Object files
+PARSER_OBJS = $(PARSER_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+TEST_OBJS = $(TEST_SRCS:$(TEST_DIR)/%.c=$(BUILD_DIR)/%.o)
+
+# Targets
+TARGET = $(BUILD_DIR)/test_7t_parser
+STATIC_LIB = $(BUILD_DIR)/libcns_7t_parser.a
+
+.PHONY: all clean test benchmark profile help
+
+all: $(TARGET) $(STATIC_LIB)
+
+# Create build directory
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+# Compile parser sources
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+# Compile test sources
+$(BUILD_DIR)/%.o: $(TEST_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+# Build static library
+$(STATIC_LIB): $(PARSER_OBJS)
+	ar rcs $@ $^
+	ranlib $@
+
+# Build test executable
+$(TARGET): $(TEST_OBJS) $(STATIC_LIB)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+# Run tests
+test: $(TARGET)
+	@echo "=========================================="
+	@echo "Running 7T TTL Parser Compliance Tests"
+	@echo "=========================================="
+	./$(TARGET)
+
+# Run performance benchmark
+benchmark: $(TARGET)
+	@echo "=========================================="
+	@echo "Running Performance Benchmark"
+	@echo "=========================================="
+	@echo "Single run:"
+	./$(TARGET)
+	@echo ""
+	@echo "Multiple runs for consistency:"
+	@for i in 1 2 3 4 5; do \
+		echo "Run $$i:"; \
+		./$(TARGET) | grep -E "(Average ticks|7T compliance)"; \
+		echo ""; \
+	done
+
+# Profile with perf (Linux only)
+profile: $(TARGET)
+	@echo "=========================================="
+	@echo "Profiling with perf"
+	@echo "=========================================="
+	perf record -g ./$(TARGET)
+	perf report
+
+# Debug build
+debug: CFLAGS = -std=c11 -O0 -g -Wall -Wextra -DDEBUG
+debug: $(TARGET)
+
+# Assembly output for analysis
+assembly: $(SRC_DIR)/lexer.c $(SRC_DIR)/parser.c
+	$(CC) $(CFLAGS) $(INCLUDES) -S -fverbose-asm $(SRC_DIR)/lexer.c -o $(BUILD_DIR)/lexer.s
+	$(CC) $(CFLAGS) $(INCLUDES) -S -fverbose-asm $(SRC_DIR)/parser.c -o $(BUILD_DIR)/parser.s
+	@echo "Assembly files generated in $(BUILD_DIR)/"
+
+# Clean build artifacts
+clean:
+	rm -rf $(BUILD_DIR)
+
+# Display help
+help:
+	@echo "7T TTL Parser Build System"
+	@echo "=========================="
+	@echo ""
+	@echo "Targets:"
+	@echo "  all        - Build parser library and test executable (default)"
+	@echo "  test       - Run compliance tests"
+	@echo "  benchmark  - Run performance benchmarks"
+	@echo "  profile    - Profile with perf (Linux only)"
+	@echo "  debug      - Build debug version"
+	@echo "  assembly   - Generate assembly output for analysis"
+	@echo "  clean      - Remove build artifacts"
+	@echo "  help       - Show this help message"
+	@echo ""
+	@echo "Build flags:"
+	@echo "  CC         - C compiler (default: gcc)"
+	@echo "  CFLAGS     - Compiler flags"
+	@echo "  LDFLAGS    - Linker flags"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make test              # Run tests"
+	@echo "  make benchmark         # Performance test"
+	@echo "  make CC=clang         # Use Clang compiler"
+	@echo "  make debug            # Debug build"
+
+# Dependency tracking (simple version)
+$(BUILD_DIR)/lexer.o: $(SRC_DIR)/lexer.c $(INCLUDE_DIR)/cns/parser.h $(INCLUDE_DIR)/cns/types.h
+$(BUILD_DIR)/parser.o: $(SRC_DIR)/parser.c $(INCLUDE_DIR)/cns/parser.h $(INCLUDE_DIR)/cns/types.h
+$(BUILD_DIR)/test_7t_parser.o: $(TEST_DIR)/test_7t_parser.c $(INCLUDE_DIR)/cns/parser.h
+
+# Additional compiler optimizations for different architectures
+ifeq ($(shell uname -m),x86_64)
+    CFLAGS += -msse4.2 -mavx2
+endif
+
+ifeq ($(shell uname -m),aarch64)
+    CFLAGS += -mcpu=native
+endif
+
+# Enable link-time optimization for release builds
+ifneq ($(findstring debug,$(MAKECMDGOALS)),debug)
+    CFLAGS += -flto
+    LDFLAGS += -flto
+endif

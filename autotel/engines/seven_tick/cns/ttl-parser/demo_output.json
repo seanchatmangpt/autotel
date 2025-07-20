@@ -1,0 +1,1 @@
+{\n  "type": "ttl-document",\n  "file": "test_sample2.ttl",\n  "lines": 11,\n  "estimated_triples": 4,\n  "parse_time_ms": 0.008,\n  "enhanced_cli": true,\n  "version": "2.0"\n}\n

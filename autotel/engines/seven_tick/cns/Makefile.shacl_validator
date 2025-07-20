@@ -1,0 +1,94 @@
+# Makefile for SHACL Validator - Memory-Constrained Validation
+# 80/20 implementation focused on performance and memory bounds
+
+CC = clang
+CFLAGS = -O2 -std=c11 -Wall -Wextra -Werror -I./include -I.
+LDFLAGS = 
+TARGET = test_shacl_validator
+SOURCES = test_shacl_validator.c src/shacl_validator.c src/arena.c
+
+# 7T-compliant optimization flags
+CFLAGS += -march=native -mtune=native -flto=thin
+CFLAGS += -fno-stack-protector -fomit-frame-pointer
+CFLAGS += -funroll-loops -finline-functions
+CFLAGS += -DCNS_7T_OPTIMIZED=1
+
+# Memory safety flags (for development)
+DEBUG_CFLAGS = -g -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer
+
+# Default target
+all: $(TARGET)
+
+# Production build
+$(TARGET): $(SOURCES)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+
+# Debug build
+debug: CFLAGS += $(DEBUG_CFLAGS)
+debug: $(TARGET)
+
+# Test the validator
+test: $(TARGET)
+	@echo "Running SHACL Validator Tests..."
+	./$(TARGET)
+
+# Clean build artifacts
+clean:
+	rm -f $(TARGET) *.o
+
+# Install (copy to bin directory)
+install: $(TARGET)
+	mkdir -p bin
+	cp $(TARGET) bin/
+
+# Memory benchmark
+benchmark: $(TARGET)
+	@echo "Running memory and performance benchmarks..."
+	./$(TARGET) 2>&1 | grep -E "(Memory usage|ticks|bytes)"
+
+# Validate 7T compliance
+validate-7t: $(TARGET)
+	@echo "Validating 7-tick compliance..."
+	./$(TARGET) 2>&1 | grep -E "took.*ticks"
+
+# Check for memory leaks (requires valgrind)
+valgrind: debug
+	valgrind --leak-check=full --show-leak-kinds=all ./$(TARGET)
+
+# Static analysis (requires clang-static-analyzer)
+analyze:
+	scan-build $(CC) $(CFLAGS) -o $(TARGET) $(SOURCES)
+
+# Format code (requires clang-format)
+format:
+	clang-format -i include/cns/shacl_validator.h src/shacl_validator.c test_shacl_validator.c
+
+# Generate documentation (requires doxygen)
+docs:
+	doxygen Doxyfile
+
+# Profile performance (requires perf on Linux)
+profile: $(TARGET)
+	perf record -g ./$(TARGET)
+	perf report
+
+# Help
+help:
+	@echo "SHACL Validator Build System"
+	@echo "============================"
+	@echo "Targets:"
+	@echo "  all         - Build validator (optimized)"
+	@echo "  debug       - Build with debug symbols and sanitizers"
+	@echo "  test        - Run test suite"
+	@echo "  clean       - Remove build artifacts"
+	@echo "  install     - Install to bin/ directory"
+	@echo "  benchmark   - Run memory and performance benchmarks"
+	@echo "  validate-7t - Check 7-tick compliance"
+	@echo "  valgrind    - Check for memory leaks"
+	@echo "  analyze     - Run static analysis"
+	@echo "  format      - Format source code"
+	@echo "  docs        - Generate documentation"
+	@echo "  profile     - Profile performance"
+	@echo "  help        - Show this help"
+
+.PHONY: all debug test clean install benchmark validate-7t valgrind analyze format docs profile help

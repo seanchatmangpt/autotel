@@ -1,0 +1,209 @@
+# CNS 8T Advanced Features Makefile
+# Builds the 8T L1-optimized substrate with SIMD acceleration
+
+CC = clang
+CFLAGS = -std=c11 -O3 -march=native -mavx2 -mfma -flto
+CFLAGS += -Wall -Wextra -Wpedantic -Werror
+CFLAGS += -ffast-math -funroll-loops
+CFLAGS += -g -DCNS_8T_ENABLE_PROFILING
+
+# 8T-specific optimizations
+CFLAGS += -DCNS_8T_TICK_LIMIT=8
+CFLAGS += -DCNS_8T_L1_CACHE_SIZE=32768
+CFLAGS += -DCNS_8T_SIMD_WIDTH=32
+
+# Include paths
+INCLUDES = -Iinclude -Isrc -I.
+
+# Library paths
+LDFLAGS = -lm -ldl -lpthread
+
+# Source files
+8T_SOURCES = src/8t/shacl_l1.c \
+             src/8t/l1_analyzer.c \
+             src/8t/numerical_prover.c \
+             src/8t/cns_transpile_8t.c
+
+# Object files
+8T_OBJECTS = $(8T_SOURCES:.c=.o)
+
+# Test executables
+8T_TESTS = test_8t_shacl_l1 \
+           test_8t_l1_analyzer \
+           test_8t_numerical_prover \
+           test_8t_aot_orchestrator
+
+# Libraries
+LIB8T = lib8t_advanced.a
+
+# Default target
+all: $(LIB8T) $(8T_TESTS) 8t_benchmark_suite
+
+# Build static library
+$(LIB8T): $(8T_OBJECTS)
+	@echo "Creating 8T advanced features library..."
+	ar rcs $@ $^
+	@echo "✅ Built $@"
+
+# Individual object files
+src/8t/shacl_l1.o: src/8t/shacl_l1.c include/cns/8t/core.h include/cns/8t/analyzer.h
+	@echo "Compiling SHACL L1 validator..."
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+src/8t/l1_analyzer.o: src/8t/l1_analyzer.c include/cns/8t/core.h include/cns/8t/analyzer.h
+	@echo "Compiling L1 cache analyzer..."
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+src/8t/numerical_prover.o: src/8t/numerical_prover.c include/cns/8t/core.h
+	@echo "Compiling numerical bounds prover..."
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+src/8t/cns_transpile_8t.o: src/8t/cns_transpile_8t.c include/cns/8t/core.h include/cns/8t/analyzer.h
+	@echo "Compiling 8T AOT orchestrator..."
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+# Test executables
+test_8t_shacl_l1: src/8t/shacl_l1.o
+	@echo "Building SHACL L1 test..."
+	$(CC) $(CFLAGS) $(INCLUDES) -DCNS_8T_SHACL_STANDALONE $< -o $@ $(LDFLAGS)
+
+test_8t_l1_analyzer: src/8t/l1_analyzer.o
+	@echo "Building L1 analyzer test..."
+	$(CC) $(CFLAGS) $(INCLUDES) -DCNS_8T_L1_ANALYZER_STANDALONE $< -o $@ $(LDFLAGS)
+
+test_8t_numerical_prover: src/8t/numerical_prover.o
+	@echo "Building numerical prover test..."
+	$(CC) $(CFLAGS) $(INCLUDES) -DCNS_8T_NUMERICAL_PROVER_STANDALONE $< -o $@ $(LDFLAGS)
+
+test_8t_aot_orchestrator: src/8t/cns_transpile_8t.o
+	@echo "Building AOT orchestrator test..."
+	$(CC) $(CFLAGS) $(INCLUDES) -DCNS_8T_AOT_ORCHESTRATOR_STANDALONE $< -o $@ $(LDFLAGS)
+
+# Comprehensive benchmark suite
+8t_benchmark_suite: $(LIB8T) tests/8t/benchmark_suite.c
+	@echo "Building 8T benchmark suite..."
+	$(CC) $(CFLAGS) $(INCLUDES) tests/8t/benchmark_suite.c -L. -l8t_advanced -o $@ $(LDFLAGS)
+
+# Note: benchmark_suite.c should already exist in tests/8t/
+
+# Performance testing targets
+perf: $(8T_TESTS)
+	@echo "\n🚀 Running 8T Performance Tests"
+	@echo "================================"
+	@./test_8t_shacl_l1
+	@echo ""
+	@./test_8t_l1_analyzer
+	@echo ""
+	@./test_8t_numerical_prover
+	@echo ""
+	@./test_8t_aot_orchestrator
+
+# SIMD capability detection
+detect_simd:
+	@echo "Detecting SIMD capabilities..."
+	@if $(CC) -mavx2 -E - </dev/null >/dev/null 2>&1; then \
+		echo "✅ AVX2 support available"; \
+	else \
+		echo "❌ AVX2 support not available"; \
+	fi
+	@if $(CC) -mavx512f -E - </dev/null >/dev/null 2>&1; then \
+		echo "✅ AVX-512 support available"; \
+	else \
+		echo "⚠️  AVX-512 support not available"; \
+	fi
+
+# Memory layout analysis
+memory_layout: $(LIB8T)
+	@echo "Analyzing 8T data structure memory layouts..."
+	@objdump -t $(LIB8T) | grep -E "(cns_8t_|__attribute__)" || true
+	@size $(LIB8T)
+
+# Assembly inspection for optimization verification
+asm_inspect: src/8t/shacl_l1.o
+	@echo "Inspecting generated assembly for SIMD usage..."
+	@objdump -d $< | grep -E "(vmov|vadd|vmul|vfma)" | head -20 || echo "No SIMD instructions found"
+
+# Cache-friendly build (optimized for L1 cache)
+cache_optimized: CFLAGS += -falign-functions=64 -falign-loops=32
+cache_optimized: $(LIB8T)
+	@echo "✅ Built with cache-line optimizations"
+
+# Profile-guided optimization build
+pgo_profile: $(8T_SOURCES)
+	@echo "Building with profile generation..."
+	$(CC) $(CFLAGS) -fprofile-generate $(INCLUDES) $(8T_SOURCES) -o 8t_profile_gen $(LDFLAGS)
+	@echo "Running profile generation..."
+	./8t_profile_gen || true
+	@echo "Building with profile-guided optimization..."
+	$(CC) $(CFLAGS) -fprofile-use $(INCLUDES) -c $(8T_SOURCES)
+	ar rcs $(LIB8T) $(8T_OBJECTS)
+	@rm -f 8t_profile_gen *.gcda
+
+# 8-tick validation build (strict mode)
+strict_8t: CFLAGS += -DCNS_8T_STRICT_MODE=1 -DCNS_8T_ENABLE_ASSERTIONS=1
+strict_8t: $(LIB8T)
+	@echo "✅ Built with strict 8-tick validation"
+
+# Integration with 7T substrate
+7t_integration: CFLAGS += -DCNS_8T_7T_INTEGRATION=1
+7t_integration: LDFLAGS += -L../7t -l7t_substrate
+7t_integration: $(LIB8T)
+	@echo "✅ Built with 7T substrate integration"
+
+# Continuous benchmark runner
+bench_continuous: $(8T_TESTS)
+	@echo "Running continuous 8T benchmarks..."
+	@while true; do \
+		echo "$(shell date): Running 8T benchmark cycle..."; \
+		./test_8t_shacl_l1 > /dev/null 2>&1 && echo "✅ SHACL" || echo "❌ SHACL"; \
+		./test_8t_l1_analyzer > /dev/null 2>&1 && echo "✅ L1" || echo "❌ L1"; \
+		./test_8t_numerical_prover > /dev/null 2>&1 && echo "✅ Prover" || echo "❌ Prover"; \
+		./test_8t_aot_orchestrator > /dev/null 2>&1 && echo "✅ AOT" || echo "❌ AOT"; \
+		sleep 10; \
+	done
+
+# Clean targets
+clean:
+	rm -f $(8T_OBJECTS) $(LIB8T) $(8T_TESTS)
+	rm -f 8t_benchmark_suite 8t_profile_gen
+	rm -f *.gcda *.gcno
+	rm -rf tests/8t/benchmark_suite.c
+
+clean_all: clean
+	rm -rf tests/8t
+
+# Install library and headers
+install: $(LIB8T)
+	@mkdir -p /usr/local/lib /usr/local/include/cns/8t
+	cp $(LIB8T) /usr/local/lib/
+	cp include/cns/8t/*.h /usr/local/include/cns/8t/
+	@echo "✅ Installed 8T advanced features library"
+
+# Help target
+help:
+	@echo "CNS 8T Advanced Features Build System"
+	@echo "====================================="
+	@echo ""
+	@echo "Targets:"
+	@echo "  all                 - Build library and tests"
+	@echo "  $(LIB8T)      - Build static library"
+	@echo "  perf                - Run performance tests"
+	@echo "  detect_simd         - Detect SIMD capabilities"
+	@echo "  memory_layout       - Analyze memory layouts"
+	@echo "  asm_inspect         - Inspect generated assembly"
+	@echo "  cache_optimized     - Build with cache optimizations"
+	@echo "  pgo_profile         - Profile-guided optimization build"
+	@echo "  strict_8t           - Build with strict 8-tick validation"
+	@echo "  7t_integration      - Build with 7T substrate integration"
+	@echo "  bench_continuous    - Run continuous benchmarks"
+	@echo "  clean               - Clean build artifacts"
+	@echo "  install             - Install library and headers"
+	@echo ""
+	@echo "8T Features:"
+	@echo "  • SIMD constraint validation (8 constraints at once)"
+	@echo "  • L1 cache usage analysis and optimization"
+	@echo "  • Mathematical bounds proving with error analysis"
+	@echo "  • AOT compilation with 7T substrate integration"
+	@echo "  • 8-tick performance guarantee validation"
+
+.PHONY: all perf detect_simd memory_layout asm_inspect cache_optimized pgo_profile strict_8t 7t_integration bench_continuous clean clean_all install help

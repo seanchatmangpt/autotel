@@ -1,0 +1,43 @@
+# Makefile for 7-Tick Binary Materializer
+
+CC = clang
+CFLAGS = -O3 -march=native -mtune=native -ffast-math -funroll-loops
+CFLAGS += -Wall -Wextra -Wno-unused-parameter
+LDFLAGS = -lm
+
+# Source files
+SRCS = 7tick_impl.c
+OBJS = $(SRCS:.c=.o)
+
+# Targets
+TARGET = 7tick_benchmark
+ASM = 7tick_impl.s
+
+.PHONY: all clean test asm profile
+
+all: $(TARGET)
+
+$(TARGET): $(SRCS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+test: $(TARGET)
+	./$(TARGET)
+
+# Generate assembly for inspection
+asm: $(ASM)
+	@echo "Generated assembly in $(ASM)"
+	@echo "Key function:"
+	@grep -A20 "benchmark_single_access:" $(ASM) || true
+
+$(ASM): $(SRCS)
+	$(CC) $(CFLAGS) -S -o $@ $<
+
+# Profile-guided optimization
+profile: $(SRCS)
+	$(CC) $(CFLAGS) -fprofile-generate -o $(TARGET)_prof $^ $(LDFLAGS)
+	./$(TARGET)_prof
+	$(CC) $(CFLAGS) -fprofile-use -o $(TARGET)_pgo $^ $(LDFLAGS)
+	@echo "Profile-guided binary: $(TARGET)_pgo"
+
+clean:
+	rm -f $(OBJS) $(TARGET) $(ASM) $(TARGET)_prof $(TARGET)_pgo *.gcda *.gcno 7tick_test.cnsb

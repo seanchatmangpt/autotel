@@ -1,0 +1,232 @@
+# ─────────────────────────────────────────────────────────────
+# Makefile.arena  –  ARENAC Build System
+# 7T-compliant arena allocator build configuration
+# ─────────────────────────────────────────────────────────────
+
+# Compiler and flags
+CC = clang
+CFLAGS = -std=c11 -Wall -Wextra -O3 -march=native -mtune=native
+CFLAGS += -fno-omit-frame-pointer -fstack-protector-strong
+CFLAGS += -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809L
+
+# Debug flags
+DEBUG_FLAGS = -g -O0 -DDEBUG -fsanitize=address -fsanitize=undefined
+RELEASE_FLAGS = -O3 -DNDEBUG -flto
+
+# 7-tick optimization flags
+PERF_FLAGS = -finline-functions -funroll-loops -ffast-math
+PERF_FLAGS += -march=native -mtune=native -mavx2
+
+# Directories
+SRC_DIR = src
+INCLUDE_DIR = include
+TEST_DIR = tests
+BUILD_DIR = build
+BIN_DIR = bin
+
+# Files
+ARENA_SRC = $(SRC_DIR)/arena.c
+ARENA_HDR = $(INCLUDE_DIR)/cns/arena.h
+TEST_SRC = $(TEST_DIR)/test_arena.c
+ARENA_OBJ = $(BUILD_DIR)/arena.o
+TEST_OBJ = $(BUILD_DIR)/test_arena.o
+TEST_BIN = $(BIN_DIR)/test_arena
+
+# Library
+ARENA_LIB = $(BUILD_DIR)/libarenac.a
+
+# Default target
+all: debug
+
+# Create directories
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+$(BIN_DIR):
+	mkdir -p $(BIN_DIR)
+
+# Object files
+$(ARENA_OBJ): $(ARENA_SRC) $(ARENA_HDR) | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c $(ARENA_SRC) -o $(ARENA_OBJ)
+
+$(TEST_OBJ): $(TEST_SRC) $(ARENA_HDR) | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c $(TEST_SRC) -o $(TEST_OBJ)
+
+# Library
+$(ARENA_LIB): $(ARENA_OBJ) | $(BUILD_DIR)
+	ar rcs $(ARENA_LIB) $(ARENA_OBJ)
+
+# Test executable
+$(TEST_BIN): $(TEST_OBJ) $(ARENA_LIB) | $(BIN_DIR)
+	$(CC) $(CFLAGS) $(TEST_OBJ) $(ARENA_LIB) -lpthread -o $(TEST_BIN)
+
+# Build targets
+debug: CFLAGS += $(DEBUG_FLAGS)
+debug: $(TEST_BIN)
+	@echo "Built ARENAC debug version"
+
+release: CFLAGS += $(RELEASE_FLAGS)
+release: $(TEST_BIN)
+	@echo "Built ARENAC release version"
+
+perf: CFLAGS += $(RELEASE_FLAGS) $(PERF_FLAGS)
+perf: $(TEST_BIN)
+	@echo "Built ARENAC performance version"
+
+# Test targets
+test: debug
+	@echo "Running ARENAC test suite..."
+	$(TEST_BIN)
+
+test-release: release
+	@echo "Running ARENAC release tests..."
+	$(TEST_BIN)
+
+test-perf: perf
+	@echo "Running ARENAC performance tests..."
+	$(TEST_BIN)
+
+# Benchmark target
+benchmark: perf
+	@echo "Running ARENAC performance benchmark..."
+	@echo "=== 7-Tick Compliance Test ==="
+	$(TEST_BIN) | grep -A 10 "7tick_performance"
+	@echo ""
+	@echo "=== Memory Usage Analysis ==="
+	valgrind --tool=massif --stacks=yes $(TEST_BIN) > /dev/null 2>&1 || true
+	@echo ""
+	@echo "=== Cycle Analysis ==="
+	perf stat -e cycles,instructions,cache-misses $(TEST_BIN) 2>&1 | grep -E "(cycles|instructions|cache-misses)" || true
+
+# Memory testing
+test-memory: debug
+	@echo "Running memory safety tests..."
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes $(TEST_BIN)
+
+# Static analysis
+analyze:
+	@echo "Running static analysis..."
+	clang-tidy $(ARENA_SRC) $(TEST_SRC) -- -I$(INCLUDE_DIR)
+	cppcheck --enable=all --std=c11 -I$(INCLUDE_DIR) $(ARENA_SRC) $(TEST_SRC)
+
+# Assembly output (for performance analysis)
+asm: $(ARENA_SRC) $(ARENA_HDR)
+	$(CC) $(CFLAGS) $(RELEASE_FLAGS) $(PERF_FLAGS) -I$(INCLUDE_DIR) -S $(ARENA_SRC) -o $(BUILD_DIR)/arena.s
+	@echo "Assembly output written to $(BUILD_DIR)/arena.s"
+
+# Disassembly (for analysis)
+disasm: $(ARENA_LIB)
+	objdump -d $(ARENA_LIB) > $(BUILD_DIR)/arena_disasm.txt
+	@echo "Disassembly written to $(BUILD_DIR)/arena_disasm.txt"
+
+# Size analysis
+size: $(ARENA_LIB) $(TEST_BIN)
+	@echo "=== Library Size Analysis ==="
+	size $(ARENA_LIB)
+	@echo ""
+	@echo "=== Test Binary Size Analysis ==="
+	size $(TEST_BIN)
+	@echo ""
+	@echo "=== Object File Analysis ==="
+	nm -S --size-sort $(ARENA_OBJ)
+
+# Performance profiling
+profile: perf
+	@echo "Running performance profiling..."
+	perf record -g $(TEST_BIN)
+	perf report --stdio > $(BUILD_DIR)/perf_report.txt
+	@echo "Profile report written to $(BUILD_DIR)/perf_report.txt"
+
+# Code coverage
+coverage: CFLAGS += --coverage
+coverage: $(TEST_BIN)
+	@echo "Running code coverage analysis..."
+	$(TEST_BIN)
+	gcov $(ARENA_SRC)
+	lcov --capture --directory . --output-file $(BUILD_DIR)/coverage.info
+	genhtml $(BUILD_DIR)/coverage.info --output-directory $(BUILD_DIR)/coverage_html
+	@echo "Coverage report generated in $(BUILD_DIR)/coverage_html/"
+
+# Documentation
+docs:
+	@echo "Generating documentation..."
+	doxygen Doxyfile || echo "Doxygen not available"
+
+# Install (system-wide)
+install: release
+	@echo "Installing ARENAC..."
+	cp $(ARENA_HDR) /usr/local/include/
+	cp $(ARENA_LIB) /usr/local/lib/
+	ldconfig || true
+
+# Uninstall
+uninstall:
+	@echo "Uninstalling ARENAC..."
+	rm -f /usr/local/include/arena.h
+	rm -f /usr/local/lib/libarenac.a
+
+# Clean targets
+clean:
+	rm -rf $(BUILD_DIR) $(BIN_DIR)
+	rm -f *.gcno *.gcda *.gcov
+	rm -f perf.data*
+
+clean-all: clean
+	rm -f $(BUILD_DIR)/coverage.info
+	rm -rf $(BUILD_DIR)/coverage_html
+	rm -f $(BUILD_DIR)/*.s $(BUILD_DIR)/*.txt
+
+# Development helpers
+watch:
+	@echo "Watching for changes..."
+	while inotifywait -e modify $(ARENA_SRC) $(ARENA_HDR) $(TEST_SRC); do \
+		make test; \
+	done
+
+quick: CFLAGS += -O1
+quick: $(TEST_BIN)
+	$(TEST_BIN)
+
+# Continuous integration
+ci: analyze test test-memory benchmark
+	@echo "All CI checks passed!"
+
+# Help
+help:
+	@echo "ARENAC Build System"
+	@echo "=================="
+	@echo ""
+	@echo "Build targets:"
+	@echo "  debug      - Build with debug flags and sanitizers"
+	@echo "  release    - Build optimized release version"
+	@echo "  perf       - Build with maximum performance optimizations"
+	@echo ""
+	@echo "Test targets:"
+	@echo "  test       - Run test suite (debug build)"
+	@echo "  test-release - Run test suite (release build)"
+	@echo "  test-perf  - Run test suite (performance build)"
+	@echo "  benchmark  - Run performance benchmarks"
+	@echo "  test-memory - Run memory safety tests with Valgrind"
+	@echo ""
+	@echo "Analysis targets:"
+	@echo "  analyze    - Run static analysis tools"
+	@echo "  asm        - Generate assembly output"
+	@echo "  disasm     - Generate disassembly"
+	@echo "  size       - Analyze binary sizes"
+	@echo "  profile    - Run performance profiling"
+	@echo "  coverage   - Generate code coverage report"
+	@echo ""
+	@echo "Utility targets:"
+	@echo "  install    - Install system-wide"
+	@echo "  uninstall  - Remove system installation"
+	@echo "  clean      - Clean build artifacts"
+	@echo "  clean-all  - Clean all generated files"
+	@echo "  ci         - Run all CI checks"
+	@echo "  help       - Show this help"
+
+.PHONY: all debug release perf test test-release test-perf benchmark test-memory
+.PHONY: analyze asm disasm size profile coverage docs install uninstall
+.PHONY: clean clean-all watch quick ci help
+
+# Default goal
+.DEFAULT_GOAL := debug

@@ -1,0 +1,242 @@
+# CNS Binary Materializer - Enhanced Makefile with OpenMP Parallel Support
+# Optimized for 4-8x speedup on multi-core systems
+
+CC = clang
+CXX = clang++
+
+# Base optimization flags
+BASE_CFLAGS = -O3 -Wall -Wextra -I../../include -march=native -ffast-math
+BASE_CFLAGS += -DCNS_ENABLE_PARALLEL=1
+
+# OpenMP flags for parallel execution
+OPENMP_CFLAGS = -fopenmp -DOMP_PROC_BIND=true
+OPENMP_LDFLAGS = -fopenmp
+
+# Platform-specific optimizations
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+    # macOS optimizations
+    PLATFORM_CFLAGS = -msse4.2 -mavx -mavx2
+    OPENMP_CFLAGS = -Xpreprocessor -fopenmp
+    OPENMP_LDFLAGS = -lomp
+else ifeq ($(UNAME_S),Linux)
+    # Linux optimizations
+    PLATFORM_CFLAGS = -msse4.2 -mavx -mavx2 -mtune=native
+    PLATFORM_CFLAGS += -DCNS_LINUX_OPTIMIZATIONS=1
+endif
+
+# Combined compiler flags
+CFLAGS = $(BASE_CFLAGS) $(OPENMP_CFLAGS) $(PLATFORM_CFLAGS)
+LDFLAGS = -lm $(OPENMP_LDFLAGS)
+
+# Debug build options
+ifdef DEBUG
+    CFLAGS += -g -O0 -DDEBUG=1
+    CFLAGS := $(filter-out -O3, $(CFLAGS))
+else
+    CFLAGS += -DNDEBUG=1 -flto
+endif
+
+# Profile-guided optimization
+ifdef PGO
+    CFLAGS += -fprofile-generate
+    LDFLAGS += -fprofile-generate
+endif
+
+ifdef PGO_USE
+    CFLAGS += -fprofile-use
+    LDFLAGS += -fprofile-use
+endif
+
+# Source files
+SERIAL_SRCS = core.c serialize.c deserialize.c graph.c
+PARALLEL_SRCS = graph_algorithms.c parallel_algorithms.c
+BENCHMARK_SRCS = parallel_benchmark.c
+ALL_SRCS = $(SERIAL_SRCS) $(PARALLEL_SRCS) $(BENCHMARK_SRCS)
+
+# Object files
+SERIAL_OBJS = $(SERIAL_SRCS:.c=.o)
+PARALLEL_OBJS = $(PARALLEL_SRCS:.c=.o)
+BENCHMARK_OBJS = $(BENCHMARK_SRCS:.c=.o)
+ALL_OBJS = $(SERIAL_OBJS) $(PARALLEL_OBJS) $(BENCHMARK_OBJS)
+
+# Test files
+TEST_SRCS = ../../tests/binary_materializer/test_serialization.c
+TEST_OBJS = $(TEST_SRCS:.c=.o)
+
+# Targets
+LIB_SERIAL = libcns_binary_materializer.a
+LIB_PARALLEL = libcns_binary_materializer_parallel.a
+GRAPH_ALGO = graph_algorithms
+PARALLEL_ALGO = parallel_algorithms  
+BENCHMARK = parallel_benchmark
+TEST = test_binary_materializer
+
+.PHONY: all clean test parallel benchmark serial profile help check-openmp
+
+# Default target
+all: check-openmp $(LIB_PARALLEL) $(GRAPH_ALGO) $(PARALLEL_ALGO) $(BENCHMARK)
+
+# Serial-only build (no OpenMP)
+serial: CFLAGS := $(filter-out $(OPENMP_CFLAGS), $(CFLAGS))
+serial: LDFLAGS := $(filter-out $(OPENMP_LDFLAGS), $(LDFLAGS))
+serial: $(LIB_SERIAL) $(GRAPH_ALGO)
+
+# Parallel optimized build
+parallel: check-openmp $(LIB_PARALLEL) $(PARALLEL_ALGO)
+
+# Benchmark suite
+benchmark: check-openmp $(BENCHMARK)
+	@echo "Running parallel algorithm benchmarks..."
+	./$(BENCHMARK)
+
+# Check OpenMP availability
+check-openmp:
+	@echo "Checking OpenMP support..."
+	@echo '#include <omp.h>' | $(CC) $(OPENMP_CFLAGS) -x c -E - >/dev/null 2>&1 || \
+		(echo "Warning: OpenMP not available, building serial version" && \
+		 $(MAKE) CFLAGS="$(filter-out $(OPENMP_CFLAGS), $(CFLAGS))" \
+		         LDFLAGS="$(filter-out $(OPENMP_LDFLAGS), $(LDFLAGS))")
+
+# Library targets
+$(LIB_SERIAL): $(SERIAL_OBJS)
+	@echo "Creating serial library..."
+	ar rcs $@ $^
+	@echo "✓ Serial library created: $@"
+
+$(LIB_PARALLEL): $(SERIAL_OBJS) $(PARALLEL_OBJS)
+	@echo "Creating parallel library..."
+	ar rcs $@ $^
+	@echo "✓ Parallel library created: $@"
+
+# Executable targets
+$(GRAPH_ALGO): graph_algorithms.o $(LIB_SERIAL)
+	@echo "Building graph algorithms demo..."
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	@echo "✓ Graph algorithms demo: $@"
+
+$(PARALLEL_ALGO): parallel_algorithms.o $(LIB_SERIAL)
+	@echo "Building parallel algorithms demo..."
+	$(CC) $(CFLAGS) -o $@ $< $(LIB_SERIAL) $(LDFLAGS)
+	@echo "✓ Parallel algorithms demo: $@"
+
+$(BENCHMARK): parallel_benchmark.o $(LIB_PARALLEL)
+	@echo "Building benchmark suite..."
+	$(CC) $(CFLAGS) -o $@ $< $(LIB_PARALLEL) $(LDFLAGS)
+	@echo "✓ Benchmark suite: $@"
+
+# Test target
+test: $(TEST)
+	@echo "Running tests..."
+	./$(TEST)
+
+$(TEST): $(TEST_OBJS) $(LIB_PARALLEL)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+# Profile-guided optimization build
+profile:
+	@echo "Building with profile-guided optimization..."
+	$(MAKE) clean
+	$(MAKE) PGO=1 $(BENCHMARK)
+	./$(BENCHMARK)
+	$(MAKE) clean
+	$(MAKE) PGO_USE=1 all
+	@echo "✓ PGO build complete"
+
+# Object file compilation
+%.o: %.c
+	@echo "Compiling $< (parallel: $(if $(findstring -fopenmp,$(CFLAGS)),✓,✗))"
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# Performance testing
+perf-test: $(BENCHMARK)
+	@echo "Running performance tests..."
+	@echo "System info:"
+	@echo "  CPU cores: $$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 'unknown')"
+	@echo "  OpenMP threads: $$(echo $$OMP_NUM_THREADS)"
+	@echo "  Compiler: $(CC) --version | head -1"
+	@echo ""
+	time ./$(BENCHMARK)
+
+# Memory usage analysis
+memcheck: $(BENCHMARK)
+	@echo "Running memory analysis..."
+	@if command -v valgrind >/dev/null 2>&1; then \
+		valgrind --tool=massif --stacks=yes ./$(BENCHMARK); \
+	else \
+		echo "Valgrind not available, running basic memory test..."; \
+		./$(BENCHMARK); \
+	fi
+
+# Thread analysis
+threadcheck: $(PARALLEL_ALGO)
+	@echo "Running thread safety analysis..."
+	@if command -v helgrind >/dev/null 2>&1; then \
+		valgrind --tool=helgrind ./$(PARALLEL_ALGO); \
+	else \
+		echo "Helgrind not available, running basic thread test..."; \
+		OMP_NUM_THREADS=4 ./$(PARALLEL_ALGO); \
+	fi
+
+# Cleanup
+clean:
+	@echo "Cleaning build artifacts..."
+	rm -f $(ALL_OBJS) $(TEST_OBJS)
+	rm -f $(LIB_SERIAL) $(LIB_PARALLEL)
+	rm -f $(GRAPH_ALGO) $(PARALLEL_ALGO) $(BENCHMARK) $(TEST)
+	rm -f *.gcda *.gcno  # PGO files
+	@echo "✓ Clean complete"
+
+# Installation
+install: $(LIB_PARALLEL) $(BENCHMARK)
+	@echo "Installing parallel graph algorithms..."
+	mkdir -p /usr/local/lib /usr/local/bin
+	cp $(LIB_PARALLEL) /usr/local/lib/
+	cp $(BENCHMARK) /usr/local/bin/cns-graph-benchmark
+	@echo "✓ Installation complete"
+
+# Help target
+help:
+	@echo "CNS Binary Materializer - Parallel Build System"
+	@echo "================================================"
+	@echo ""
+	@echo "Targets:"
+	@echo "  all          - Build all parallel components (default)"
+	@echo "  serial       - Build serial-only version (no OpenMP)"
+	@echo "  parallel     - Build parallel algorithms only"
+	@echo "  benchmark    - Build and run benchmark suite"
+	@echo "  test         - Build and run tests"
+	@echo "  profile      - Build with profile-guided optimization"
+	@echo "  perf-test    - Run performance analysis"
+	@echo "  memcheck     - Run memory usage analysis"
+	@echo "  threadcheck  - Run thread safety analysis"
+	@echo "  clean        - Remove all build artifacts"
+	@echo "  install      - Install to system directories"
+	@echo "  help         - Show this help message"
+	@echo ""
+	@echo "Build options:"
+	@echo "  DEBUG=1      - Build debug version"
+	@echo "  PGO=1        - Enable profile generation"
+	@echo "  PGO_USE=1    - Use profile data for optimization"
+	@echo ""
+	@echo "Environment variables:"
+	@echo "  OMP_NUM_THREADS - Set number of OpenMP threads"
+	@echo "  CC              - Override compiler (default: clang)"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make                    # Build all parallel components"
+	@echo "  make DEBUG=1            # Build debug version"
+	@echo "  make benchmark          # Run benchmarks"
+	@echo "  OMP_NUM_THREADS=8 make benchmark # Use 8 threads"
+	@echo "  make profile            # PGO optimized build"
+
+# Show build configuration
+config:
+	@echo "Build Configuration:"
+	@echo "  Compiler: $(CC)"
+	@echo "  CFLAGS: $(CFLAGS)"
+	@echo "  LDFLAGS: $(LDFLAGS)"
+	@echo "  OpenMP: $(if $(findstring -fopenmp,$(CFLAGS)),✓ Enabled,✗ Disabled)"
+	@echo "  Platform: $(UNAME_S)"
+	@echo "  Debug: $(if $(DEBUG),✓ Enabled,✗ Disabled)"
+	@echo "  PGO: $(if $(PGO),✓ Generate,$(if $(PGO_USE),✓ Use,✗ Disabled))"

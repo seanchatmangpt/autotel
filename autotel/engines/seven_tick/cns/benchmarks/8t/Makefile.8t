@@ -1,0 +1,228 @@
+# ============================================================================
+# 8T Benchmark Makefile
+# Comprehensive performance testing with optimization flags
+# ============================================================================
+
+# Compiler settings
+CC = clang
+CXX = clang++
+AR = ar
+RANLIB = ranlib
+
+# Base paths
+BENCH_DIR = .
+SRC_DIR = ../../src
+INC_DIR = ../../include
+OBJ_DIR = obj
+BIN_DIR = bin
+
+# Create directories
+$(shell mkdir -p $(OBJ_DIR) $(BIN_DIR))
+
+# Compiler flags
+CFLAGS = -std=c11 -I$(INC_DIR) -Wall -Wextra -Werror -Wno-unused-parameter
+CXXFLAGS = -std=c++17 -I$(INC_DIR) -Wall -Wextra -Werror
+
+# Optimization flags for 8T performance
+OPT_FLAGS = -O3 -march=native -mtune=native -flto=thin
+OPT_FLAGS += -funroll-loops -fvectorize -ffast-math
+OPT_FLAGS += -mllvm -polly -mllvm -polly-vectorizer=stripmine
+
+# SIMD flags
+SIMD_FLAGS = -mavx2 -mfma -mbmi2
+
+# Debug build flags
+DEBUG_FLAGS = -g -O0 -DDEBUG -fsanitize=address,undefined
+
+# Choose build type
+ifdef DEBUG
+    CFLAGS += $(DEBUG_FLAGS)
+    CXXFLAGS += $(DEBUG_FLAGS)
+    BUILD_TYPE = debug
+else
+    CFLAGS += $(OPT_FLAGS) $(SIMD_FLAGS)
+    CXXFLAGS += $(OPT_FLAGS) $(SIMD_FLAGS)
+    BUILD_TYPE = release
+endif
+
+# Platform-specific settings
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+    LDFLAGS = -lm -lpthread -framework Accelerate
+    DYLIB_EXT = dylib
+else
+    LDFLAGS = -lm -lpthread -lrt
+    DYLIB_EXT = so
+endif
+
+# 8T library components (assumed to be built)
+LIB8T = $(SRC_DIR)/8t/lib8t.a
+LIBARENA = $(SRC_DIR)/8t/libarena_l1.a
+LIBGRAPH = $(SRC_DIR)/8t/libgraph_l1.a
+LIBPARSER = $(SRC_DIR)/8t/libparser_branchless.a
+LIBNUMERICAL = $(SRC_DIR)/8t/libnumerical.a
+LIBL1 = $(SRC_DIR)/8t/libl1_analyzer.a
+
+# All 8T libraries
+ALL_LIBS = $(LIB8T) $(LIBARENA) $(LIBGRAPH) $(LIBPARSER) $(LIBNUMERICAL) $(LIBL1)
+
+# Benchmark source files
+BENCH_SRC = bench_8t.c
+
+# Additional benchmark modules
+BENCH_MODULES = \
+    bench_simd_comparison.c \
+    bench_cache_analysis.c \
+    bench_numerical_stability.c \
+    bench_parallel_scaling.c
+
+# Object files
+BENCH_OBJ = $(BENCH_SRC:%.c=$(OBJ_DIR)/%.o)
+MODULE_OBJ = $(BENCH_MODULES:%.c=$(OBJ_DIR)/%.o)
+
+# Benchmark executable
+BENCH_BIN = $(BIN_DIR)/bench_8t
+
+# Test data generator
+DATAGEN = $(BIN_DIR)/generate_test_data
+
+# ============================================================================
+# Build Rules
+# ============================================================================
+
+.PHONY: all clean benchmark run profile help
+
+# Default target
+all: $(BENCH_BIN)
+
+# Main benchmark executable
+$(BENCH_BIN): $(BENCH_OBJ) $(ALL_LIBS)
+	@echo "Linking 8T benchmark..."
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	@echo "Built: $@ ($(BUILD_TYPE))"
+
+# Compile benchmark source
+$(OBJ_DIR)/%.o: $(BENCH_DIR)/%.c
+	@echo "Compiling $<..."
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# Run all benchmarks
+benchmark: $(BENCH_BIN)
+	@echo "Running 8T benchmarks..."
+	@echo "========================================"
+	@$(BENCH_BIN)
+	@echo "========================================"
+	@echo "Benchmark complete. Results in 8t_benchmark_results.csv"
+
+# Run with performance profiling
+profile: $(BENCH_BIN)
+	@echo "Running with profiling..."
+ifdef PROFILE_PERF
+	perf record -g $(BENCH_BIN)
+	perf report
+else ifdef PROFILE_DTRACE
+	sudo dtrace -s ../../tools/8t_profile.d -c $(BENCH_BIN)
+else
+	@echo "Specify PROFILE_PERF=1 or PROFILE_DTRACE=1"
+endif
+
+# Run specific benchmark category
+run-%: $(BENCH_BIN)
+	@echo "Running $* benchmark..."
+	@$(BENCH_BIN) --only $*
+
+# Generate test data
+$(DATAGEN): tools/generate_test_data.c
+	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
+
+testdata: $(DATAGEN)
+	@echo "Generating test data..."
+	@$(DATAGEN)
+
+# ============================================================================
+# Analysis and Reporting
+# ============================================================================
+
+# Generate performance report
+report: benchmark
+	@echo "Generating performance report..."
+	@python3 tools/analyze_results.py 8t_benchmark_results.csv > performance_report.md
+	@echo "Report generated: performance_report.md"
+
+# Compare with baseline
+compare: benchmark
+	@if [ -f baseline_results.csv ]; then \
+		python3 tools/compare_results.py baseline_results.csv 8t_benchmark_results.csv; \
+	else \
+		echo "No baseline found. Current results will be used as baseline."; \
+		cp 8t_benchmark_results.csv baseline_results.csv; \
+	fi
+
+# Visualize results
+visualize: benchmark
+	@echo "Creating performance visualizations..."
+	@python3 tools/visualize_results.py 8t_benchmark_results.csv
+	@echo "Visualizations saved to: results/"
+
+# ============================================================================
+# Utilities
+# ============================================================================
+
+# Clean build artifacts
+clean:
+	@echo "Cleaning build artifacts..."
+	@rm -rf $(OBJ_DIR) $(BIN_DIR)
+	@rm -f 8t_benchmark_results.csv
+	@rm -f performance_report.md
+	@rm -rf results/
+
+# Create baseline from current results
+baseline: benchmark
+	@echo "Setting current results as baseline..."
+	@cp 8t_benchmark_results.csv baseline_results.csv
+	@echo "Baseline updated."
+
+# Check system capabilities
+check-system:
+	@echo "Checking system capabilities for 8T..."
+	@echo "CPU: $$(sysctl -n machdep.cpu.brand_string 2>/dev/null || cat /proc/cpuinfo | grep 'model name' | head -1)"
+	@echo -n "SIMD: "
+	@$(CC) -dM -E -mavx2 - < /dev/null > /dev/null 2>&1 && echo -n "AVX2 " || true
+	@$(CC) -dM -E -mavx512f - < /dev/null > /dev/null 2>&1 && echo -n "AVX512 " || true
+	@echo ""
+	@echo "L1 Cache: $$(sysctl -n hw.l1dcachesize 2>/dev/null || echo 'Unknown') bytes"
+	@echo "Cores: $$(sysctl -n hw.ncpu 2>/dev/null || nproc)"
+
+# Help
+help:
+	@echo "8T Benchmark Suite"
+	@echo "=================="
+	@echo "Targets:"
+	@echo "  make              - Build benchmark suite"
+	@echo "  make benchmark    - Run all benchmarks"
+	@echo "  make run-simd     - Run only SIMD benchmarks"
+	@echo "  make run-cache    - Run only cache benchmarks"
+	@echo "  make profile      - Run with profiling"
+	@echo "  make report       - Generate performance report"
+	@echo "  make compare      - Compare with baseline"
+	@echo "  make visualize    - Create performance graphs"
+	@echo "  make clean        - Remove build artifacts"
+	@echo ""
+	@echo "Options:"
+	@echo "  DEBUG=1           - Build with debug symbols"
+	@echo "  PROFILE_PERF=1    - Profile with perf"
+	@echo "  PROFILE_DTRACE=1  - Profile with DTrace"
+
+# ============================================================================
+# Dependency Management
+# ============================================================================
+
+# Include dependencies if they exist
+-include $(BENCH_OBJ:.o=.d)
+-include $(MODULE_OBJ:.o=.d)
+
+# Generate dependencies
+$(OBJ_DIR)/%.d: $(BENCH_DIR)/%.c
+	@$(CC) $(CFLAGS) -MM -MT $(@:.d=.o) $< > $@
+
+.PRECIOUS: $(OBJ_DIR)/%.d

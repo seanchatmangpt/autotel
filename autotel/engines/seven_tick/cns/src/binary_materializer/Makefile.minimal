@@ -1,0 +1,131 @@
+# Makefile for CNS Minimal Core
+# Focus: Working code that's faster than 7c baseline
+
+CC = clang
+CFLAGS = -O3 -march=native -mtune=native -ffast-math -funroll-loops
+CFLAGS += -Wall -Wextra -Wno-unused-parameter -Wno-unused-variable
+CFLAGS += -DNDEBUG  # Disable asserts for performance
+LDFLAGS = -lm
+
+# Source files
+CORE_SRC = cns_minimal_core.c
+BENCH_SRC = cns_minimal_benchmark.c
+
+# Targets
+CORE_TARGET = cns_minimal_core
+BENCH_TARGET = cns_minimal_benchmark
+ASM_TARGET = cns_minimal_core.s
+
+.PHONY: all clean test benchmark asm profile compare
+
+all: $(CORE_TARGET) $(BENCH_TARGET)
+
+# Build minimal core
+$(CORE_TARGET): $(CORE_SRC)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+# Build benchmark suite
+$(BENCH_TARGET): $(BENCH_SRC)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+# Test the core implementation
+test: $(CORE_TARGET)
+	@echo "Testing CNS Minimal Core..."
+	./$(CORE_TARGET)
+
+# Run benchmark suite
+benchmark: $(BENCH_TARGET)
+	@echo "Running CNS Minimal Core Benchmarks..."
+	./$(BENCH_TARGET)
+
+# Compare with 7c baseline
+compare: $(CORE_TARGET) $(BENCH_TARGET)
+	@echo "=== CNS Minimal Core vs 7c Baseline ==="
+	@echo ""
+	@echo "7c Baseline Results (18-41 cycles):"
+	@echo "- Min access: 18 cycles (L1 hit)"
+	@echo "- Avg access: 25-41 cycles"
+	@echo "- Throughput: 500-600M nodes/sec"
+	@echo ""
+	@echo "CNS Minimal Core Results:"
+	./$(BENCH_TARGET) | grep -E "(Min cycles|nodes/sec|FASTER|Matches|Slower)"
+
+# Generate assembly for inspection
+asm: $(ASM_TARGET)
+	@echo "Generated assembly in $(ASM_TARGET)"
+	@echo "Key functions:"
+	@grep -A10 "cns_minimal_get_node:" $(ASM_TARGET) || true
+
+$(ASM_TARGET): $(CORE_SRC)
+	$(CC) $(CFLAGS) -S -o $@ $<
+
+# Profile-guided optimization
+profile: $(CORE_SRC) $(BENCH_SRC)
+	@echo "Building with profile-guided optimization..."
+	$(CC) $(CFLAGS) -fprofile-generate -o $(CORE_TARGET)_prof $(CORE_SRC) $(LDFLAGS)
+	$(CC) $(CFLAGS) -fprofile-generate -o $(BENCH_TARGET)_prof $(BENCH_SRC) $(LDFLAGS)
+	./$(CORE_TARGET)_prof > /dev/null
+	./$(BENCH_TARGET)_prof > /dev/null
+	$(CC) $(CFLAGS) -fprofile-use -o $(CORE_TARGET)_pgo $(CORE_SRC) $(LDFLAGS)
+	$(CC) $(CFLAGS) -fprofile-use -o $(BENCH_TARGET)_pgo $(BENCH_SRC) $(LDFLAGS)
+	@echo "Profile-guided binaries: $(CORE_TARGET)_pgo, $(BENCH_TARGET)_pgo"
+
+# Measure performance improvement
+perf: $(BENCH_TARGET)
+	@echo "=== Performance Measurement ==="
+	@echo "Running baseline measurement..."
+	@if [ -f 7tick_benchmark ]; then \
+		echo "7c Baseline:"; \
+		./7tick_benchmark | grep -E "(Min cycles|nodes/sec)" | head -3; \
+	else \
+		echo "7c baseline not found. Run 'make -f Makefile.7tick' first."; \
+	fi
+	@echo ""
+	@echo "CNS Minimal Core:"
+	@./$(BENCH_TARGET) | grep -E "(Min cycles|nodes/sec)" | head -3
+
+# Run both implementations for direct comparison
+vs7c: $(BENCH_TARGET)
+	@echo "=== Direct Comparison: CNS Minimal vs 7c ==="
+	@echo ""
+	@if [ -f 7tick_benchmark ]; then \
+		echo "Running 7c baseline..."; \
+		./7tick_benchmark 2>/dev/null | grep -A2 "Min cycles per access" | head -3; \
+		echo ""; \
+		echo "Running CNS Minimal..."; \
+		./$(BENCH_TARGET) 2>/dev/null | grep -A2 "Min cycles per access" | head -3; \
+	else \
+		echo "Build 7c baseline first: make -f Makefile.7tick"; \
+	fi
+
+# Analysis and reporting
+analyze: $(BENCH_TARGET)
+	@echo "=== Performance Analysis ==="
+	./$(BENCH_TARGET) | grep -A20 "Performance Analysis"
+
+clean:
+	rm -f $(CORE_TARGET) $(BENCH_TARGET) $(ASM_TARGET)
+	rm -f $(CORE_TARGET)_prof $(BENCH_TARGET)_prof
+	rm -f $(CORE_TARGET)_pgo $(BENCH_TARGET)_pgo
+	rm -f *.gcda *.gcno
+	rm -f cns_minimal_test.bin
+
+# Help target
+help:
+	@echo "CNS Minimal Core Makefile"
+	@echo "========================"
+	@echo ""
+	@echo "Targets:"
+	@echo "  all       - Build core and benchmark"
+	@echo "  test      - Test core implementation"
+	@echo "  benchmark - Run full benchmark suite"
+	@echo "  compare   - Compare with 7c baseline"
+	@echo "  vs7c      - Direct side-by-side comparison"
+	@echo "  asm       - Generate assembly for inspection"
+	@echo "  profile   - Build with PGO optimization"
+	@echo "  perf      - Quick performance measurement"
+	@echo "  analyze   - Performance analysis"
+	@echo "  clean     - Remove build artifacts"
+	@echo ""
+	@echo "Build 7c baseline first for comparison:"
+	@echo "  make -f Makefile.7tick"

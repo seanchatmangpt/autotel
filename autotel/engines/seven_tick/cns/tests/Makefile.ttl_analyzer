@@ -1,0 +1,98 @@
+# TTL Analyzer Test Build Configuration
+# Builds and tests the TTL graph analyzer for memory extraction
+
+CC = clang
+CFLAGS = -O2 -std=c11 -Wall -Wextra -Wpedantic
+CFLAGS += -DCNS_7T_OPTIMIZED=1 -I../include -I..
+
+# Platform-specific optimizations
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+    CFLAGS += -DCNS_MACOS=1
+endif
+
+# Source and object files
+TTL_ANALYZER_SRC = ../src/ttl_analyzer.c
+ARENA_SRC = ../src/arena.c
+GRAPH_SRC = ../src/graph.c
+INTERNER_SRC = ../src/interner.c
+
+TEST_SRC = test_ttl_analyzer.c
+TEST_OBJECTS = test_ttl_analyzer.o ttl_analyzer.o arena.o graph.o interner.o
+
+# Main targets
+.PHONY: all clean test run benchmark
+
+all: test_ttl_analyzer
+
+# Build test program
+test_ttl_analyzer: $(TEST_OBJECTS)
+	@echo "Building TTL analyzer test program..."
+	$(CC) $(CFLAGS) -o $@ $^ -lm
+
+# Object files
+test_ttl_analyzer.o: $(TEST_SRC)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+ttl_analyzer.o: $(TTL_ANALYZER_SRC)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+arena.o: $(ARENA_SRC)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+graph.o: $(GRAPH_SRC)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+interner.o: $(INTERNER_SRC)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Run tests
+test: test_ttl_analyzer
+	@echo "Running TTL analyzer tests..."
+	./test_ttl_analyzer
+
+# Quick test run
+run: test
+
+# Benchmark performance
+benchmark: test_ttl_analyzer
+	@echo "Running TTL analyzer benchmark..."
+	time ./test_ttl_analyzer
+
+# Memory check with valgrind (if available)
+memcheck: test_ttl_analyzer
+	@if command -v valgrind >/dev/null 2>&1; then \
+		echo "Running memory check..."; \
+		valgrind --leak-check=full --show-leak-kinds=all ./test_ttl_analyzer; \
+	else \
+		echo "Valgrind not available, skipping memory check"; \
+		./test_ttl_analyzer; \
+	fi
+
+# Static analysis
+analyze:
+	@if command -v clang-tidy >/dev/null 2>&1; then \
+		echo "Running static analysis..."; \
+		clang-tidy $(TTL_ANALYZER_SRC) -- $(CFLAGS); \
+	else \
+		echo "clang-tidy not available, skipping analysis"; \
+	fi
+
+# Clean build artifacts
+clean:
+	@echo "Cleaning TTL analyzer test artifacts..."
+	rm -f *.o test_ttl_analyzer *.dSYM
+
+# Help
+help:
+	@echo "TTL Analyzer Test Makefile"
+	@echo "=========================="
+	@echo "Targets:"
+	@echo "  all        - Build test program (default)"
+	@echo "  test       - Build and run tests"
+	@echo "  run        - Quick test run"
+	@echo "  benchmark  - Performance benchmark"
+	@echo "  memcheck   - Memory leak check (requires valgrind)"
+	@echo "  analyze    - Static analysis (requires clang-tidy)"
+	@echo "  clean      - Remove build artifacts"
+	@echo "  help       - Show this help"

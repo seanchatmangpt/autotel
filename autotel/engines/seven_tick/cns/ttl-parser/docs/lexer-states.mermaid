@@ -1,0 +1,78 @@
+stateDiagram-v2
+    [*] --> INITIAL: Start
+
+    INITIAL --> IN_IRI: '<'
+    INITIAL --> IN_STRING_DQ: '"'
+    INITIAL --> IN_STRING_SQ: "'"
+    INITIAL --> IN_NUMBER: [0-9+-]
+    INITIAL --> IN_PREFIXED_NAME: [PN_PREFIX]
+    INITIAL --> IN_BLANK_NODE: '_:'
+    INITIAL --> IN_COMMENT: '#'
+    INITIAL --> IN_DIRECTIVE: '@'
+    INITIAL --> PUNCTUATION: [.,;()[]{}]
+    
+    IN_IRI --> INITIAL: '>' → IRI_REF
+    IN_IRI --> ERROR: Invalid char
+    
+    IN_STRING_DQ --> IN_STRING_LONG_DQ: '""'
+    IN_STRING_DQ --> INITIAL: '"' → STRING_LITERAL
+    IN_STRING_DQ --> IN_STRING_DQ: escape/char
+    
+    IN_STRING_SQ --> IN_STRING_LONG_SQ: "''"
+    IN_STRING_SQ --> INITIAL: "'" → STRING_LITERAL
+    IN_STRING_SQ --> IN_STRING_SQ: escape/char
+    
+    IN_STRING_LONG_DQ --> INITIAL: '"""' → STRING_LITERAL_LONG
+    IN_STRING_LONG_DQ --> IN_STRING_LONG_DQ: any char/newline
+    
+    IN_STRING_LONG_SQ --> INITIAL: "'''" → STRING_LITERAL_LONG
+    IN_STRING_LONG_SQ --> IN_STRING_LONG_SQ: any char/newline
+    
+    IN_NUMBER --> INITIAL: whitespace/punct → NUMBER
+    IN_NUMBER --> IN_DECIMAL: '.'
+    IN_NUMBER --> IN_DOUBLE: [eE]
+    
+    IN_DECIMAL --> INITIAL: whitespace/punct → DECIMAL
+    IN_DECIMAL --> IN_DOUBLE: [eE]
+    
+    IN_DOUBLE --> INITIAL: complete → DOUBLE
+    
+    IN_PREFIXED_NAME --> IN_LOCAL_NAME: ':'
+    IN_PREFIXED_NAME --> INITIAL: whitespace → PREFIX
+    
+    IN_LOCAL_NAME --> INITIAL: whitespace/punct → PREFIXED_NAME
+    
+    IN_BLANK_NODE --> INITIAL: whitespace/punct → BLANK_NODE_LABEL
+    
+    IN_COMMENT --> INITIAL: newline → skip
+    
+    IN_DIRECTIVE --> INITIAL: complete → PREFIX/BASE
+    
+    PUNCTUATION --> INITIAL: emit token
+    
+    ERROR --> INITIAL: recovery
+
+    note right of INITIAL
+        Main dispatch state
+        Handles whitespace
+        Identifies token start
+    end note
+    
+    note right of IN_STRING_DQ
+        Handles escape sequences:
+        \t \n \r \b \f \" \' \\
+        \uXXXX \UXXXXXXXX
+    end note
+    
+    note right of IN_IRI
+        No escape sequences
+        Forbids: <>"{}|^`\
+        and control chars
+    end note
+    
+    note right of IN_NUMBER
+        Supports:
+        - INTEGER: [+-]?[0-9]+
+        - DECIMAL: [+-]?[0-9]*.[0-9]+
+        - DOUBLE: scientific notation
+    end note

@@ -1,0 +1,145 @@
+{
+  "python_overhead": {
+    "python_list_access": 0.002439833013340831,
+    "ctypes_array_access": 0.003982166992500424,
+    "native_cycles_per_access": 41,
+    "native_estimated_time": 1.3666666666666667e-08,
+    "python_overhead_ratio": 178524.3668298169,
+    "ctypes_overhead_ratio": 291378.07262198225
+  },
+  "parallel_speedup": {
+    "theoretical_parallel_speedup": 8,
+    "cpu_cores": 16
+  },
+  "memory_efficiency": {
+    "traditional_memory_bytes": 11200000,
+    "our_memory_bytes": 12500,
+    "memory_reduction_ratio": 896.0,
+    "allocation_time_1k_nodes": 0.0005212081596255302,
+    "estimated_allocation_time_100k": 0.052120815962553024
+  },
+  "adoption_metrics": {
+    "traditional_lines_of_code": 115,
+    "our_lines_of_code": 17,
+    "code_reduction_ratio": 6.764705882352941,
+    "traditional_steps": 6,
+    "our_steps": 3,
+    "traditional_concepts": [
+      "serialization",
+      "deserialization",
+      "object creation",
+      "memory management",
+      "graph theory"
+    ],
+    "our_concepts": [
+      "memory mapping",
+      "graph theory"
+    ],
+    "traditional_learning_time_hours": 8,
+    "our_learning_time_hours": 2,
+    "learning_time_reduction": 4
+  },
+  "real_workloads": {
+    "workloads": {
+      "Social Network": {
+        "nodes": 50000,
+        "edges": 7500000,
+        "traditional_memory_mb": 115.966796875,
+        "our_memory_kb": 6.103515625,
+        "memory_savings": 19456.0,
+        "estimated_processing_time": 0.05,
+        "use_case": "friend recommendations"
+      },
+      "Web Graph": {
+        "nodes": 100000,
+        "edges": 1000000,
+        "traditional_memory_mb": 18.310546875,
+        "our_memory_kb": 12.20703125,
+        "memory_savings": 1536.0,
+        "estimated_processing_time": 0.1,
+        "use_case": "pagerank calculation"
+      },
+      "Road Network": {
+        "nodes": 25000,
+        "edges": 75000,
+        "traditional_memory_mb": 1.9073486328125,
+        "our_memory_kb": 3.0517578125,
+        "memory_savings": 640.0,
+        "estimated_processing_time": 0.025,
+        "use_case": "shortest path routing"
+      },
+      "Citation Network": {
+        "nodes": 75000,
+        "edges": 600000,
+        "traditional_memory_mb": 11.444091796875,
+        "our_memory_kb": 9.1552734375,
+        "memory_savings": 1280.0,
+        "estimated_processing_time": 0.075,
+        "use_case": "research discovery"
+      }
+    },
+    "system_ram_gb": 8,
+    "max_nodes_traditional": 76695844,
+    "max_nodes_our_approach": 68719476736,
+    "scale_improvement": 896.0000066757202
+  },
+  "before_after": {
+    "before_workflow": [
+      {
+        "step": "Create graph objects",
+        "time_estimate": 5.0,
+        "complexity": "High"
+      },
+      {
+        "step": "Serialize to binary",
+        "time_estimate": 2.0,
+        "complexity": "Medium"
+      },
+      {
+        "step": "Load from disk",
+        "time_estimate": 1.0,
+        "complexity": "Low"
+      },
+      {
+        "step": "Deserialize objects",
+        "time_estimate": 3.0,
+        "complexity": "High"
+      },
+      {
+        "step": "Run algorithms",
+        "time_estimate": 1.0,
+        "complexity": "Medium"
+      },
+      {
+        "step": "Cleanup memory",
+        "time_estimate": 0.5,
+        "complexity": "Medium"
+      }
+    ],
+    "after_workflow": [
+      {
+        "step": "Memory map file",
+        "time_estimate": 0.1,
+        "complexity": "Low"
+      },
+      {
+        "step": "Run algorithms directly",
+        "time_estimate": 1.0,
+        "complexity": "Medium"
+      },
+      {
+        "step": "Unmap file",
+        "time_estimate": 0.1,
+        "complexity": "Low"
+      }
+    ],
+    "before_total_time": 12.5,
+    "after_total_time": 1.2,
+    "time_improvement": 10.416666666666668,
+    "before_steps": 6,
+    "after_steps": 3,
+    "step_reduction": 2.0,
+    "before_high_complexity_steps": 2,
+    "after_high_complexity_steps": 0
+  }
+}

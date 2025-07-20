@@ -1,0 +1,140 @@
+# Makefile for SHACL Validation Engine - 7T Performance Optimized
+# ================================================================
+
+CC = clang
+CFLAGS = -O3 -march=native -mtune=native -flto=thin -ffast-math
+CFLAGS += -Wall -Wextra -Werror -std=c11
+CFLAGS += -I./include -I./include/cns -I.
+CFLAGS += -DCNS_7T_OPTIMIZATION -DARENAC_7T_MODE
+CFLAGS += -fno-omit-frame-pointer -g
+
+# 7T Performance optimizations
+CFLAGS += -O3 -funroll-loops -fvectorize -fslp-vectorize
+CFLAGS += -mllvm -inline-threshold=1000 
+CFLAGS += -fprofile-instr-generate=shacl.profdata
+
+# Link flags
+LDFLAGS = -lm -lpthread
+
+# Source files
+SHACL_SOURCES = src/shacl.c
+ARENA_SOURCES = src/arena.c  
+INTERNER_SOURCES = src/interner.c
+GRAPH_SOURCES = src/graph.c
+TEST_SOURCES = src/test_shacl_validation.c
+
+# Object files
+SHACL_OBJECTS = $(SHACL_SOURCES:.c=.o)
+ARENA_OBJECTS = $(ARENA_SOURCES:.c=.o)
+INTERNER_OBJECTS = $(INTERNER_SOURCES:.c=.o) 
+GRAPH_OBJECTS = $(GRAPH_SOURCES:.c=.o)
+TEST_OBJECTS = $(TEST_SOURCES:.c=.o)
+
+# Targets
+all: test_shacl_validation shacl_benchmark
+
+# Test executable
+test_shacl_validation: $(TEST_OBJECTS) $(SHACL_OBJECTS) $(ARENA_OBJECTS) $(INTERNER_OBJECTS) $(GRAPH_OBJECTS)
+	@echo "🔗 Linking SHACL validation test..."
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	@echo "✅ Built test_shacl_validation"
+
+# Benchmark executable  
+shacl_benchmark: src/shacl_benchmark.c $(SHACL_OBJECTS) $(ARENA_OBJECTS) $(INTERNER_OBJECTS) $(GRAPH_OBJECTS)
+	@echo "🔗 Linking SHACL benchmark..."
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	@echo "✅ Built shacl_benchmark"
+
+# Object file compilation
+%.o: %.c
+	@echo "🔨 Compiling $<..."
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Run tests
+test: test_shacl_validation
+	@echo "🧪 Running SHACL validation tests..."
+	./test_shacl_validation
+	@echo "✅ All tests completed"
+
+# Run benchmarks  
+benchmark: shacl_benchmark
+	@echo "⚡ Running SHACL performance benchmarks..."
+	./shacl_benchmark
+	@echo "📊 Benchmark completed"
+
+# 7T compliance validation
+validate_7t: test_shacl_validation
+	@echo "🚀 Validating 7T performance compliance..."
+	@echo "Running performance tests with cycle counting..."
+	./test_shacl_validation 2>&1 | grep -E "(7T|PERFORMANCE|cycles|ticks)"
+	@echo "✅ 7T validation completed"
+
+# Profile-guided optimization build
+pgo: clean
+	@echo "📈 Building with Profile-Guided Optimization..."
+	$(MAKE) CFLAGS="$(CFLAGS) -fprofile-instr-generate" test_shacl_validation
+	./test_shacl_validation
+	llvm-profdata merge -output=shacl.profdata default.profraw
+	$(MAKE) clean-objects
+	$(MAKE) CFLAGS="$(CFLAGS) -fprofile-instr-use=shacl.profdata" test_shacl_validation
+	@echo "🎯 PGO build completed"
+
+# Clean targets
+clean-objects:
+	@echo "🧹 Cleaning object files..."
+	rm -f $(SHACL_OBJECTS) $(ARENA_OBJECTS) $(INTERNER_OBJECTS) $(GRAPH_OBJECTS) $(TEST_OBJECTS)
+
+clean: clean-objects
+	@echo "🧹 Cleaning all build artifacts..."
+	rm -f test_shacl_validation shacl_benchmark
+	rm -f *.profdata *.profraw
+	@echo "✅ Clean completed"
+
+# Development targets
+debug: CFLAGS += -DDEBUG -O0 -g3
+debug: test_shacl_validation
+	@echo "🐛 Debug build completed"
+
+release: CFLAGS += -DNDEBUG -O3 -flto=thin
+release: test_shacl_validation shacl_benchmark
+	@echo "🚀 Release build completed"
+
+# Assembly output for performance analysis  
+assembly: src/shacl.c
+	@echo "📋 Generating assembly output..."
+	$(CC) $(CFLAGS) -S src/shacl.c -o src/shacl.s
+	@echo "✅ Assembly generated: src/shacl.s"
+
+# Dependencies
+src/shacl.o: src/shacl.c include/cns/shacl.h include/cns/types.h include/cns/arena.h include/cns/graph.h include/cns/interner.h
+src/test_shacl_validation.o: src/test_shacl_validation.c include/cns/shacl.h include/cns/arena.h include/cns/graph.h include/cns/interner.h
+
+# Display help
+help:
+	@echo "SHACL Validation Engine Build System"
+	@echo "===================================="
+	@echo ""
+	@echo "Targets:"
+	@echo "  all              - Build all targets"
+	@echo "  test             - Build and run tests"
+	@echo "  benchmark        - Build and run benchmarks" 
+	@echo "  validate_7t      - Validate 7T performance compliance"
+	@echo "  pgo              - Profile-guided optimization build"
+	@echo "  debug            - Debug build"
+	@echo "  release          - Optimized release build"
+	@echo "  assembly         - Generate assembly output"
+	@echo "  clean            - Clean all build artifacts"
+	@echo "  help             - Show this help"
+	@echo ""
+	@echo "Features:"
+	@echo "  🚀 7T performance optimization"
+	@echo "  🧪 Comprehensive test suite"
+	@echo "  📊 Performance benchmarking"
+	@echo "  🎯 Profile-guided optimization"
+	@echo "  💪 AOT constraint evaluation"
+
+# Phony targets
+.PHONY: all test benchmark validate_7t pgo debug release assembly clean clean-objects help
+
+# Default target
+.DEFAULT_GOAL := all

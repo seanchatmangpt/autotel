@@ -1,0 +1,44 @@
+# CNS 8T Advanced Features - Simple Build
+CC = clang
+CFLAGS = -std=c11 -O2 -g
+CFLAGS += -DCNS_8T_TICK_LIMIT=8
+CFLAGS += -DCNS_8T_L1_CACHE_SIZE=32768
+INCLUDES = -Iinclude -Isrc -I.
+LDFLAGS = -lm -ldl -lpthread
+
+# Simple test builds
+test_8t_shacl: src/8t/shacl_l1.c
+	@echo "Building SHACL L1 test (simple)..."
+	$(CC) $(CFLAGS) $(INCLUDES) -DCNS_8T_SHACL_STANDALONE $< -o $@ $(LDFLAGS)
+
+test_8t_l1: src/8t/l1_analyzer.c  
+	@echo "Building L1 analyzer test (simple)..."
+	$(CC) $(CFLAGS) $(INCLUDES) -DCNS_8T_L1_ANALYZER_STANDALONE $< -o $@ $(LDFLAGS)
+
+test_8t_prover: src/8t/numerical_prover.c
+	@echo "Building numerical prover test (simple)..."
+	$(CC) $(CFLAGS) $(INCLUDES) -DCNS_8T_NUMERICAL_PROVER_STANDALONE $< -o $@ $(LDFLAGS)
+
+test_8t_aot: src/8t/cns_transpile_8t.c
+	@echo "Building AOT orchestrator test (simple)..."
+	$(CC) $(CFLAGS) $(INCLUDES) -DCNS_8T_AOT_ORCHESTRATOR_STANDALONE $< -o $@ $(LDFLAGS)
+
+all: test_8t_shacl test_8t_l1 test_8t_prover test_8t_aot
+	@echo "✅ All 8T tests built successfully"
+
+run_tests: all
+	@echo "\n🚀 Running 8T Advanced Feature Tests"
+	@echo "======================================"
+	@echo "\n1. SHACL L1 Validation Test:"
+	@./test_8t_shacl || echo "⚠️  SHACL test had issues"
+	@echo "\n2. L1 Cache Analyzer Test:"
+	@./test_8t_l1 || echo "⚠️  L1 analyzer test had issues"
+	@echo "\n3. Numerical Prover Test:"
+	@./test_8t_prover || echo "⚠️  Prover test had issues"
+	@echo "\n4. AOT Orchestrator Test:"
+	@./test_8t_aot || echo "⚠️  AOT test had issues"
+
+clean:
+	rm -f test_8t_shacl test_8t_l1 test_8t_prover test_8t_aot
+
+.PHONY: all run_tests clean

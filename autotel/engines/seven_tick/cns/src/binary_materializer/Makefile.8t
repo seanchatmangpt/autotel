@@ -1,0 +1,79 @@
+# CNS 8T Substrate Makefile
+# Build configuration for 8-Tick SIMD vector operations
+
+CC = gcc
+CFLAGS = -O3 -march=native -mavx512f -mavx512dq -mavx512bw -mavx512vl \
+         -ffast-math -funroll-loops -fprefetch-loop-arrays \
+         -falign-functions=64 -falign-loops=64 \
+         -Wall -Wextra -std=c11
+
+# Additional optimization flags for 8T deterministic performance
+CFLAGS += -mtune=skylake-avx512 -mprefer-vector-width=512
+CFLAGS += -fno-omit-frame-pointer -fno-strict-aliasing
+
+# Link flags
+LDFLAGS = -lm -lpthread
+
+# Debug build
+DEBUG_FLAGS = -g -DDEBUG -fsanitize=address
+
+# Targets
+8T_TARGET = cns_8t_substrate
+8T_TEST = test_8t_substrate
+
+# Source files
+8T_SRC = cns_8t_substrate.c
+
+all: $(8T_TARGET)
+
+$(8T_TARGET): $(8T_SRC)
+	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
+
+debug: $(8T_SRC)
+	$(CC) $(CFLAGS) $(DEBUG_FLAGS) -o $(8T_TARGET)_debug $< $(LDFLAGS)
+
+# Check for AVX-512 support
+check-avx512:
+	@echo "Checking AVX-512 support..."
+	@gcc -march=native -dM -E - < /dev/null | grep -E "AVX512" || \
+		(echo "WARNING: AVX-512 not detected on this CPU" && exit 1)
+
+# Performance test with different vector widths
+perf-test: $(8T_TARGET)
+	@echo "=== 512-bit Vector Performance ==="
+	./$(8T_TARGET)
+	@echo ""
+	@echo "=== 256-bit Vector Performance (AVX2 fallback) ==="
+	$(CC) $(CFLAGS) -mprefer-vector-width=256 -o $(8T_TARGET)_256 $(8T_SRC) $(LDFLAGS)
+	./$(8T_TARGET)_256
+	@rm -f $(8T_TARGET)_256
+
+# Assembly inspection
+asm-inspect: $(8T_TARGET)
+	@echo "=== 8T Vector Operation Assembly ==="
+	objdump -d $(8T_TARGET) | grep -A20 "reference_8t_vector_op"
+	@echo ""
+	@echo "=== Key SIMD Instructions ==="
+	objdump -d $(8T_TARGET) | grep -E "vpaddq|vpaddd|vmovdqa64|vprefetch"
+
+# Profile-guided optimization build
+pgo-build:
+	@echo "Building with PGO..."
+	$(CC) $(CFLAGS) -fprofile-generate -o $(8T_TARGET)_pgo $(8T_SRC) $(LDFLAGS)
+	./$(8T_TARGET)_pgo
+	$(CC) $(CFLAGS) -fprofile-use -o $(8T_TARGET)_optimized $(8T_SRC) $(LDFLAGS)
+	@rm -f $(8T_TARGET)_pgo *.gcda
+
+# Benchmarks
+benchmark: $(8T_TARGET)
+	@echo "Running 8T benchmarks..."
+	@echo "CPU: " && lscpu | grep "Model name" | cut -d: -f2
+	@echo "AVX-512: " && lscpu | grep -E "avx512" | head -1
+	@echo ""
+	time ./$(8T_TARGET)
+
+# Clean
+clean:
+	rm -f $(8T_TARGET) $(8T_TARGET)_* *.o *.gcda *.bin
+
+.PHONY: all debug check-avx512 perf-test asm-inspect pgo-build benchmark clean

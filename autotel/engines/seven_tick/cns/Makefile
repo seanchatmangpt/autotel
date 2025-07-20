@@ -34,6 +34,7 @@ KERNEL_SRCS = src/sparql_kernels_real.c
 #                src/cmd_benchmark.c src/cmd_ml.c src/cmd_pm.c src/cmd_trace.c src/cmd_stubs.c
 GATEKEEPER_SRCS = src/gatekeeper.c
 WEAVER_SRCS = codegen/weaver_main.c
+TRANSPILE_SRCS = src/cns_transpile.c src/arena.c src/interner.c src/graph.c src/binary_materializer/core.c src/binary_materializer/serialize.c src/binary_materializer/deserialize.c
 MAIN_SRC = src/main.c
 MAIN_OTEL_SRC = src/cns_main.c
 
@@ -47,6 +48,7 @@ PERF_OBJS = $(PERF_SRCS:.c=.o)
 # COMMAND_OBJS = $(COMMAND_SRCS:.c=.o)
 GATEKEEPER_OBJS = $(GATEKEEPER_SRCS:.c=.o)
 WEAVER_OBJS = $(WEAVER_SRCS:.c=.o)
+TRANSPILE_OBJS = $(TRANSPILE_SRCS:.c=.o)
 MAIN_OBJ = $(MAIN_SRC:.c=.o)
 MAIN_OTEL_OBJ = $(MAIN_OTEL_SRC:.c=.o)
 
@@ -65,9 +67,10 @@ endif
 TARGET = cns
 GATEKEEPER_TARGET = gatekeeper
 WEAVER_TARGET = cns_weaver
+TRANSPILE_TARGET = cns_transpile
 
 # Default target
-all: stubs $(TARGET) $(GATEKEEPER_TARGET)
+all: stubs $(TARGET) $(GATEKEEPER_TARGET) $(TRANSPILE_TARGET)
 # Only build weaver if jansson is available
 ifeq ($(shell pkg-config --exists jansson && echo yes),yes)
 all: $(WEAVER_TARGET)
@@ -114,14 +117,19 @@ else
 	@touch $(WEAVER_TARGET)
 endif
 
+# Build CNS Transpiler (AOT Pipeline)
+$(TRANSPILE_TARGET): $(TRANSPILE_OBJS)
+	$(CC) $(LDFLAGS) -o $@ $^
+	@echo "✓ Built $(TRANSPILE_TARGET) - AOT transpiler for TTL → .plan.bin"
+
 # Compile source files
 %.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
 
 # Clean build artifacts
 clean:
-	rm -f $(CORE_OBJS) $(DOMAIN_OBJS) $(ENGINE_OBJS) $(KERNEL_OBJS) $(SQL_OBJS) $(COMMAND_OBJS) $(GATEKEEPER_OBJS) $(WEAVER_OBJS) $(MAIN_OBJ) $(MAIN_OTEL_OBJ) $(TARGET) $(GATEKEEPER_TARGET) $(WEAVER_TARGET)
-	rm -f src/domains/sql/*.o src/engines/*.o
+	rm -f $(CORE_OBJS) $(DOMAIN_OBJS) $(ENGINE_OBJS) $(KERNEL_OBJS) $(SQL_OBJS) $(COMMAND_OBJS) $(GATEKEEPER_OBJS) $(WEAVER_OBJS) $(TRANSPILE_OBJS) $(MAIN_OBJ) $(MAIN_OTEL_OBJ) $(TARGET) $(GATEKEEPER_TARGET) $(WEAVER_TARGET) $(TRANSPILE_TARGET)
+	rm -f src/domains/sql/*.o src/engines/*.o src/binary_materializer/*.o
 	rm -f src/cns_otel.h src/cns_otel_inject.c
 	@echo "✓ Cleaned build artifacts"
 
@@ -221,6 +229,12 @@ help:
 	@echo "  make exec-sparql - Execute specific SPARQL AOT queries"
 	@echo "  make gate      - Run gatekeeper validation"
 	@echo "  make stubs     - Create stub domain files"
+	@echo ""
+	@echo "AOT Transpiler targets:"
+	@echo "  make cns_transpile - Build AOT transpiler (TTL → .plan.bin)"
+	@echo "  make test-transpile - Test transpiler with example files"
+	@echo "  make run-transpile-examples - Run transpiler examples"
+	@echo "  make install-transpile - Install transpiler to /usr/local/bin"
 
 # Debug build
 debug: CFLAGS += -g -DDEBUG -O0
@@ -251,4 +265,42 @@ else
 	./$(TARGET) bench -q hash
 endif
 
-.PHONY: all clean install uninstall test test-sql bench bench-sql gate weave extract-spans help stubs debug profile no-otel run-examples
+# Run transpiler examples
+run-transpile-examples: $(TRANSPILE_TARGET)
+	@echo "Running CNS Transpiler examples..."
+	@# Create a simple TTL file for testing
+	@echo 'Creating test TTL file...'
+	@echo '@prefix ex: <http://example.org/> .' > test_example.ttl
+	@echo 'ex:subject ex:predicate "object" .' >> test_example.ttl
+	@echo 'ex:subject2 ex:predicate2 42 .' >> test_example.ttl
+	./$(TRANSPILE_TARGET) --help
+	./$(TRANSPILE_TARGET) --version
+	@echo 'Transpiling test file...'
+	./$(TRANSPILE_TARGET) --verbose --stats test_example.ttl
+	@echo 'Transpilation completed. Output file: test_example.plan.bin'
+	@ls -la test_example.plan.bin
+	@rm -f test_example.ttl test_example.plan.bin
+
+# Install transpiler
+install-transpile: $(TRANSPILE_TARGET)
+	install -m 755 $(TRANSPILE_TARGET) /usr/local/bin/
+	@echo "✓ Installed $(TRANSPILE_TARGET) to /usr/local/bin/"
+
+# Test transpiler with real ontology
+test-transpile: $(TRANSPILE_TARGET)
+	@if [ -f docs/ontology/cns-core.ttl ]; then \
+		echo "Testing transpiler with CNS core ontology..."; \
+		./$(TRANSPILE_TARGET) --verbose --stats docs/ontology/cns-core.ttl; \
+	else \
+		echo "No CNS core ontology found, creating test file..."; \
+		echo '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .' > test_ontology.ttl; \
+		echo '@prefix owl: <http://www.w3.org/2002/07/owl#> .' >> test_ontology.ttl; \
+		echo '@prefix cns: <http://chatman.org/ns/cns#> .' >> test_ontology.ttl; \
+		echo 'cns:Component a owl:Class ;' >> test_ontology.ttl; \
+		echo '    rdfs:label "CNS Component" ;' >> test_ontology.ttl; \
+		echo '    rdfs:comment "A component in the CNS system" .' >> test_ontology.ttl; \
+		./$(TRANSPILE_TARGET) --verbose --stats test_ontology.ttl; \
+		rm -f test_ontology.ttl test_ontology.plan.bin; \
+	fi
+
+.PHONY: all clean install uninstall test test-sql bench bench-sql gate weave extract-spans help stubs debug profile no-otel run-examples run-transpile-examples install-transpile test-transpile

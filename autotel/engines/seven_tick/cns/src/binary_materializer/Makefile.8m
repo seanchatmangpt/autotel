@@ -1,0 +1,83 @@
+# Makefile for CNS 8M Memory Quantum System
+# Builds with AVX2 support and optimization
+
+CC = clang
+
+# Detect architecture
+UNAME_M := $(shell uname -m)
+
+ifeq ($(UNAME_M),x86_64)
+    # x86_64 flags with AVX2
+    CFLAGS = -O3 -march=native -mavx2 -Wall -Wextra -Wno-unused-parameter
+else ifeq ($(UNAME_M),arm64)
+    # ARM64 flags with NEON (implicit on ARM64)
+    CFLAGS = -O3 -march=native -Wall -Wextra -Wno-unused-parameter
+else
+    # Generic flags
+    CFLAGS = -O3 -Wall -Wextra -Wno-unused-parameter
+endif
+
+CFLAGS += -std=c11 -D_POSIX_C_SOURCE=200809L
+LDFLAGS = -lm
+
+# Debug flags
+DEBUG_FLAGS = -g -fsanitize=address -fsanitize=undefined
+PROFILE_FLAGS = -pg
+
+# Targets
+TARGETS = test_8m_memory test_8m_memory_debug
+
+.PHONY: all clean test debug profile
+
+all: $(TARGETS)
+
+# Standard build with full optimization
+test_8m_memory: test_8m_memory.c cns_8m_memory.h
+	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
+
+# Debug build with sanitizers
+test_8m_memory_debug: test_8m_memory.c cns_8m_memory.h
+	$(CC) $(CFLAGS) $(DEBUG_FLAGS) -o $@ $< $(LDFLAGS)
+
+# Build for profiling
+test_8m_memory_profile: test_8m_memory.c cns_8m_memory.h
+	$(CC) $(CFLAGS) $(PROFILE_FLAGS) -o $@ $< $(LDFLAGS)
+
+# Run standard tests
+test: test_8m_memory
+	@echo "Running 8M Memory Quantum Tests..."
+	@./test_8m_memory
+
+# Run debug tests
+debug: test_8m_memory_debug
+	@echo "Running 8M Memory Debug Tests..."
+	@./test_8m_memory_debug
+
+# Run profiling
+profile: test_8m_memory_profile
+	@echo "Running 8M Memory Profiling..."
+	@./test_8m_memory_profile
+	@gprof test_8m_memory_profile gmon.out > profile_8m.txt
+	@echo "Profile saved to profile_8m.txt"
+
+# Integration with existing CNS build
+integrate: cns_8m_memory.c cns_8m_memory.h
+	@echo "8M Memory system ready for integration"
+	@echo "Add to your project:"
+	@echo "  #include \"cns_8m_memory.h\""
+	@echo "  Link with: cns_8m_memory.c"
+
+# Clean build artifacts
+clean:
+	rm -f $(TARGETS) test_8m_memory_profile
+	rm -f *.o *.a *.so
+	rm -f gmon.out profile_8m.txt
+	rm -rf *.dSYM
+
+# Show memory statistics
+stats: test_8m_memory
+	@./test_8m_memory | grep -A20 "8M Memory Statistics"
+
+# Quick benchmark
+bench: test_8m_memory
+	@./test_8m_memory | grep -A10 "Performance:"

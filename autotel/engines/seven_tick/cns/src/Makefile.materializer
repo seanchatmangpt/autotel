@@ -1,0 +1,131 @@
+# CNS Binary Materializer Build Configuration
+# Optimized for .plan.bin generation and 7T substrate
+
+CC = clang
+CFLAGS = -O3 -march=native -std=c11 -Wall -Wextra -Wpedantic
+CFLAGS += -DCNS_7T_OPTIMIZED=1 -DCNS_USE_RDTSC=1
+CFLAGS += -I../include -I.
+
+# Platform-specific optimizations
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+    CFLAGS += -DCNS_MACOS=1
+endif
+
+# Source files
+MATERIALIZER_SOURCES = \
+    materializer.c \
+    binary_materializer/core.c \
+    binary_materializer/serialize.c \
+    binary_materializer/deserialize.c \
+    binary_materializer/graph.c
+
+TEST_SOURCES = test_plan_materializer.c
+
+# Object files
+MATERIALIZER_OBJECTS = $(MATERIALIZER_SOURCES:.c=.o)
+TEST_OBJECTS = $(TEST_SOURCES:.c=.o)
+
+# Targets
+.PHONY: all clean test benchmark
+
+all: libcns_materializer.a test_plan_materializer
+
+# Build static library
+libcns_materializer.a: $(MATERIALIZER_OBJECTS)
+	@echo "Building CNS Materializer library..."
+	ar rcs $@ $^
+	@echo "Library built: $@"
+
+# Build test program
+test_plan_materializer: $(TEST_OBJECTS) libcns_materializer.a
+	@echo "Building test program..."
+	$(CC) $(CFLAGS) -o $@ $^ -lm
+	@echo "Test program built: $@"
+
+# Generic object file rule
+%.o: %.c
+	@echo "Compiling $<..."
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Run tests
+test: test_plan_materializer
+	@echo "Running .plan.bin materializer tests..."
+	./test_plan_materializer
+	@echo "Verifying generated files..."
+	@if [ -f test_graph.plan.bin ]; then \
+		echo "✓ test_graph.plan.bin created"; \
+		ls -la test_graph.plan.bin; \
+	else \
+		echo "✗ test_graph.plan.bin not found"; \
+	fi
+	@if [ -f test_integrated.plan.bin ]; then \
+		echo "✓ test_integrated.plan.bin created"; \
+		ls -la test_integrated.plan.bin; \
+	else \
+		echo "✗ test_integrated.plan.bin not found"; \
+	fi
+
+# Performance benchmark
+benchmark: test_plan_materializer
+	@echo "Running performance benchmark..."
+	@echo "Testing serialization performance:"
+	time ./test_plan_materializer > /dev/null
+	@echo "Memory-mapped access test:"
+	@if command -v hexdump >/dev/null 2>&1; then \
+		echo "File header (first 64 bytes):"; \
+		hexdump -C -n 64 test_graph.plan.bin; \
+	fi
+
+# Development targets
+debug: CFLAGS += -g -DDEBUG -O0
+debug: all
+
+profile: CFLAGS += -pg -g
+profile: all
+
+# Integration with existing binary materializer
+integration_test: test_plan_materializer
+	@echo "Testing integration with existing binary materializer..."
+	@echo "Comparing file sizes:"
+	@if [ -f test_graph.plan.bin ] && [ -f test_integrated.plan.bin ]; then \
+		wc -c test_graph.plan.bin test_integrated.plan.bin; \
+	fi
+
+# Clean build artifacts
+clean:
+	@echo "Cleaning build artifacts..."
+	rm -f $(MATERIALIZER_OBJECTS) $(TEST_OBJECTS)
+	rm -f libcns_materializer.a test_plan_materializer
+	rm -f test_graph.plan.bin test_integrated.plan.bin
+	rm -f *.dSYM -r
+	@echo "Clean completed."
+
+# Install headers (for development)
+install_headers:
+	@echo "Installing materializer headers..."
+	@mkdir -p ../include/cns
+	@cp materializer.h ../include/cns/ 2>/dev/null || true
+	@echo "Headers installed."
+
+# Show build configuration
+config:
+	@echo "CNS Materializer Build Configuration:"
+	@echo "  CC: $(CC)"
+	@echo "  CFLAGS: $(CFLAGS)"
+	@echo "  Platform: $(UNAME_S)"
+	@echo "  Sources: $(MATERIALIZER_SOURCES)"
+
+# Help target
+help:
+	@echo "CNS Binary Materializer Makefile"
+	@echo "Available targets:"
+	@echo "  all          - Build library and test program"
+	@echo "  test         - Run materializer tests"
+	@echo "  benchmark    - Run performance benchmarks"
+	@echo "  debug        - Build with debug symbols"
+	@echo "  profile      - Build with profiling enabled"
+	@echo "  integration_test - Test integration with existing code"
+	@echo "  clean        - Remove build artifacts"
+	@echo "  config       - Show build configuration"
+	@echo "  help         - Show this help message"

@@ -1,0 +1,66 @@
+# Makefile for CNS 8T L1-Optimized RDF Graph
+# Builds and tests the 16-byte aligned triple implementation
+
+CC = clang
+CFLAGS = -O3 -march=native -std=c11 -Wall -Wextra
+CFLAGS += -I../../include
+CFLAGS += -DCNS_8T_TEST
+
+# Enable SIMD optimizations
+ifeq ($(shell uname -m),x86_64)
+    CFLAGS += -mavx2 -mfma
+    CFLAGS += -D__x86_64__
+else ifeq ($(shell uname -m),arm64)
+    CFLAGS += -D__aarch64__
+endif
+
+# Debug build
+DEBUG_FLAGS = -g -fsanitize=address -fno-omit-frame-pointer
+
+# Targets
+TARGETS = test_graph_l1_rdf test_graph_l1_rdf_debug
+
+.PHONY: all clean test benchmark
+
+all: $(TARGETS)
+
+# Regular build
+test_graph_l1_rdf: test_graph_l1_rdf.c graph_l1_rdf.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+# Debug build with sanitizers
+test_graph_l1_rdf_debug: test_graph_l1_rdf.c graph_l1_rdf.c
+	$(CC) $(CFLAGS) $(DEBUG_FLAGS) -o $@ $<
+
+# Run tests
+test: test_graph_l1_rdf
+	./test_graph_l1_rdf
+
+# Run with performance monitoring
+benchmark: test_graph_l1_rdf
+	perf stat -e cache-misses,cache-references,instructions,cycles ./test_graph_l1_rdf
+
+# Clean build artifacts
+clean:
+	rm -f $(TARGETS) *.o
+
+# Assembly output for inspection
+graph_l1_rdf.s: graph_l1_rdf.c
+	$(CC) $(CFLAGS) -S -fverbose-asm -o $@ $<
+
+# Check alignment and structure sizes
+check-alignment: test_graph_l1_rdf
+	./test_graph_l1_rdf | grep -E "(size:|aligned:|offset:)"
+
+# Profile with valgrind cachegrind
+cachegrind: test_graph_l1_rdf
+	valgrind --tool=cachegrind --cache-sim=yes ./test_graph_l1_rdf
+
+help:
+	@echo "Available targets:"
+	@echo "  make all        - Build all targets"
+	@echo "  make test       - Run tests"
+	@echo "  make benchmark  - Run with performance counters"
+	@echo "  make debug      - Build with debug symbols and sanitizers"
+	@echo "  make clean      - Remove build artifacts"
+	@echo "  make cachegrind - Profile cache usage with valgrind"

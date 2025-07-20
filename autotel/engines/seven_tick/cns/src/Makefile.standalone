@@ -1,0 +1,128 @@
+# Standalone CNS Binary Materializer Build Configuration
+# Simple build without dependencies for .plan.bin generation
+
+CC = clang
+CFLAGS = -O3 -march=native -std=c11 -Wall -Wextra -Wpedantic
+CFLAGS += -DCNS_7T_OPTIMIZED=1 -DCNS_STANDALONE=1
+
+# Platform-specific optimizations
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+    CFLAGS += -DCNS_MACOS=1
+endif
+
+# Source files
+STANDALONE_SOURCES = standalone_materializer.c
+TEST_SOURCES = test_standalone_materializer.c
+
+# Object files
+STANDALONE_OBJECTS = $(STANDALONE_SOURCES:.c=.o)
+TEST_OBJECTS = $(TEST_SOURCES:.c=.o)
+
+# Targets
+.PHONY: all clean test benchmark
+
+all: test_standalone_materializer
+
+# Build test program
+test_standalone_materializer: $(TEST_OBJECTS) $(STANDALONE_OBJECTS)
+	@echo "Building standalone test program..."
+	$(CC) $(CFLAGS) -o $@ $^ -lm
+	@echo "Standalone test program built: $@"
+
+# Generic object file rule
+%.o: %.c
+	@echo "Compiling $<..."
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Run tests
+test: test_standalone_materializer
+	@echo "Running standalone .plan.bin materializer tests..."
+	./test_standalone_materializer
+	@echo "Verifying generated files..."
+	@if [ -f test_knowledge.plan.bin ]; then \
+		echo "✓ test_knowledge.plan.bin created"; \
+		ls -la test_knowledge.plan.bin; \
+	else \
+		echo "✗ test_knowledge.plan.bin not found"; \
+	fi
+	@if [ -f large_test.plan.bin ]; then \
+		echo "✓ large_test.plan.bin created"; \
+		ls -la large_test.plan.bin; \
+	else \
+		echo "✗ large_test.plan.bin not found"; \
+	fi
+
+# Performance benchmark
+benchmark: test_standalone_materializer
+	@echo "Running performance benchmark..."
+	@echo "Testing serialization performance (3 runs):"
+	@for i in 1 2 3; do \
+		echo "Run $$i:"; \
+		time ./test_standalone_materializer > /dev/null; \
+	done
+	@echo "File integrity check:"
+	@if command -v hexdump >/dev/null 2>&1; then \
+		echo "File header (first 64 bytes):"; \
+		hexdump -C -n 64 test_knowledge.plan.bin; \
+	fi
+
+# Memory usage test
+memory_test: test_standalone_materializer
+	@echo "Testing memory usage..."
+	@if command -v valgrind >/dev/null 2>&1; then \
+		valgrind --tool=memcheck --leak-check=full ./test_standalone_materializer; \
+	else \
+		echo "Valgrind not available, running normal test"; \
+		./test_standalone_materializer; \
+	fi
+
+# Development targets
+debug: CFLAGS += -g -DDEBUG -O0
+debug: all
+
+profile: CFLAGS += -pg -g
+profile: all
+
+# Analyze binary format
+analyze: test_standalone_materializer test
+	@echo "Analyzing .plan.bin binary format..."
+	@if [ -f test_knowledge.plan.bin ]; then \
+		echo "File structure analysis:"; \
+		od -A x -t x1z -N 128 test_knowledge.plan.bin | head -10; \
+		echo ""; \
+		echo "File size breakdown:"; \
+		wc -c test_knowledge.plan.bin; \
+	fi
+
+# Clean build artifacts
+clean:
+	@echo "Cleaning build artifacts..."
+	rm -f $(STANDALONE_OBJECTS) $(TEST_OBJECTS)
+	rm -f test_standalone_materializer
+	rm -f test_knowledge.plan.bin large_test.plan.bin
+	rm -f *.dSYM -r
+	@echo "Clean completed."
+
+# Show build configuration
+config:
+	@echo "Standalone CNS Materializer Build Configuration:"
+	@echo "  CC: $(CC)"
+	@echo "  CFLAGS: $(CFLAGS)"
+	@echo "  Platform: $(UNAME_S)"
+	@echo "  Sources: $(STANDALONE_SOURCES) $(TEST_SOURCES)"
+
+# Help target
+help:
+	@echo "Standalone CNS Binary Materializer Makefile"
+	@echo "Available targets:"
+	@echo "  all          - Build test program"
+	@echo "  test         - Run materializer tests"
+	@echo "  benchmark    - Run performance benchmarks"
+	@echo "  memory_test  - Run memory usage test"
+	@echo "  analyze      - Analyze binary format"
+	@echo "  debug        - Build with debug symbols"
+	@echo "  profile      - Build with profiling enabled"
+	@echo "  clean        - Remove build artifacts"
+	@echo "  config       - Show build configuration"
+	@echo "  help         - Show this help message"
