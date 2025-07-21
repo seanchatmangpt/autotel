@@ -1,0 +1,22 @@
+
+CC = gcc
+CFLAGS = -O3 -march=native -I./include
+LDFLAGS =
+
+SRC = src/bitactor_80_20.c tests/bitactor_80_20_test.c
+OBJ = $(SRC:.c=.o)
+
+TARGET = bitactor_80_20_test
+
+.PHONY: all clean
+
+all: $(TARGET)
+
+$(TARGET): $(OBJ)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+clean:
+	rm -f $(OBJ) $(TARGET)

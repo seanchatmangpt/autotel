@@ -1,0 +1,77 @@
+# Makefile for L7 Entanglement Bus Demo
+# BitActor 80/20 Implementation
+
+CC = gcc
+CFLAGS = -std=c11 -O2 -Wall -Wextra -I./include -DCNS_DEBUG=1
+LDFLAGS = -lm
+
+# Source files
+L7_SOURCES = src/l7_entanglement_demo.c \
+             src/entanglement_oracle.c \
+             src/bitactor_80_20.c
+
+# Object files
+L7_OBJECTS = $(L7_SOURCES:.c=.o)
+
+# Target executable
+L7_DEMO = l7_entanglement_demo
+
+# Build rules
+all: $(L7_DEMO)
+
+$(L7_DEMO): $(L7_OBJECTS)
+	$(CC) $(L7_OBJECTS) -o $@ $(LDFLAGS)
+
+# Individual object file rules
+src/l7_entanglement_demo.o: src/l7_entanglement_demo.c include/cns/entanglement_oracle.h include/cns/bitactor_80_20.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/entanglement_oracle.o: src/entanglement_oracle.c include/cns/entanglement_oracle.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/bitactor_80_20.o: src/bitactor_80_20.c include/cns/bitactor_80_20.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Run the demo
+run: $(L7_DEMO)
+	./$(L7_DEMO)
+
+# Performance test (run multiple times)
+perf: $(L7_DEMO)
+	@echo "Running L7 performance tests..."
+	@for i in 1 2 3 4 5; do \
+		echo "Test run $$i:"; \
+		./$(L7_DEMO) | grep -E "(Average|Sub-100ns|8T Compliance)"; \
+		echo ""; \
+	done
+
+# Debug build
+debug: CFLAGS += -g -DDEBUG -O0
+debug: $(L7_DEMO)
+
+# Clean build artifacts
+clean:
+	rm -f $(L7_OBJECTS) $(L7_DEMO)
+
+# Validate L7 implementation
+validate: $(L7_DEMO)
+	@echo "🔍 Validating L7 Implementation..."
+	@echo "Checking for required functions:"
+	@nm $(L7_DEMO) | grep -E "(entanglement_propagate_signal|entanglement_create|entanglement_process_signals)" && echo "✅ Core functions present" || echo "❌ Missing core functions"
+	@echo "Checking for Trinity compliance:"
+	@objdump -t $(L7_DEMO) | grep -E "(ENTANGLEMENT_ORACLE_HASH|_l7_sig)" && echo "✅ L7 signatures present" || echo "❌ Missing L7 signatures"
+	@echo "Running functional test:"
+	@./$(L7_DEMO) > /dev/null && echo "✅ Demo runs successfully" || echo "❌ Demo failed"
+
+# Help target
+help:
+	@echo "L7 Entanglement Bus Demo - Make targets:"
+	@echo "  all      - Build the L7 demo"
+	@echo "  run      - Build and run the demo"
+	@echo "  perf     - Run performance tests"
+	@echo "  debug    - Build with debug symbols"
+	@echo "  validate - Validate L7 implementation"
+	@echo "  clean    - Clean build artifacts"
+	@echo "  help     - Show this help"
+
+.PHONY: all run perf debug clean validate help

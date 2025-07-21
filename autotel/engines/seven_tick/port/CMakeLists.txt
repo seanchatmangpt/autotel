@@ -132,6 +132,12 @@ set(CNS_SOURCES
     src/utils/memory.c
     src/utils/perf.c
     src/utils/telemetry.c
+    topology_lifter.c
+    conductor_manifest.c
+    registry.c
+    src/entanglement_oracle.c
+    meta_probe.c
+    bitactor_core.c
 )
 
 # Create CNS library

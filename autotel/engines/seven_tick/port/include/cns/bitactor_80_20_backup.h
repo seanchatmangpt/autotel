@@ -1,0 +1,175 @@
+#ifndef BITACTOR_80_20_H
+#define BITACTOR_80_20_H
+
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+
+// ---
+// Part 1: Core Architecture (Essential 20%)
+// ---
+
+// 8T: 8-Tick Execution Budget
+#define BITACTOR_8T_MAX_CYCLES 8
+#define VALIDATE_8T(cycles) static_assert(cycles <= 8, "8T violation")
+
+// 8H: 8-Hop Reasoning Chain
+#define BITACTOR_8H_HOP_COUNT 8
+typedef enum {
+    HOP_TRIGGER_DETECT = 0,
+    HOP_ONTOLOGY_LOAD = 1,
+    HOP_SHACL_FIRE = 2,
+    HOP_STATE_RESOLVE = 3,
+    HOP_COLLAPSE_COMPUTE = 4,
+    HOP_ACTION_BIND = 5,
+    HOP_STATE_COMMIT = 6,
+    HOP_META_VALIDATE = 7
+} bitactor_hop_t;
+
+// 8M: 8-Bit Memory Quantum
+typedef uint8_t bitactor_meaning_t;  // Atomic unit of causal significance
+#define VALIDATE_8M(size) static_assert(size % 8 == 0, "8M violation")
+
+typedef uint64_t bitactor_signal_t;
+
+typedef struct {
+    uint64_t pattern_hash;
+    uint64_t match_mask;
+    uint16_t pattern_length;
+    char pattern_data[64 - sizeof(uint64_t) * 2 - sizeof(uint16_t)];
+} bitactor_nanoregex_t;
+
+bool bitactor_nanoregex_compile(bitactor_nanoregex_t* regex, const char* pattern);
+
+typedef uint64_t cns_bitmask_t;
+cns_bitmask_t bitactor_nanoregex_match(const bitactor_nanoregex_t* regex, const bitactor_signal_t* signals, uint32_t signal_count);
+
+typedef struct {
+    bitactor_nanoregex_t patterns[8];
+    uint32_t match_count;
+    uint64_t last_match_cycles;
+} bitactor_feed_actor_t;
+
+// Pre-compiled BitActor - everything pre-computed for zero overhead
+typedef struct __attribute__((aligned(64))) {
+    // Hot data (first cache line) - accessed every tick
+    bitactor_meaning_t meaning;           // 8-bit causal state
+    uint8_t signal_pending;               // Quick signal check
+    uint16_t bytecode_offset;             // Current execution position
+    uint32_t tick_count;                  // Execution counter
+    uint64_t causal_vector;               // Pre-computed relationships
+
+    // Pre-compiled bytecode (aligned for SIMD)
+    uint8_t bytecode[256] __attribute__((aligned(32)));
+    uint32_t bytecode_size;
+
+    // Performance validation
+    uint64_t execution_cycles;            // Last execution time
+    bool trinity_compliant;               // 8T/8H/8M validation
+} compiled_bitactor_t;
+
+typedef struct {
+    uint32_t domain_id;
+    uint32_t actor_count;
+    uint64_t active_mask;
+    compiled_bitactor_t actors[256];
+    bitactor_feed_actor_t feed_actor;
+} bitactor_domain_t;
+
+typedef struct __attribute__((aligned(4096))) {
+    // Hot data - accessed every tick
+    uint64_t global_tick;
+    uint32_t domain_count;
+    uint64_t domain_active_mask;
+    bitactor_domain_t domains[8];
+
+    // Performance metrics
+    struct {
+        uint64_t total_executions;
+        uint64_t sub_100ns_count;
+        uint64_t min_cycles;
+        uint64_t max_cycles;
+        double avg_cycles;
+    } performance;
+} bitactor_matrix_t;
+
+// THE CRITICAL FUNCTION - Must be sub-100ns
+static inline void bitactor_execute_hot_path(compiled_bitactor_t* actor);
+
+// Matrix tick execution (critical performance path)
+uint32_t bitactor_matrix_tick(bitactor_matrix_t* matrix, bitactor_signal_t* signals, uint32_t signal_count);
+
+uint32_t bitactor_domain_create(bitactor_matrix_t* matrix);
+uint32_t bitactor_add_to_domain(bitactor_domain_t* domain, bitactor_meaning_t meaning);
+
+// ---
+// Part 2: AOT Specification Compiler (Setup Phase)
+// ---
+
+// Specification=Execution bridge
+typedef struct {
+    uint64_t specification_hash;          // Original TTL hash
+    uint64_t execution_hash;              // Compiled bytecode hash
+    uint8_t* bytecode;                    // Executable instructions
+    size_t bytecode_size;
+    bool hash_validated;                  // spec_hash == exec_hash
+} compiled_specification_t;
+
+// AOT Compiler (can be slow - runs once at startup)
+compiled_specification_t* compile_ttl_to_bitactor(const char* ttl_spec);
+uint64_t hash_ttl_content(const char* ttl_spec);
+
+// ---
+// Part 3: Cognitive Reasoning (8-Hop Chain)
+// ---
+
+// Hop function signature
+typedef uint64_t (*bitactor_hop_fn_t)(compiled_bitactor_t* actor, void* context);
+
+// 8-Hop execution chain
+uint64_t execute_cognitive_cycle(compiled_bitactor_t* actor, void* context);
+
+bool bitactor_feed_actor_update(
+    bitactor_feed_actor_t* feed_actor,
+    const bitactor_signal_t* signals,
+    uint32_t signal_count
+);
+
+// ---
+// Part 4: Validation Framework
+// ---
+
+// Performance validation framework
+typedef struct {
+    bool sub_100ns_achieved;
+    bool trinity_compliant;
+    uint64_t execution_cycles;
+    double improvement_factor;
+    double avg_cycles;
+} performance_result_t;
+
+performance_result_t validate_performance(bitactor_matrix_t* matrix);
+
+void benchmark_bitactor_80_20(void);
+
+// ---
+// Part 5: System Integration (Minimal Bridges)
+// ---
+
+// Minimal CNS bridge
+typedef struct {
+    bitactor_matrix_t* matrix;
+    compiled_specification_t* specs[64];
+    uint32_t spec_count;
+    uint64_t trinity_hash;
+} cns_bitactor_system_t;
+
+// Core integration functions
+cns_bitactor_system_t* cns_bitactor_create(void);
+void cns_bitactor_destroy(cns_bitactor_system_t* sys);
+bool cns_bitactor_execute(cns_bitactor_system_t* sys, const char* ttl_input);
+
+// Performance telemetry
+void emit_performance_metrics(bitactor_matrix_t* matrix);
+
+#endif // BITACTOR_80_20_H

@@ -1,0 +1,87 @@
+# CNS v8 Fully Automatic Turtle Loop Build System
+# Complete implementation with all dependencies
+
+CC = gcc
+CFLAGS = -O3 -Wall -Wextra -std=c11 -ffast-math -march=native
+LDFLAGS = -lpthread -lm
+
+# Include paths
+INCLUDES = -I. -I./include -I./include/cns -I./include/cns/8t
+
+# Source files
+SRCS = cns_v8_fully_automatic_implementation.c \
+       cns_v8_automatic_signature_discovery.c \
+       cns_v8_realtime_shacl_validator.c
+
+# Object files
+OBJS = $(SRCS:.c=.o)
+
+# Target executable
+TARGET = cns_v8_automatic_demo
+
+# Default target
+all: $(TARGET)
+
+$(TARGET): $(OBJS)
+	@echo "🔗 Linking CNS v8 Automatic Turtle Loop..."
+	$(CC) $(OBJS) -o $(TARGET) $(LDFLAGS)
+	@echo "✅ Build complete: $(TARGET)"
+
+%.o: %.c
+	@echo "🔨 Compiling $<..."
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+# Run the demo
+run: $(TARGET)
+	@echo "🚀 Running CNS v8 Automatic Demo..."
+	./$(TARGET)
+
+# Test performance
+test: $(TARGET)
+	@echo "🧪 Running performance tests..."
+	./$(TARGET) --test-mode
+
+# Validate automation
+validate: $(TARGET)
+	@echo "✅ Validating automation targets..."
+	./$(TARGET) --validate-mode
+
+# Complete build-run-test-validate cycle
+demo: clean all run test validate
+	@echo "🎉 Complete ULTRATHINK → BUILD → RUN → TEST → VALIDATE cycle finished!"
+
+# Clean build artifacts
+clean:
+	@echo "🧹 Cleaning build artifacts..."
+	rm -f $(OBJS) $(TARGET)
+	@echo "✅ Clean complete"
+
+# Debug build
+debug: CFLAGS += -g -DDEBUG -O0
+debug: $(TARGET)
+
+# Profile build for performance analysis
+profile: CFLAGS += -pg -O2
+profile: $(TARGET)
+
+# Help
+help:
+	@echo "CNS v8 Fully Automatic Turtle Loop Build System"
+	@echo "================================================"
+	@echo ""
+	@echo "Targets:"
+	@echo "  all      - Build the automatic turtle loop"
+	@echo "  run      - Execute the demo"
+	@echo "  test     - Run performance tests"
+	@echo "  validate - Validate automation targets"
+	@echo "  demo     - Complete build-run-test-validate cycle"
+	@echo "  clean    - Remove build artifacts"
+	@echo "  debug    - Build with debug symbols"
+	@echo "  profile  - Build with profiling support"
+	@echo "  help     - Show this help"
+	@echo ""
+	@echo "Example usage:"
+	@echo "  make demo    # Full demonstration"
+	@echo "  make run     # Just run the demo"
+
+.PHONY: all run test validate demo clean debug profile help

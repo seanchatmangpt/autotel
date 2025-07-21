@@ -1,0 +1,228 @@
+# BITACTOR-LS Learning System Makefile
+# Building on BitActor 80/20 foundation with learning capabilities
+# Maintains sub-100ns performance while adding adaptive learning
+
+CC = gcc
+CFLAGS = -std=c11 -O2 -Wall -Wextra -march=native -mtune=native
+CFLAGS += -ffast-math -funroll-loops -finline-functions
+CFLAGS += -falign-functions=32 -falign-loops=32
+CFLAGS += -DNDEBUG -g -fPIC
+
+# Learning-specific optimizations
+CFLAGS += -DBITACTOR_LS_ENABLED=1
+CFLAGS += -DBITACTOR_LS_MAX_PATTERNS=64
+CFLAGS += -DBITACTOR_LS_LEARNING_WINDOW=1000
+
+# Include directories
+INCLUDES = -Iinclude -I.
+
+# Source directories
+SRCDIR = src
+TESTDIR = tests
+OBJDIR = obj
+BINDIR = bin
+
+# Create directories if they don't exist
+$(shell mkdir -p $(OBJDIR) $(BINDIR))
+
+# Source files
+BITACTOR_LS_SOURCES = \
+    $(SRCDIR)/bitactor_80_20.c \
+    $(SRCDIR)/bitactor_ls.c
+
+BITACTOR_LS_OBJECTS = $(BITACTOR_LS_SOURCES:$(SRCDIR)/%.c=$(OBJDIR)/%.o)
+
+# Test sources
+TEST_SOURCES = \
+    $(TESTDIR)/bitactor_ls_test.c
+
+TEST_OBJECTS = $(TEST_SOURCES:$(TESTDIR)/%.c=$(OBJDIR)/%.o)
+
+# Targets
+BITACTOR_LS_LIB = $(BINDIR)/libbitactor_ls.a
+BITACTOR_LS_TEST = $(BINDIR)/bitactor_ls_test
+BITACTOR_LS_BENCHMARK = $(BINDIR)/bitactor_ls_benchmark
+
+# Default target
+all: $(BITACTOR_LS_LIB) $(BITACTOR_LS_TEST) $(BITACTOR_LS_BENCHMARK)
+
+# Library target
+lib: $(BITACTOR_LS_LIB)
+
+# Test target
+test: $(BITACTOR_LS_TEST)
+	@echo "🧠 Running BITACTOR-LS Learning System Tests..."
+	./$(BITACTOR_LS_TEST)
+
+# Benchmark target
+benchmark: $(BITACTOR_LS_BENCHMARK)
+	@echo "🚀 Running BITACTOR-LS Performance Benchmark..."
+	./$(BITACTOR_LS_BENCHMARK)
+
+# Performance validation target
+validate: $(BITACTOR_LS_TEST) $(BITACTOR_LS_BENCHMARK)
+	@echo "⚡ BITACTOR-LS Performance Validation"
+	@echo "====================================="
+	@echo "Testing learning system integrity..."
+	./$(BITACTOR_LS_TEST)
+	@echo ""
+	@echo "Running performance benchmarks..."
+	./$(BITACTOR_LS_BENCHMARK)
+	@echo ""
+	@echo "✅ BITACTOR-LS validation complete!"
+
+# Build static library
+$(BITACTOR_LS_LIB): $(BITACTOR_LS_OBJECTS)
+	@echo "📚 Building BITACTOR-LS static library..."
+	ar rcs $@ $^
+	@echo "✅ Library built: $@"
+
+# Build test executable
+$(BITACTOR_LS_TEST): $(TEST_OBJECTS) $(BITACTOR_LS_OBJECTS)
+	@echo "🧪 Building BITACTOR-LS test suite..."
+	$(CC) $(CFLAGS) $^ -o $@ -lm
+	@echo "✅ Test executable built: $@"
+
+# Build benchmark executable
+$(BITACTOR_LS_BENCHMARK): $(OBJDIR)/bitactor_ls_main.o $(BITACTOR_LS_OBJECTS)
+	@echo "🚀 Building BITACTOR-LS benchmark..."
+	$(CC) $(CFLAGS) $^ -o $@ -lm
+	@echo "✅ Benchmark executable built: $@"
+
+# Benchmark main object
+$(OBJDIR)/bitactor_ls_main.o: $(SRCDIR)/bitactor_ls_main.c
+	@echo "Compiling benchmark main..."
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+# Object files compilation
+$(OBJDIR)/%.o: $(SRCDIR)/%.c
+	@echo "Compiling $<..."
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+$(OBJDIR)/%.o: $(TESTDIR)/%.c
+	@echo "Compiling test $<..."
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+# Clean target
+clean:
+	@echo "🧹 Cleaning BITACTOR-LS build artifacts..."
+	rm -rf $(OBJDIR) $(BINDIR)
+	@echo "✅ Clean complete!"
+
+# Debug build with more verbose output
+debug: CFLAGS += -DDEBUG -g3 -O0
+debug: CFLAGS := $(filter-out -DNDEBUG -O3, $(CFLAGS))
+debug: clean all
+	@echo "🐛 Debug build complete with learning system debugging enabled"
+
+# Performance profiling build
+profile: CFLAGS += -pg -fno-omit-frame-pointer
+profile: clean all
+	@echo "📊 Profile build complete - use gprof for analysis"
+
+# Memory debugging build
+memcheck: CFLAGS += -fsanitize=address -fno-omit-frame-pointer
+memcheck: clean all
+	@echo "🔍 Memory check build complete - use with AddressSanitizer"
+
+# Install headers (for system integration)
+install-headers:
+	@echo "📦 Installing BITACTOR-LS headers..."
+	sudo mkdir -p /usr/local/include/bitactor
+	sudo cp include/cns/bitactor_ls.h /usr/local/include/bitactor/
+	sudo cp include/cns/bitactor_80_20.h /usr/local/include/bitactor/
+	@echo "✅ Headers installed to /usr/local/include/bitactor/"
+
+# Install library (for system integration)
+install-lib: $(BITACTOR_LS_LIB)
+	@echo "📦 Installing BITACTOR-LS library..."
+	sudo mkdir -p /usr/local/lib
+	sudo cp $(BITACTOR_LS_LIB) /usr/local/lib/
+	sudo ldconfig
+	@echo "✅ Library installed to /usr/local/lib/"
+
+# Full install
+install: install-headers install-lib
+	@echo "🎉 BITACTOR-LS installation complete!"
+
+# Uninstall
+uninstall:
+	@echo "🗑️ Uninstalling BITACTOR-LS..."
+	sudo rm -f /usr/local/include/bitactor/bitactor_ls.h
+	sudo rm -f /usr/local/include/bitactor/bitactor_80_20.h
+	sudo rmdir /usr/local/include/bitactor/ 2>/dev/null || true
+	sudo rm -f /usr/local/lib/libbitactor_ls.a
+	sudo ldconfig
+	@echo "✅ Uninstall complete!"
+
+# Documentation generation (requires doxygen)
+docs:
+	@echo "📚 Generating BITACTOR-LS documentation..."
+	doxygen Doxyfile 2>/dev/null || echo "⚠️ Doxygen not found - install doxygen to generate docs"
+
+# Static analysis (requires cppcheck)
+analyze:
+	@echo "🔬 Running static analysis on BITACTOR-LS..."
+	cppcheck --enable=all --std=c11 $(INCLUDES) $(SRCDIR)/ $(TESTDIR)/ 2>/dev/null || echo "⚠️ cppcheck not found"
+
+# Performance analysis target
+perf-analysis: $(BITACTOR_LS_BENCHMARK)
+	@echo "⚡ Running detailed performance analysis..."
+	@echo "Testing sub-100ns compliance with learning enabled..."
+	perf stat -e cycles,instructions,cache-misses,branch-misses ./$(BITACTOR_LS_BENCHMARK) 2>/dev/null || \
+	echo "⚠️ perf not available - using internal benchmarks only"
+
+# Trinity compliance verification
+trinity-check: $(BITACTOR_LS_TEST)
+	@echo "🔹 Verifying Trinity (8T/8H/8M) compliance with learning..."
+	./$(BITACTOR_LS_TEST) | grep -E "(Trinity|8T|8H|8M|sub-100ns)" || echo "Running full test suite..."
+	./$(BITACTOR_LS_TEST)
+
+# Quick verification (for CI/CD)
+quick-check: $(BITACTOR_LS_TEST)
+	@echo "⚡ Quick BITACTOR-LS verification..."
+	./$(BITACTOR_LS_TEST) | tail -10
+
+# Help target
+help:
+	@echo "🧠 BITACTOR-LS Learning System Build Targets:"
+	@echo "=============================================="
+	@echo "all           - Build library, tests, and benchmark"
+	@echo "lib           - Build static library only"
+	@echo "test          - Build and run test suite"
+	@echo "benchmark     - Build and run performance benchmark"
+	@echo "validate      - Run full performance validation"
+	@echo "debug         - Build with debug symbols"
+	@echo "profile       - Build with profiling enabled"
+	@echo "memcheck      - Build with AddressSanitizer"
+	@echo "trinity-check - Verify Trinity (8T/8H/8M) compliance"
+	@echo "perf-analysis - Run detailed performance analysis"
+	@echo "install       - Install headers and library system-wide"
+	@echo "uninstall     - Remove installed files"
+	@echo "clean         - Remove build artifacts"
+	@echo "docs          - Generate documentation (requires doxygen)"
+	@echo "analyze       - Run static analysis (requires cppcheck)"
+	@echo "help          - Show this help message"
+	@echo ""
+	@echo "🎯 Key Features:"
+	@echo "- Maintains BitActor sub-100ns hot path performance"
+	@echo "- Adds L9 learning layer with 80/20 optimization"
+	@echo "- Preserves Trinity constraints (8T/8H/8M)"
+	@echo "- Provides adaptive pattern learning"
+	@echo "- Includes comprehensive test suite"
+
+# Phony targets
+.PHONY: all lib test benchmark validate debug profile memcheck clean install-headers install-lib install uninstall docs analyze perf-analysis trinity-check quick-check help
+
+# Additional build information
+build-info:
+	@echo "🧠 BITACTOR-LS Build Configuration"
+	@echo "=================================="
+	@echo "Compiler: $(CC)"
+	@echo "Flags: $(CFLAGS)"
+	@echo "Includes: $(INCLUDES)"
+	@echo "Source files: $(words $(BITACTOR_LS_SOURCES)) files"
+	@echo "Test files: $(words $(TEST_SOURCES)) files"
+	@echo "Learning features: Enabled"
+	@echo "Trinity compliance: Enforced"
+	@echo "Performance target: Sub-100ns with learning"
