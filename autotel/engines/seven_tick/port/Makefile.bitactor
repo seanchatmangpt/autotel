@@ -1,23 +1,41 @@
 CC = gcc
 CFLAGS = -Wall -g
 
-TARGET = bitactor_test
+TARGETS = bitactor_test permutation_benchmark integration_example
 
-SRCS = bitactor_test.c bitactor.c tick_collapse_engine.c signal_engine.c bitmask_compiler.c actuator.c
-OBJS = $(SRCS:.c=.o)
+SRCS_BITACTOR_TEST = bitactor_test.c bitactor.c tick_collapse_engine.c signal_engine.c bitmask_compiler.c actuator.c
+OBJS_BITACTOR_TEST = $(SRCS_BITACTOR_TEST:.c=.o)
 
-.PHONY: all test clean
+SRCS_PERMUTATION_BENCHMARK = permutation_benchmark.c bitactor.c tick_collapse_engine.c signal_engine.c bitmask_compiler.c actuator.c
+OBJS_PERMUTATION_BENCHMARK = $(SRCS_PERMUTATION_BENCHMARK:.c=.o)
 
-all: $(TARGET)
+SRCS_INTEGRATION_EXAMPLE = bitactor_integration_example.c bitactor.c tick_collapse_engine.c signal_engine.c bitmask_compiler.c actuator.c
+OBJS_INTEGRATION_EXAMPLE = $(SRCS_INTEGRATION_EXAMPLE:.c=.o)
 
-$(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
+.PHONY: all test benchmark run_integration_example clean
+
+all: $(TARGETS)
+
+bitactor_test: $(OBJS_BITACTOR_TEST)
+	$(CC) $(CFLAGS) -o $@ $(OBJS_BITACTOR_TEST)
+
+permutation_benchmark: $(OBJS_PERMUTATION_BENCHMARK)
+	$(CC) $(CFLAGS) -o $@ $(OBJS_PERMUTATION_BENCHMARK)
+
+integration_example: $(OBJS_INTEGRATION_EXAMPLE)
+	$(CC) $(CFLAGS) -o $@ $(OBJS_INTEGRATION_EXAMPLE)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-test: $(TARGET)
-	./$(TARGET)
+test: bitactor_test
+	./bitactor_test
+
+benchmark: permutation_benchmark
+	./permutation_benchmark
+
+run_integration_example: integration_example
+	./integration_example
 
 clean:
-	rm -f $(TARGET) $(OBJS)
+	rm -f $(TARGETS) $(OBJS_BITACTOR_TEST) $(OBJS_PERMUTATION_BENCHMARK) $(OBJS_INTEGRATION_EXAMPLE)

@@ -2,6 +2,7 @@
 #define TICK_COLLAPSE_ENGINE_H
 
 #include "bitactor.h"
+#include "bitmask_compiler.h"
 
 // The 8 hops of the causal proof chain
 typedef enum {
@@ -19,6 +20,7 @@ typedef enum {
 typedef struct {
     Hop current_hop;
     BitActorMatrix* matrix;
+    const RuleSet* rule_set; // Add rule_set to HopState
 } HopState;
 
 // The Tick Collapse Engine is responsible for processing the BitActorMatrix
@@ -38,6 +40,6 @@ TickCollapseEngine* create_tick_collapse_engine();
 void destroy_tick_collapse_engine(TickCollapseEngine* engine);
 
 // Execute a tick collapse
-TickCollapseResult* tick_collapse_execute(TickCollapseEngine* engine, const BitActorMatrix* matrix);
+TickCollapseResult* tick_collapse_execute(TickCollapseEngine* engine, const BitActorMatrix* matrix, const RuleSet* rule_set);
 
 #endif // TICK_COLLAPSE_ENGINE_H

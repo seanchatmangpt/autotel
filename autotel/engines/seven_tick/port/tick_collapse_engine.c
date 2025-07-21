@@ -1,5 +1,6 @@
 #include "tick_collapse_engine.h"
 #include "actuator.h"
+#include "bitmask_compiler.h" // Include for RuleSet
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -26,9 +27,47 @@ static void hop_bitactor_state_resolved(HopState* state) {
 
 static void hop_collapse_computed(HopState* state) {
     printf("  (5) Collapse computed\n");
-    // Simulate the collapse by inverting the bits of the first actor
-    if (state->matrix->num_actors > 0) {
-        state->matrix->actors[0] = ~state->matrix->actors[0];
+    // Apply compiled rules from the RuleSet
+    if (state->rule_set) {
+        for (size_t i = 0; i < state->rule_set->num_rules; ++i) {
+            CompiledRule rule = state->rule_set->rules[i];
+            int condition_met = 0;
+
+            switch (rule.condition_type) {
+                case CONDITION_NONE:
+                    condition_met = 1; // Always apply if no condition
+                    break;
+                case CONDITION_SINGLE:
+                    if (rule.condition_actor_index_1 >= 0 && rule.condition_actor_index_1 < state->matrix->num_actors) {
+                        condition_met = check_bit_actor_meaning(&state->matrix->actors[rule.condition_actor_index_1], rule.condition_bit_position_1);
+                    }
+                    break;
+                case CONDITION_AND:
+                    if (rule.condition_actor_index_1 >= 0 && rule.condition_actor_index_1 < state->matrix->num_actors &&
+                        rule.condition_actor_index_2 >= 0 && rule.condition_actor_index_2 < state->matrix->num_actors) {
+                        condition_met = check_bit_actor_meaning(&state->matrix->actors[rule.condition_actor_index_1], rule.condition_bit_position_1) &&
+                                        check_bit_actor_meaning(&state->matrix->actors[rule.condition_actor_index_2], rule.condition_bit_position_2);
+                    }
+                    break;
+                case CONDITION_OR:
+                    if (rule.condition_actor_index_1 >= 0 && rule.condition_actor_index_1 < state->matrix->num_actors &&
+                        rule.condition_actor_index_2 >= 0 && rule.condition_actor_index_2 < state->matrix->num_actors) {
+                        condition_met = check_bit_actor_meaning(&state->matrix->actors[rule.condition_actor_index_1], rule.condition_bit_position_1) ||
+                                        check_bit_actor_meaning(&state->matrix->actors[rule.condition_actor_index_2], rule.condition_bit_position_2);
+                    }
+                    break;
+            }
+
+            if (condition_met) {
+                if (rule.action_actor_index >= 0 && rule.action_actor_index < state->matrix->num_actors) {
+                    if (rule.action_type == ACTION_SET) {
+                        set_bit_actor_meaning(&state->matrix->actors[rule.action_actor_index], rule.action_bit_position);
+                    } else if (rule.action_type == ACTION_CLEAR) {
+                        clear_bit_actor_meaning(&state->matrix->actors[rule.action_actor_index], rule.action_bit_position);
+                    }
+                }
+            }
+        }
     }
     state->current_hop = HOP_ACTION_BOUND;
 }
@@ -61,7 +100,7 @@ void destroy_tick_collapse_engine(TickCollapseEngine* engine) {
 }
 
 // Execute a tick collapse
-TickCollapseResult* tick_collapse_execute(TickCollapseEngine* engine, const BitActorMatrix* matrix) {
+TickCollapseResult* tick_collapse_execute(TickCollapseEngine* engine, const BitActorMatrix* matrix, const RuleSet* rule_set) {
     if (!engine || !matrix) {
         return NULL;
     }
@@ -78,6 +117,7 @@ TickCollapseResult* tick_collapse_execute(TickCollapseEngine* engine, const BitA
     for (size_t i = 0; i < matrix->num_actors; ++i) {
         state.matrix->actors[i] = matrix->actors[i];
     }
+    state.rule_set = rule_set; // Assign the rule set
 
     // Execute the 8 hops
     hop_trigger_detected(&state);
