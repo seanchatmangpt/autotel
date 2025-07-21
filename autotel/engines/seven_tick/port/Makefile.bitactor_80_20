@@ -1,0 +1,90 @@
+# Makefile for BitActor 80/20 Optimized Implementation
+# Build the complete BitActor system with L-stack architecture
+
+CC = gcc
+CFLAGS = -O3 -march=native -Wall -Wextra -std=c11 -pthread
+INCLUDES = -I./include -I../cns/include -I./src
+LDFLAGS = -lm -lpthread
+
+# Source files
+BITACTOR_80_20_SRC = src/bitactor_80_20_optimized.c
+L_STACK_DEMO_SRC = src/bitactor_l_stack_demo.c
+TTL_AOT_SRC = src/ttl_aot_bitactor.c
+
+# Original CNS BitActor sources
+CNS_BITACTOR_SRC = ../cns/src/bitactor.c
+CNS_TTL_COMPILER_SRC = ../cns/src/ttl_compiler.c
+
+# Targets
+all: bitactor_80_20_demo bitactor_l_stack_demo bitactor_full_system
+
+# 80/20 Optimized BitActor Demo
+bitactor_80_20_demo: $(BITACTOR_80_20_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(LDFLAGS)
+
+# L-Stack Architecture Demo
+bitactor_l_stack_demo: $(L_STACK_DEMO_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(LDFLAGS)
+
+# Full BitActor System (integrates all components)
+bitactor_full_system: $(CNS_BITACTOR_SRC) $(TTL_AOT_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS)
+
+# Performance benchmark
+benchmark: bitactor_80_20_demo
+	@echo "=== BITACTOR 80/20 PERFORMANCE BENCHMARK ==="
+	@echo ""
+	@./bitactor_80_20_demo | grep -E "(Target:|Hot Path Performance|Min:|Avg:|Max:|Sub-8-tick rate:|CTQ-)"
+
+# L-Stack demonstration
+demo: bitactor_l_stack_demo
+	@echo "=== BITACTOR L-STACK ARCHITECTURE DEMO ==="
+	@echo ""
+	@./bitactor_l_stack_demo
+
+# Full system validation
+validate: bitactor_full_system
+	@echo "=== BITACTOR FULL SYSTEM VALIDATION ==="
+	@echo ""
+	@./bitactor_full_system
+
+# CTQ metrics validation
+ctq: bitactor_80_20_demo
+	@echo "=== LEAN SIX SIGMA CTQ VALIDATION ==="
+	@echo ""
+	@./bitactor_80_20_demo | grep -A 20 "LEAN SIX SIGMA CTQ VALIDATION"
+
+# Clean
+clean:
+	rm -f bitactor_80_20_demo bitactor_l_stack_demo bitactor_full_system
+	rm -f *.o
+
+# Help
+help:
+	@echo "BitActor 80/20 Optimized Build System"
+	@echo "====================================="
+	@echo ""
+	@echo "Targets:"
+	@echo "  all              - Build all BitActor demos"
+	@echo "  bitactor_80_20_demo - 80/20 optimized implementation"
+	@echo "  bitactor_l_stack_demo - L-stack architecture demonstration"
+	@echo "  bitactor_full_system - Full integrated system"
+	@echo "  benchmark        - Run performance benchmarks"
+	@echo "  demo             - Run L-stack demonstration"
+	@echo "  validate         - Validate full system"
+	@echo "  ctq              - Validate Lean Six Sigma CTQ metrics"
+	@echo "  clean            - Remove build artifacts"
+	@echo ""
+	@echo "Architecture:"
+	@echo "  • 8-Tick/8-Hop/8-Bit OTP equivalent"
+	@echo "  • Specification IS Execution"
+	@echo "  • Sub-8-tick hot path execution"
+	@echo "  • L1-L8 stack with causal substrate"
+	@echo ""
+	@echo "Key Files:"
+	@echo "  • bitactor.h/c - Core BitActor runtime"
+	@echo "  • ttl_aot_bitactor.c - AOT compiler for TTL→BitActor"
+	@echo "  • bitactor_80_20_optimized.c - 80/20 optimized hot path"
+	@echo "  • bitactor_l_stack_demo.c - Complete L-stack demonstration"
+
+.PHONY: all benchmark demo validate ctq clean help

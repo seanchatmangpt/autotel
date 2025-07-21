@@ -1,7 +1,8 @@
 CC = gcc
-CFLAGS = -Wall -g
+CFLAGS = -Wall -g -O3 -march=native -lm -pthread
+LDFLAGS = -pthread
 
-TARGETS = bitactor_test permutation_benchmark integration_example
+TARGETS = bitactor_test permutation_benchmark integration_example cns_v8_ml_turtle_demo tick_collapse_ml_integration continuous_turtle_test
 
 SRCS_BITACTOR_TEST = bitactor_test.c bitactor.c tick_collapse_engine.c signal_engine.c bitmask_compiler.c actuator.c
 OBJS_BITACTOR_TEST = $(SRCS_BITACTOR_TEST:.c=.o)
@@ -12,7 +13,16 @@ OBJS_PERMUTATION_BENCHMARK = $(SRCS_PERMUTATION_BENCHMARK:.c=.o)
 SRCS_INTEGRATION_EXAMPLE = bitactor_integration_example.c bitactor.c tick_collapse_engine.c signal_engine.c bitmask_compiler.c actuator.c
 OBJS_INTEGRATION_EXAMPLE = $(SRCS_INTEGRATION_EXAMPLE:.c=.o)
 
-.PHONY: all test benchmark run_integration_example clean
+SRCS_ML_TURTLE_DEMO = cns_v8_ml_turtle_demo.c cns_v8_turtle_loop_ml_optimizer.c cns_v8_turtle_loop_integration.c bitactor.c tick_collapse_engine.c signal_engine.c bitmask_compiler.c actuator.c
+OBJS_ML_TURTLE_DEMO = $(SRCS_ML_TURTLE_DEMO:.c=.o)
+
+SRCS_CONTINUOUS_TURTLE = continuous_turtle_test.c continuous_turtle_pipeline.c bitactor.c tick_collapse_engine.c signal_engine.c bitmask_compiler.c actuator.c
+OBJS_CONTINUOUS_TURTLE = $(SRCS_CONTINUOUS_TURTLE:.c=.o)
+
+SRCS_TICK_COLLAPSE_ML = tick_collapse_ml_integration.c cns_v8_turtle_loop_ml_optimizer.c cns_v8_turtle_loop_integration.c bitactor.c tick_collapse_engine.c signal_engine.c bitmask_compiler.c actuator.c
+OBJS_TICK_COLLAPSE_ML = $(SRCS_TICK_COLLAPSE_ML:.c=.o)
+
+.PHONY: all test benchmark run_integration_example ml_demo run_turtle tick_ml clean
 
 all: $(TARGETS)
 
@@ -24,6 +34,15 @@ permutation_benchmark: $(OBJS_PERMUTATION_BENCHMARK)
 
 integration_example: $(OBJS_INTEGRATION_EXAMPLE)
 	$(CC) $(CFLAGS) -o $@ $(OBJS_INTEGRATION_EXAMPLE)
+
+cns_v8_ml_turtle_demo: $(OBJS_ML_TURTLE_DEMO)
+	$(CC) $(CFLAGS) -o $@ $(OBJS_ML_TURTLE_DEMO)
+
+continuous_turtle_test: $(OBJS_CONTINUOUS_TURTLE)
+	$(CC) $(CFLAGS) -o $@ $(OBJS_CONTINUOUS_TURTLE) $(LDFLAGS)
+
+tick_collapse_ml_integration: $(OBJS_TICK_COLLAPSE_ML)
+	$(CC) $(CFLAGS) -o $@ $(OBJS_TICK_COLLAPSE_ML)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -37,5 +56,15 @@ benchmark: permutation_benchmark
 run_integration_example: integration_example
 	./integration_example
 
+ml_demo: cns_v8_ml_turtle_demo
+	./cns_v8_ml_turtle_demo
+
+run_turtle: continuous_turtle_test
+	./continuous_turtle_test 8 30
+
+tick_ml: tick_collapse_ml_integration
+	./tick_collapse_ml_integration
+
 clean:
-	rm -f $(TARGETS) $(OBJS_BITACTOR_TEST) $(OBJS_PERMUTATION_BENCHMARK) $(OBJS_INTEGRATION_EXAMPLE)
+	rm -f $(TARGETS) $(OBJS_BITACTOR_TEST) $(OBJS_PERMUTATION_BENCHMARK) $(OBJS_INTEGRATION_EXAMPLE) $(OBJS_ML_TURTLE_DEMO) $(OBJS_CONTINUOUS_TURTLE) $(OBJS_TICK_COLLAPSE_ML)
+	rm -f turtle_checkpoint_*.bin

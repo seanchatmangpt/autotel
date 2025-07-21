@@ -1,0 +1,216 @@
+{
+  "network": {
+    "nodes": [
+      {
+        "id": "large_input_data",
+        "impact": 0.3,
+        "in_pareto_set": true
+      },
+      {
+        "id": "slow_processing",
+        "impact": 0.0,
+        "in_pareto_set": false
+      },
+      {
+        "id": "complex_patterns",
+        "impact": 0.15,
+        "in_pareto_set": true
+      },
+      {
+        "id": "inefficient_parsing",
+        "impact": 0.25,
+        "in_pareto_set": true
+      },
+      {
+        "id": "excessive_validation",
+        "impact": 0.2,
+        "in_pareto_set": true
+      },
+      {
+        "id": "memory_pressure",
+        "impact": 0.09999999999999999,
+        "in_pareto_set": false
+      },
+      {
+        "id": "cache_misses",
+        "impact": 0.05000000000000001,
+        "in_pareto_set": false
+      },
+      {
+        "id": "cpu_stalls",
+        "impact": 0.0,
+        "in_pareto_set": false
+      },
+      {
+        "id": "context_switches",
+        "impact": 0.0,
+        "in_pareto_set": false
+      }
+    ],
+    "edges": [
+      {
+        "source": "large_input_data",
+        "target": "slow_processing",
+        "weight": 0.7
+      },
+      {
+        "source": "slow_processing",
+        "target": "memory_pressure",
+        "weight": 0.7
+      },
+      {
+        "source": "complex_patterns",
+        "target": "slow_processing",
+        "weight": 0.5
+      },
+      {
+        "source": "inefficient_parsing",
+        "target": "slow_processing",
+        "weight": 0.8
+      },
+      {
+        "source": "excessive_validation",
+        "target": "slow_processing",
+        "weight": 0.6
+      },
+      {
+        "source": "memory_pressure",
+        "target": "cache_misses",
+        "weight": 0.9
+      },
+      {
+        "source": "cache_misses",
+        "target": "slow_processing",
+        "weight": 0.4
+      },
+      {
+        "source": "cache_misses",
+        "target": "cpu_stalls",
+        "weight": 0.8
+      },
+      {
+        "source": "cpu_stalls",
+        "target": "context_switches",
+        "weight": 0.6
+      },
+      {
+        "source": "context_switches",
+        "target": "slow_processing",
+        "weight": 0.3
+      }
+    ]
+  },
+  "pareto_analysis": {
+    "total_nodes": 9,
+    "pareto_nodes": 4,
+    "pareto_percentage": 44.44444444444444,
+    "impact_percentage": 85.71428571428571,
+    "nodes": [
+      "large_input_data",
+      "inefficient_parsing",
+      "excessive_validation",
+      "complex_patterns"
+    ]
+  },
+  "top_interventions": [
+    {
+      "nodes": [
+        "large_input_data"
+      ],
+      "cost": 1.0,
+      "impact": 0.37105,
+      "roi": 0.37105
+    },
+    {
+      "nodes": [
+        "large_input_data",
+        "complex_patterns"
+      ],
+      "cost": 2.0,
+      "impact": 0.5210499999999999,
+      "roi": 0.26052499999999995
+    },
+    {
+      "nodes": [
+        "large_input_data",
+        "excessive_validation"
+      ],
+      "cost": 2.5,
+      "impact": 0.57105,
+      "roi": 0.22841999999999998
+    },
+    {
+      "nodes": [
+        "large_input_data",
+        "inefficient_parsing"
+      ],
+      "cost": 3.0,
+      "impact": 0.6312,
+      "roi": 0.2104
+    },
+    {
+      "nodes": [
+        "excessive_validation",
+        "large_input_data",
+        "complex_patterns"
+      ],
+      "cost": 3.5,
+      "impact": 0.72105,
+      "roi": 0.2060142857142857
+    },
+    {
+      "nodes": [
+        "large_input_data",
+        "complex_patterns",
+        "inefficient_parsing"
+      ],
+      "cost": 4.0,
+      "impact": 0.7811999999999999,
+      "roi": 0.19529999999999997
+    },
+    {
+      "nodes": [
+        "large_input_data",
+        "excessive_validation",
+        "inefficient_parsing"
+      ],
+      "cost": 4.5,
+      "impact": 0.8311999999999999,
+      "roi": 0.1847111111111111
+    },
+    {
+      "nodes": [
+        "excessive_validation",
+        "large_input_data",
+        "complex_patterns",
+        "inefficient_parsing"
+      ],
+      "cost": 5.5,
+      "impact": 0.9812000000000001,
+      "roi": 0.1784
+    },
+    {
+      "nodes": [
+        "memory_pressure",
+        "large_input_data",
+        "complex_patterns",
+        "inefficient_parsing"
+      ],
+      "cost": 5.0,
+      "impact": 0.87395984,
+      "roi": 0.17479196800000002
+    },
+    {
+      "nodes": [
+        "large_input_data",
+        "excessive_validation",
+        "complex_patterns",
+        "inefficient_parsing",
+        "memory_pressure"
+      ],
+      "cost": 6.5,
+      "impact": 1.08081424,
+      "roi": 0.16627911384615385
+    }
+  ]
+}

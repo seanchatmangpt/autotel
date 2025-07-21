@@ -35,7 +35,8 @@ typedef enum {
     BA_OP_COLLAPSE = 0x05,  // Causal collapse
     BA_OP_SIGNAL = 0x06,    // Send signal
     BA_OP_HASH = 0x07,      // Compute hash
-    BA_OP_JUMP = 0x08       // Conditional jump
+    BA_OP_JUMP = 0x08,      // Conditional jump
+    BA_OP_LOGIC = 0x09      // Compiled ontological logic (e.g., AND, OR, Transitive)
 } BitActorOpcode;
 
 // TTL triple representation
@@ -191,7 +192,7 @@ static uint32_t compile_triple_to_bitactor(const TTLTriple* triple, uint8_t* cod
  * This compiles the traditionally unused 80% of ontology logic
  * into active BitActor code.
  */
-static uint32_t compile_dark_80_20(TTLAOTContext* ctx, uint8_t* code, uint32_t max_size) {
+static uint32_t compile_dark_80_20(TTLAOTContext* ctx, uint8_t* code, uint32_t max_size, const char* ttl_specification) {
     uint32_t pos = 0;
     
     // Enable global entanglement for Dark patterns
@@ -260,7 +261,8 @@ bool ttl_aot_compile(TTLAOTContext* ctx, const char* ttl_specification) {
         uint32_t dark_bytes = compile_dark_80_20(
             ctx,
             actor->code + actor->code_size,
-            BITACTOR_CODE_SIZE - actor->code_size
+            BITACTOR_CODE_SIZE - actor->code_size,
+            ttl_specification
         );
         actor->code_size += dark_bytes;
     }

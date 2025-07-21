@@ -18,7 +18,7 @@ BENCHMARK_SRC = validation/cjinja_benchmark.c
 PERMUTATION_SRC = validation/cns_fifth_epoch_permutation_test.c
 
 # Targets
-all: fifth_epoch_demo fifth_epoch_enhanced cjinja_benchmark
+all: fifth_epoch_demo fifth_epoch_enhanced cjinja_benchmark fifth_epoch_correct fifth_epoch_refactored
 
 # Basic Fifth Epoch demo
 fifth_epoch_demo: $(DEMO_SRC)
@@ -32,12 +32,20 @@ fifth_epoch_enhanced: $(ENHANCED_DEMO_SRC)
 cjinja_benchmark: $(BENCHMARK_SRC)
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(LDFLAGS)
 
+# Correct 80/20 implementation demo
+fifth_epoch_correct: src/fifth_epoch_correct.c
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(LDFLAGS)
+
+# Refactored Fifth Epoch with proper 80/20 throughout
+fifth_epoch_refactored: src/fifth_epoch_refactored.c
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(LDFLAGS)
+
 # Full system with all components (when ready)
 fifth_epoch_system: $(BRIDGE_SRC) $(CNS_SRC) $(BITACTOR_SRC)
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS)
 
 # Run all demos
-demo: fifth_epoch_demo fifth_epoch_enhanced cjinja_benchmark
+demo: fifth_epoch_demo fifth_epoch_enhanced cjinja_benchmark fifth_epoch_correct
 	@echo "=== FIFTH EPOCH DEMONSTRATION SUITE ==="
 	@echo ""
 	@echo "1. Basic Fifth Epoch Demo:"
@@ -48,6 +56,9 @@ demo: fifth_epoch_demo fifth_epoch_enhanced cjinja_benchmark
 	@echo ""
 	@echo "3. Enhanced Demo Summary:"
 	@./fifth_epoch_enhanced | grep -E "(Test [0-9]:|achievement rate:|Status:|🌌)"
+	@echo ""
+	@echo "4. CORRECT 80/20 Implementation:"
+	@./fifth_epoch_correct | grep -E "(Hot Path Performance|Min:|Avg:|Sub-100ns rate:|Break-even|KEY TAKEAWAY)" -A 5
 
 # Performance test
 perf: cjinja_benchmark

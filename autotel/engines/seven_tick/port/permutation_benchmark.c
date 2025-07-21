@@ -102,6 +102,12 @@ int main() {
             "00000000",
             "01000000",
             "trigger" // Signal sets actor 0 bit 0
+        },
+        {
+            "ACTOR 2 BIT 2 SET",
+            "00000000", // Initial: all zeros
+            "00000400", // Expected: actor 2 bit 2 set
+            "none"
         }
     };
 

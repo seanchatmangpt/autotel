@@ -19,10 +19,12 @@ void destroy_bitmask_compiler(BitmaskCompiler* compiler) {
 RuleSet* create_rule_set(size_t initial_capacity) {
     RuleSet* rule_set = (RuleSet*)malloc(sizeof(RuleSet));
     if (!rule_set) {
+        fprintf(stderr, "Error: Failed to allocate memory for RuleSet.\n");
         return NULL;
     }
     rule_set->rules = (CompiledRule*)malloc(sizeof(CompiledRule) * initial_capacity);
     if (!rule_set->rules) {
+        fprintf(stderr, "Error: Failed to allocate memory for RuleSet rules.\n");
         free(rule_set);
         return NULL;
     }
@@ -41,16 +43,29 @@ void destroy_rule_set(RuleSet* rule_set) {
 
 // Add a rule to the RuleSet, resizing if necessary
 void add_rule_to_set(RuleSet* rule_set, CompiledRule rule) {
+    if (!rule_set) return;
+
     if (rule_set->num_rules == rule_set->capacity) {
         rule_set->capacity *= 2;
-        rule_set->rules = (CompiledRule*)realloc(rule_set->rules, sizeof(CompiledRule) * rule_set->capacity);
-        if (!rule_set->rules) {
-            // Handle realloc failure (e.g., print error and exit or return error code)
-            fprintf(stderr, "Failed to reallocate memory for RuleSet\n");
-            exit(EXIT_FAILURE);
+        CompiledRule* new_rules = (CompiledRule*)realloc(rule_set->rules, sizeof(CompiledRule) * rule_set->capacity);
+        if (!new_rules) {
+            fprintf(stderr, "Error: Failed to reallocate memory for RuleSet rules. Rule dropped.\n");
+            // In a production system, this might trigger a more severe error handling.
+            return;
         }
+        rule_set->rules = new_rules;
     }
     rule_set->rules[rule_set->num_rules++] = rule;
+}
+
+// Conceptual rule optimization: In a real system, this would reorder, simplify,
+// or merge rules for L1 cache efficiency and branch prediction.
+static void optimize_rules(RuleSet* rule_set) {
+    if (!rule_set) return;
+    // Placeholder for complex optimization algorithms.
+    // For example, sorting rules by actor index or condition type.
+    // This function would be critical for achieving 8T performance.
+    // printf("  (Conceptual) Optimizing %zu rules...\n", rule_set->num_rules);
 }
 
 // Compile a set of rules from text into a RuleSet
@@ -61,12 +76,19 @@ RuleSet* compile_rules(BitmaskCompiler* compiler, const char* rules_text) {
     }
 
     char* rules_copy = strdup(rules_text);
+    if (!rules_copy) {
+        fprintf(stderr, "Error: Failed to duplicate rules_text for parsing.\n");
+        destroy_rule_set(rule_set);
+        return NULL;
+    }
+
     char* line = strtok(rules_copy, "\n");
+    int line_num = 0;
 
     while (line != NULL) {
+        line_num++;
         CompiledRule new_rule = {0}; // Initialize with zeros
         int actor_idx1, bit_pos1, actor_idx2, bit_pos2, actor_idx3, bit_pos3;
-        char command[10];
         char action_type_str[10];
 
         // ACTOR X BIT Y SET/CLEAR
@@ -78,6 +100,10 @@ RuleSet* compile_rules(BitmaskCompiler* compiler, const char* rules_text) {
                 new_rule.action_type = ACTION_SET;
             } else if (strcmp(action_type_str, "CLEAR") == 0) {
                 new_rule.action_type = ACTION_CLEAR;
+            } else {
+                fprintf(stderr, "Warning: Line %d: Unknown action type '%s'. Skipping rule.\n", line_num, action_type_str);
+                line = strtok(NULL, "\n");
+                continue;
             }
             add_rule_to_set(rule_set, new_rule);
         }
@@ -92,6 +118,10 @@ RuleSet* compile_rules(BitmaskCompiler* compiler, const char* rules_text) {
                 new_rule.action_type = ACTION_SET;
             } else if (strcmp(action_type_str, "CLEAR") == 0) {
                 new_rule.action_type = ACTION_CLEAR;
+            } else {
+                fprintf(stderr, "Warning: Line %d: Unknown action type '%s'. Skipping rule.\n", line_num, action_type_str);
+                line = strtok(NULL, "\n");
+                continue;
             }
             add_rule_to_set(rule_set, new_rule);
         }
@@ -108,6 +138,10 @@ RuleSet* compile_rules(BitmaskCompiler* compiler, const char* rules_text) {
                 new_rule.action_type = ACTION_SET;
             } else if (strcmp(action_type_str, "CLEAR") == 0) {
                 new_rule.action_type = ACTION_CLEAR;
+            } else {
+                fprintf(stderr, "Warning: Line %d: Unknown action type '%s'. Skipping rule.\n", line_num, action_type_str);
+                line = strtok(NULL, "\n");
+                continue;
             }
             add_rule_to_set(rule_set, new_rule);
         }
@@ -124,13 +158,23 @@ RuleSet* compile_rules(BitmaskCompiler* compiler, const char* rules_text) {
                 new_rule.action_type = ACTION_SET;
             } else if (strcmp(action_type_str, "CLEAR") == 0) {
                 new_rule.action_type = ACTION_CLEAR;
+            } else {
+                fprintf(stderr, "Warning: Line %d: Unknown action type '%s'. Skipping rule.\n", line_num, action_type_str);
+                line = strtok(NULL, "\n");
+                continue;
             }
             add_rule_to_set(rule_set, new_rule);
+        }
+        else {
+            fprintf(stderr, "Warning: Line %d: Unrecognized rule format. Skipping line: %s\n", line_num, line);
         }
 
         line = strtok(NULL, "\n");
     }
 
     free(rules_copy);
+
+    optimize_rules(rule_set); // Apply conceptual optimization
+
     return rule_set;
 }

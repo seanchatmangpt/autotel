@@ -1,0 +1,114 @@
+# Makefile for CNS v8 Turtle Loop Integration
+# Implements 80/20 build optimization
+
+CC = clang
+CFLAGS = -std=c11 -Wall -Wextra -O3 -march=native
+CFLAGS += -DCNS_V8_ENABLED -D_GNU_SOURCE
+CFLAGS += -I. -I./include -I./include/cns
+
+# 80/20 Optimization: Core files (20%) that provide 80% functionality
+CORE_SRCS = cns_v8_turtle_loop_integration.c
+CORE_OBJS = $(CORE_SRCS:.c=.o)
+
+# Additional sources for full functionality
+EXTRA_SRCS = src/dspy_owl_bridge.c \
+             src/cjinja_bitactor_bridge.c \
+             src/ttl_aot_bitactor.c
+
+EXTRA_OBJS = $(EXTRA_SRCS:.c=.o)
+
+# Demo and test programs
+DEMO_SRCS = cns_v8_turtle_demo.c
+TEST_SRCS = test_turtle_loop.c
+
+# Targets
+.PHONY: all clean test demo minimal full
+
+# Default: 80/20 optimized build
+all: minimal demo
+
+# Minimal build (20% code, 80% functionality)
+minimal: libcns_v8_turtle.a
+
+# Full build (100% functionality)
+full: CFLAGS += -DFULL_FEATURES
+full: libcns_v8_turtle_full.a
+
+# Core library
+libcns_v8_turtle.a: $(CORE_OBJS)
+	@echo "Building 80/20 optimized library..."
+	ar rcs $@ $^
+	@echo "✓ Core library built (20% code → 80% functionality)"
+
+# Full library
+libcns_v8_turtle_full.a: $(CORE_OBJS) $(EXTRA_OBJS)
+	@echo "Building full-featured library..."
+	ar rcs $@ $^
+	@echo "✓ Full library built (100% functionality)"
+
+# Demo program
+demo: cns_v8_turtle_demo
+	@echo "Running CNS v8 Turtle Loop Demo..."
+	@echo "================================"
+	./cns_v8_turtle_demo
+
+cns_v8_turtle_demo: $(DEMO_SRCS) libcns_v8_turtle.a
+	$(CC) $(CFLAGS) -o $@ $< -L. -lcns_v8_turtle -lm
+
+# Test program
+test: test_turtle_loop
+	@echo "Running tests..."
+	./test_turtle_loop
+
+test_turtle_loop: $(TEST_SRCS) libcns_v8_turtle.a
+	$(CC) $(CFLAGS) -o $@ $< -L. -lcns_v8_turtle -lm
+
+# Object files
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# Performance analysis
+perf: cns_v8_turtle_demo
+	@echo "Running performance analysis..."
+	time ./cns_v8_turtle_demo
+	@echo ""
+	@echo "Memory analysis..."
+	valgrind --leak-check=full --show-leak-kinds=all ./cns_v8_turtle_demo 2>&1 | grep -E "(definitely|indirectly|possibly) lost:|ERROR SUMMARY:"
+
+# Generate documentation
+docs:
+	@echo "Generating documentation..."
+	doxygen Doxyfile 2>/dev/null || echo "Install doxygen for documentation"
+
+# Clean
+clean:
+	rm -f $(CORE_OBJS) $(EXTRA_OBJS)
+	rm -f libcns_v8_turtle.a libcns_v8_turtle_full.a
+	rm -f cns_v8_turtle_demo test_turtle_loop
+	rm -rf docs/
+
+# Install (local)
+install: libcns_v8_turtle.a
+	@echo "Installing to ./install..."
+	mkdir -p install/lib install/include
+	cp libcns_v8_turtle.a install/lib/
+	cp cns_v8_turtle_loop_integration.h install/include/
+	@echo "✓ Installed to ./install/"
+
+# Help
+help:
+	@echo "CNS v8 Turtle Loop Build System"
+	@echo "=============================="
+	@echo "Targets:"
+	@echo "  make         - Build 80/20 optimized library + demo"
+	@echo "  make minimal - Build core library only (20% code)"
+	@echo "  make full    - Build full-featured library"
+	@echo "  make demo    - Build and run demonstration"
+	@echo "  make test    - Build and run tests"
+	@echo "  make perf    - Run performance analysis"
+	@echo "  make clean   - Remove built files"
+	@echo "  make install - Install locally"
+	@echo ""
+	@echo "80/20 Principle:"
+	@echo "  Core library provides 80% functionality with 20% code"
+	@echo "  Full library adds remaining 20% functionality"
