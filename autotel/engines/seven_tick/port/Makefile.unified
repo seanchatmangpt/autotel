@@ -1,0 +1,254 @@
+# CNS Unified Build System - Phase 2 Dark 80/20 Integration
+# Connects all port functionalities into a cohesive system
+
+CC = clang
+CFLAGS = -O3 -march=native -Wall -Wextra -std=c11
+LDFLAGS = -lm
+
+# Architecture-specific optimizations
+ifeq ($(shell uname -m),x86_64)
+    CFLAGS += -mavx2 -mavx512f -mfma
+endif
+
+# Debug flags for development
+DEBUG_CFLAGS = -O3 -g -march=native -Wall -Wextra -std=c11
+
+# Include directories
+INCLUDES = -I./include -I./include/cns -I./pragmatic
+
+# Source directories
+SRC_DIRS = src pragmatic
+
+# Target binaries
+TARGETS = cns_unified_main cns_performance_test cns_integration_test
+
+# =============================================================================
+# MAIN TARGETS
+# =============================================================================
+
+all: $(TARGETS)
+
+# Unified main entry point
+cns_unified_main: src/cns_unified_main.c
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(LDFLAGS)
+	@echo "✅ Built unified CNS main entry point"
+
+# Performance testing binary
+cns_performance_test: src/cns_performance_test.c
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(LDFLAGS)
+	@echo "✅ Built performance testing binary"
+
+# Integration testing binary
+cns_integration_test: src/cns_integration_test.c
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(LDFLAGS)
+	@echo "✅ Built integration testing binary"
+
+# =============================================================================
+# COMPONENT LIBRARIES
+# =============================================================================
+
+# SHACL optimization library
+libshacl_optimized.a: shacl_l1.c shacl_validator.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c shacl_l1.c -o shacl_l1.o
+	$(CC) $(CFLAGS) $(INCLUDES) -c shacl_validator.c -o shacl_validator.o
+	ar rcs $@ shacl_l1.o shacl_validator.o
+	@echo "✅ Built SHACL optimization library"
+
+# Performance primitives library
+libperformance.a: performance_optimizations.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o performance_optimizations.o
+	ar rcs $@ performance_optimizations.o
+	@echo "✅ Built performance primitives library"
+
+# Pragmatic engineering library
+libpragmatic.a: pragmatic/contracts.c pragmatic/entropy.c pragmatic/testing.c pragmatic/dry.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c pragmatic/contracts.c -o contracts.o
+	$(CC) $(CFLAGS) $(INCLUDES) -c pragmatic/entropy.c -o entropy.o
+	$(CC) $(CFLAGS) $(INCLUDES) -c pragmatic/testing.c -o testing.o
+	$(CC) $(CFLAGS) $(INCLUDES) -c pragmatic/dry.c -o dry.o
+	ar rcs $@ contracts.o entropy.o testing.o dry.o
+	@echo "✅ Built pragmatic engineering library"
+
+# CJinja template engine library
+libcjinja.a: cjinja_final.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o cjinja_final.o
+	ar rcs $@ cjinja_final.o
+	@echo "✅ Built CJinja template engine library"
+
+# =============================================================================
+# TESTING TARGETS
+# =============================================================================
+
+# Run all tests
+test: cns_unified_main cns_performance_test cns_integration_test
+	@echo "Running comprehensive integration tests..."
+	@echo "=========================================="
+	@./cns_unified_main
+	@echo ""
+	@echo "Running performance tests..."
+	@echo "==========================="
+	@./cns_performance_test
+	@echo ""
+	@echo "Running integration tests..."
+	@echo "==========================="
+	@./cns_integration_test
+
+# Quick performance validation
+quick-test: cns_unified_main
+	@echo "Quick performance validation..."
+	@./cns_unified_main
+
+# 7-tick compliance validation
+validate-7tick: cns_unified_main
+	@echo "Validating 7-tick compliance..."
+	@echo "=============================="
+	@./cns_unified_main --validate-performance
+
+# Entropy monitoring
+entropy-report: cns_unified_main
+	@echo "Generating entropy report..."
+	@echo "==========================="
+	@./cns_unified_main --entropy-report
+
+# =============================================================================
+# BENCHMARKING TARGETS
+# =============================================================================
+
+# Run SHACL benchmarks
+benchmark-shacl: libshacl_optimized.a
+	@echo "Running SHACL optimization benchmarks..."
+	@echo "======================================="
+	@$(CC) $(CFLAGS) $(INCLUDES) -o shacl_bench shacl_benchmark.c libshacl_optimized.a $(LDFLAGS)
+	@./shacl_bench
+
+# Run CJinja benchmarks
+benchmark-cjinja: libcjinja.a
+	@echo "Running CJinja template benchmarks..."
+	@echo "===================================="
+	@$(CC) $(CFLAGS) $(INCLUDES) -o cjinja_bench cjinja_final.c $(LDFLAGS)
+	@./cjinja_bench
+
+# Run performance primitives benchmarks
+benchmark-primitives: libperformance.a
+	@echo "Running performance primitives benchmarks..."
+	@echo "==========================================="
+	@$(CC) $(CFLAGS) $(INCLUDES) -o perf_bench performance_optimizations.c $(LDFLAGS)
+	@./perf_bench
+
+# Run all benchmarks
+benchmark: benchmark-shacl benchmark-cjinja benchmark-primitives
+	@echo "All benchmarks completed"
+
+# =============================================================================
+# DEVELOPMENT TARGETS
+# =============================================================================
+
+# Debug build
+debug: CFLAGS = $(DEBUG_CFLAGS)
+debug: cns_unified_main
+	@echo "✅ Built debug version"
+
+# Generate assembly for inspection
+assembly: src/cns_unified_main.c
+	$(CC) $(DEBUG_CFLAGS) -S $(INCLUDES) -o cns_unified_main.s $<
+	@echo "✅ Assembly generated in cns_unified_main.s"
+
+# Code coverage (requires gcov)
+coverage: CFLAGS += -fprofile-arcs -ftest-coverage
+coverage: LDFLAGS += -lgcov
+coverage: cns_unified_main
+	@echo "✅ Built with coverage instrumentation"
+
+# =============================================================================
+# CLEANUP TARGETS
+# =============================================================================
+
+# Clean build artifacts
+clean:
+	rm -f $(TARGETS) *.o *.a *.s *.gcno *.gcda *.gcov
+	rm -f shacl_bench cjinja_bench perf_bench
+	@echo "✅ Cleaned build artifacts"
+
+# Clean everything including generated files
+distclean: clean
+	rm -f *.log *.report performance_report.txt
+	@echo "✅ Cleaned all generated files"
+
+# =============================================================================
+# DOCUMENTATION TARGETS
+# =============================================================================
+
+# Generate build documentation
+docs: CONNECTION_PLAN.md
+	@echo "✅ Connection plan documentation available"
+
+# Generate performance report
+report: cns_unified_main
+	@echo "Generating Performance Report..."
+	@echo "===============================" > performance_report.txt
+	@echo "Date: $$(date)" >> performance_report.txt
+	@echo "System: $$(uname -a)" >> performance_report.txt
+	@echo "CPU: $$(sysctl -n machdep.cpu.brand_string 2>/dev/null || cat /proc/cpuinfo | grep 'model name' | head -1)" >> performance_report.txt
+	@echo "" >> performance_report.txt
+	@./cns_unified_main >> performance_report.txt 2>&1
+	@echo "✅ Report saved to performance_report.txt"
+
+# =============================================================================
+# VALIDATION TARGETS
+# =============================================================================
+
+# Validate build environment
+validate:
+	@echo "Validating build environment..."
+	@$(CC) --version
+	@echo "CFLAGS: $(CFLAGS)"
+	@echo "Architecture: $$(uname -m)"
+	@echo "✅ Build environment validation complete"
+
+# Check dependencies
+deps:
+	@echo "Checking dependencies..."
+	@which clang || (echo "❌ Install clang compiler" && exit 1)
+	@echo "✅ Dependencies OK"
+
+# =============================================================================
+# HELP TARGET
+# =============================================================================
+
+help:
+	@echo "CNS Unified Build System - Phase 2 Dark 80/20 Integration"
+	@echo "========================================================"
+	@echo ""
+	@echo "Main Targets:"
+	@echo "  all              - Build all binaries and libraries"
+	@echo "  test             - Run comprehensive integration tests"
+	@echo "  quick-test       - Quick performance validation"
+	@echo "  validate-7tick   - Validate 7-tick compliance"
+	@echo "  entropy-report   - Generate entropy monitoring report"
+	@echo ""
+	@echo "Benchmarking:"
+	@echo "  benchmark        - Run all benchmarks"
+	@echo "  benchmark-shacl  - SHACL optimization benchmarks"
+	@echo "  benchmark-cjinja - CJinja template benchmarks"
+	@echo "  benchmark-primitives - Performance primitives benchmarks"
+	@echo ""
+	@echo "Development:"
+	@echo "  debug            - Build with debug symbols"
+	@echo "  assembly         - Generate assembly output"
+	@echo "  coverage         - Build with coverage instrumentation"
+	@echo ""
+	@echo "Documentation:"
+	@echo "  docs             - Generate documentation"
+	@echo "  report           - Generate performance report"
+	@echo ""
+	@echo "Maintenance:"
+	@echo "  clean            - Clean build artifacts"
+	@echo "  distclean        - Clean everything"
+	@echo "  validate         - Validate build environment"
+	@echo "  deps             - Check dependencies"
+
+# =============================================================================
+# PHONY TARGETS
+# =============================================================================
+
+.PHONY: all test quick-test validate-7tick entropy-report benchmark benchmark-shacl benchmark-cjinja benchmark-primitives debug assembly coverage clean distclean docs report validate deps help 

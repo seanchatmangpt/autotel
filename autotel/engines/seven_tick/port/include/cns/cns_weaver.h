@@ -196,7 +196,8 @@ typedef struct CNS_CACHE_ALIGN
       .op_count = sizeof(sequence) / sizeof(cns_weave_op_t), \
       .permutations_to_run = 1000,                           \
       .seed = 0xDEADBEEF,                                    \
-      .flags = 0}
+      .flags = 0,                                            \
+      .metadata = {0, 0, 0, 0}}
 
 // Define an operation in a sequence
 #define CNS_OP(id, ctx, ...) \

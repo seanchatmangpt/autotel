@@ -1,0 +1,23 @@
+CC = gcc
+CFLAGS = -Wall -g
+
+TARGET = bitactor_test
+
+SRCS = bitactor_test.c bitactor.c tick_collapse_engine.c signal_engine.c bitmask_compiler.c actuator.c
+OBJS = $(SRCS:.c=.o)
+
+.PHONY: all test clean
+
+all: $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+test: $(TARGET)
+	./$(TARGET)
+
+clean:
+	rm -f $(TARGET) $(OBJS)
