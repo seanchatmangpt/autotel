@@ -123,8 +123,8 @@
     },
     {
       "nodes": [
-        "large_input_data",
-        "complex_patterns"
+        "complex_patterns",
+        "large_input_data"
       ],
       "cost": 2.0,
       "impact": 0.5210499999999999,
@@ -132,8 +132,8 @@
     },
     {
       "nodes": [
-        "large_input_data",
-        "excessive_validation"
+        "excessive_validation",
+        "large_input_data"
       ],
       "cost": 2.5,
       "impact": 0.57105,
@@ -150,9 +150,9 @@
     },
     {
       "nodes": [
+        "complex_patterns",
         "excessive_validation",
-        "large_input_data",
-        "complex_patterns"
+        "large_input_data"
       ],
       "cost": 3.5,
       "impact": 0.72105,
@@ -160,8 +160,8 @@
     },
     {
       "nodes": [
-        "large_input_data",
         "complex_patterns",
+        "large_input_data",
         "inefficient_parsing"
       ],
       "cost": 4.0,
@@ -170,8 +170,8 @@
     },
     {
       "nodes": [
-        "large_input_data",
         "excessive_validation",
+        "large_input_data",
         "inefficient_parsing"
       ],
       "cost": 4.5,
@@ -180,9 +180,9 @@
     },
     {
       "nodes": [
+        "complex_patterns",
         "excessive_validation",
         "large_input_data",
-        "complex_patterns",
         "inefficient_parsing"
       ],
       "cost": 5.5,
@@ -191,10 +191,10 @@
     },
     {
       "nodes": [
-        "memory_pressure",
-        "large_input_data",
         "complex_patterns",
-        "inefficient_parsing"
+        "large_input_data",
+        "inefficient_parsing",
+        "memory_pressure"
       ],
       "cost": 5.0,
       "impact": 0.87395984,
@@ -202,11 +202,11 @@
     },
     {
       "nodes": [
-        "large_input_data",
-        "excessive_validation",
         "complex_patterns",
+        "memory_pressure",
+        "large_input_data",
         "inefficient_parsing",
-        "memory_pressure"
+        "excessive_validation"
       ],
       "cost": 6.5,
       "impact": 1.08081424,
