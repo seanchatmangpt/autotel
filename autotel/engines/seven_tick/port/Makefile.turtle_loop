@@ -1,0 +1,122 @@
+# Makefile for Turtle Loop Architecture
+# Implements 80/20 build optimization - focuses on core components
+
+CC = clang
+CFLAGS = -O3 -march=native -Wall -Wextra -std=c11 -I. -Iinclude
+LDFLAGS = -lm -lpthread
+
+# Python configuration for DSPy integration
+PYTHON_CONFIG = python3-config
+PYTHON_CFLAGS = $(shell $(PYTHON_CONFIG) --cflags 2>/dev/null || echo "")
+PYTHON_LDFLAGS = $(shell $(PYTHON_CONFIG) --ldflags 2>/dev/null || echo "")
+
+# Core objects (20% that provide 80% functionality)
+CORE_OBJS = turtle_loop_architecture.o
+
+# Demo objects
+DEMO_OBJS = turtle_loop_demo.o
+
+# Integration objects
+INTEGRATION_OBJS = shacl_validator.o \
+                   domains/sparql_domain.o \
+                   src/graph_l1_rdf.o
+
+# All objects
+ALL_OBJS = $(CORE_OBJS) $(DEMO_OBJS)
+
+# Targets
+.PHONY: all clean demo test python-integration
+
+# Default target - build core components only (80/20 principle)
+all: turtle_loop_demo
+
+# Build the demo program
+turtle_loop_demo: $(CORE_OBJS) $(DEMO_OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	@echo "✅ Built Turtle Loop Demo (80/20 optimized)"
+
+# Build with full integration (100% functionality)
+turtle_loop_full: $(CORE_OBJS) $(DEMO_OBJS) $(INTEGRATION_OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	@echo "✅ Built Turtle Loop with full integration"
+
+# Core architecture object
+turtle_loop_architecture.o: turtle_loop_architecture.c turtle_loop_architecture.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Demo program object
+turtle_loop_demo.o: turtle_loop_demo.c turtle_loop_architecture.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Python DSPy integration
+python-integration: turtle_loop_dspy_integration.py
+	@echo "🐍 Testing Python DSPy integration..."
+	python3 turtle_loop_dspy_integration.py
+	@echo "✅ DSPy integration test complete"
+
+# Build Python extension module (if Python dev headers available)
+turtle_loop_dspy.so: turtle_loop_architecture.c
+ifneq ($(PYTHON_CFLAGS),)
+	$(CC) $(CFLAGS) $(PYTHON_CFLAGS) -shared -fPIC -o $@ $< $(LDFLAGS) $(PYTHON_LDFLAGS)
+	@echo "✅ Built Python extension module"
+else
+	@echo "⚠️  Python development headers not found. Skipping Python extension."
+endif
+
+# Run the demo
+demo: turtle_loop_demo
+	@echo "🚀 Running Turtle Loop Architecture Demo..."
+	@echo "==========================================\n"
+	./turtle_loop_demo
+	@echo "\n✅ Demo complete"
+
+# Run tests
+test: turtle_loop_demo
+	@echo "🧪 Running Turtle Loop tests..."
+	./turtle_loop_demo > test_output.log 2>&1
+	@if grep -q "DEMONSTRATION COMPLETE" test_output.log; then \
+		echo "✅ All tests passed"; \
+		rm test_output.log; \
+	else \
+		echo "❌ Tests failed. See test_output.log"; \
+		exit 1; \
+	fi
+
+# Performance benchmark (80/20 analysis)
+benchmark: turtle_loop_demo
+	@echo "📊 Running 80/20 performance analysis..."
+	@echo "Processing 1000 iterations..."
+	@for i in {1..5}; do \
+		echo "Run $$i:"; \
+		./turtle_loop_demo 2>&1 | grep -E "(Cycles per triple:|Core stages used)"; \
+		echo ""; \
+	done
+	@echo "✅ Benchmark complete"
+
+# Clean build artifacts
+clean:
+	rm -f $(ALL_OBJS) turtle_loop_demo turtle_loop_full turtle_loop_dspy.so
+	rm -f test_output.log
+	@echo "🧹 Cleaned build artifacts"
+
+# Install (copies to system location)
+install: turtle_loop_demo
+	install -m 755 turtle_loop_demo /usr/local/bin/
+	install -m 644 turtle_loop_architecture.h /usr/local/include/
+	@echo "✅ Installed Turtle Loop Architecture"
+
+# Help
+help:
+	@echo "Turtle Loop Architecture - Makefile Targets"
+	@echo "=========================================="
+	@echo "  make              - Build core demo (80/20 optimized)"
+	@echo "  make demo         - Run the demonstration"
+	@echo "  make test         - Run tests"
+	@echo "  make benchmark    - Run performance analysis"
+	@echo "  make python-integration - Test Python DSPy integration"
+	@echo "  make turtle_loop_full - Build with all integrations"
+	@echo "  make clean        - Remove build artifacts"
+	@echo "  make install      - Install to system"
+	@echo ""
+	@echo "80/20 Principle: Core build includes only essential components"
+	@echo "that handle 80% of RDF processing use cases."
