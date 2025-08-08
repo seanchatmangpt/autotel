@@ -414,6 +414,43 @@ class DspyBpmnParser(CamundaParser):
         # Parse embedded DMN definitions
         self._parse_dmn_definitions(bpmn, filename)
         
+        # Normalize decisionRef: ensure camunda:decisionRef present and namespace declared
+        CAMUNDA_NS = 'http://camunda.org/schema/1.0/bpmn'
+        try:
+            # Ensure camunda namespace declared on root
+            root = bpmn.getroottree().getroot()
+            nsmap = dict(root.nsmap) if root is not None and root.nsmap else {}
+            if root is not None and 'camunda' not in nsmap:
+                from lxml.etree import Element
+                new_nsmap = nsmap.copy()
+                new_nsmap['camunda'] = CAMUNDA_NS
+                new_root = Element(root.tag, nsmap=new_nsmap)
+                for k, v in root.attrib.items():
+                    new_root.set(k, v)
+                for child in list(root):
+                    new_root.append(child)
+                # Replace tree root
+                bpmn = new_root
+                root = new_root
+
+            # Convert any decisionRef attributes to camunda namespace
+            br_tasks = bpmn.xpath('.//bpmn:businessRuleTask', namespaces={
+                'bpmn': 'http://www.omg.org/spec/BPMN/20100524/MODEL'
+            })
+            for node in br_tasks:
+                # Copy generic or DMN decisionRef to camunda:decisionRef
+                # Check generic attribute first
+                generic = node.get('decisionRef')
+                if generic is not None:
+                    node.set('{%s}%s' % (CAMUNDA_NS, 'decisionRef'), generic)
+                # Check namespaced dmn attribute
+                for attr_name, attr_val in list(node.attrib.items()):
+                    if attr_name.endswith('decisionRef') and CAMUNDA_NS not in attr_name:
+                        node.set('{%s}%s' % (CAMUNDA_NS, 'decisionRef'), attr_val)
+        except Exception:
+            # Non-fatal normalization failure should not block parsing
+            pass
+
         # Continue with normal BPMN parsing
         super().add_bpmn_xml(bpmn, filename)
     
@@ -595,6 +632,16 @@ class DspyBpmnParser(CamundaParser):
         from lxml import etree
         
         try:
+            # Sanitize DMN <dmn:text> contents: escape raw '<' and '>'
+            import re as _re
+            def _sanitize_dmn_text(xml: str) -> str:
+                pattern = _re.compile(r"(<dmn:text[^>]*>)([\s\S]*?)(</dmn:text>)")
+                def repl(m):
+                    head, content, tail = m.group(1), m.group(2), m.group(3)
+                    content = content.replace('<', '&lt;').replace('>', '&gt;')
+                    return head + content + tail
+                return pattern.sub(repl, xml)
+            bpmn_xml = _sanitize_dmn_text(bpmn_xml)
             # Always strip encoding and use bytes
             root = etree.fromstring(self._strip_xml_encoding(bpmn_xml))
 

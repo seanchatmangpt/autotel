@@ -3,7 +3,7 @@ CC = gcc
 CFLAGS = -O3 -march=native -I./include
 LDFLAGS =
 
-SRC = src/bitactor_80_20.c bitactor_80_20_main.c
+SRC = src/bitactor_80_20.c src/bitactor_ttl_compiler.c bitactor_80_20_main.c
 OBJ = $(SRC:.c=.o)
 
 TARGET = bitactor_80_20_demo

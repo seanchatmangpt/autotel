@@ -16,14 +16,7 @@
 // Global system for singleton access
 static bitactor_ls_system_t* g_bitactor_ls_system = NULL;
 
-// Learning optimization structure (hot path ready)
-typedef struct {
-    uint64_t optimization_id;
-    uint8_t register_deltas[8];          // Register state modifications
-    uint32_t cycle_reduction;            // Expected cycle reduction
-    uint64_t pattern_signature;          // Pattern this optimizes
-    bool active;                         // Currently active optimization
-} bitactor_learned_optimization_t;
+// Note: bitactor_learned_optimization_t is defined in bitactor_ls_integration.h
 
 // === Core System Functions ===
 
@@ -265,7 +258,7 @@ int bitactor_ls_discover_patterns(
                 pattern->optimized_performance = (current_perf < next_perf) ? current_perf : next_perf;
                 
                 // Calculate confidence based on performance difference
-                float perf_diff = (float)abs((int64_t)(current_perf - next_perf));
+                float perf_diff = (float)llabs((int64_t)(current_perf - next_perf));
                 pattern->confidence_score = fminf(perf_diff / 100.0f, 1.0f); // Normalize to 0-1
                 
                 pattern->validation_count = 1;

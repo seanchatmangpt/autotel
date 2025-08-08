@@ -1,0 +1,20 @@
+File: src/l7_entanglement_demo_fixed.c
+
+Purpose:
+This file provides a fixed and standalone demonstration of the L7 Entanglement Bus. It showcases key L7 features such as causal signal propagation, bounded forwarding, reactive logic, and dark triple activation. It includes simplified data structures for actors and the entanglement oracle, along with demo functions to illustrate these features and validate performance against sub-100ns targets and 8T compliance.
+
+CNS Integration Recommendation:
+
+This file is purely a **Demonstration/Example** and should **NOT** be part of the core CNS framework or AOT-generated code. It is a specialized test designed to illustrate the functionalities of the L7 Entanglement Bus in isolation.
+
+1.  **Benchmark/Demonstration:**
+    *   `demo_basic_entanglement`, `demo_performance_validation`, `demo_dark_triple_activation`, and `main()`: These functions are dedicated to demonstrating and benchmarking the L7 layer. They should remain as standalone test/example code.
+    *   The `printf` statements for logging and reporting are typical of demo code and would not be in a production CNS component.
+    *   The simplified types (`demo_actor_t`, `entanglement_connection_t`, `entanglement_signal_t`, `entanglement_oracle_t`, `demo_domain_t`) are specific to this demo and are not the production-grade CNS framework types.
+
+2.  **CNS Core Framework (Reference/Concepts):**
+    *   The core functions (`entanglement_oracle_init`, `entanglement_create`, `entanglement_propagate_signal`, `entanglement_process_signals`, `entanglement_add_dark_triple`, `entanglement_activate_dark_triples`, `entanglement_trigger_reaction`, `entanglement_flush_signals`) are simplified versions of the L7 Entanglement Bus. The production-grade implementations of these functions are found in `src/entanglement_oracle.c` and `src/l7_dark_triple_real.c`, which are recommended for the CNS core framework.
+    *   `rdtsc()`: The `rdtsc()` implementation (mocked for non-x86) is a utility that would be part of the CNS core framework for performance measurement.
+
+**Conclusion:**
+`src/l7_entanglement_demo_fixed.c` is a useful demonstration of the L7 Entanglement Bus but is not a component of the CNS core or AOT-generated application. Its simplified implementations should not be confused with the production-grade CNS framework components.

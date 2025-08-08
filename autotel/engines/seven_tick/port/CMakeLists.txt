@@ -24,8 +24,8 @@ pkg_check_modules(JANSSON REQUIRED jansson)
 find_package(OpenTelemetry QUIET)
 
 # Include directories
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/chatman_nano_stack/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/chatman_nano_stack/include/cns)
 include_directories(${GENERATED_DIR})
 
 # ============================================================================
@@ -132,12 +132,38 @@ set(CNS_SOURCES
     src/utils/memory.c
     src/utils/perf.c
     src/utils/telemetry.c
-    topology_lifter.c
-    conductor_manifest.c
+    chatman_nano_stack/topology_lifter.c
+    chatman_nano_stack/conductor_manifest.c
     registry.c
     src/entanglement_oracle.c
-    meta_probe.c
-    bitactor_core.c
+    chatman_nano_stack/meta_probe.c
+    chatman_nano_stack/bitactor_core.c
+    chatman_nano_stack/main.c
+    chatman_nano_stack/dark_feature_activator.c
+    chatman_nano_stack/domains/deploy.c
+    chatman_nano_stack/domains/docs.c
+    chatman_nano_stack/examples/nano_stack_demo.c
+    chatman_nano_stack/examples/pattern_composition.c
+    chatman_nano_stack/examples/s7t_demo.c
+    chatman_nano_stack/src/bitactor_ttl_compiler.c
+    chatman_nano_stack/src/gatekeeper.c
+    chatman_nano_stack/validation/cns_fifth_epoch_permutation_test.c
+    chatman_nano_stack/validation/fifth_epoch_demo.c
+    chatman_nano_stack/validation/fifth_epoch_enhanced_demo.c
+    chatman_nano_stack/src/bitactor_80_20.c
+    chatman_nano_stack/src/bitactor_80_20_optimized.c
+    chatman_nano_stack/src/bitactor_bridge.c
+    chatman_nano_stack/src/bitactor_l2_l3_production.c
+    chatman_nano_stack/src/bitactor_l_stack_demo.c
+    chatman_nano_stack/src/bitactor_ls.c
+    chatman_nano_stack/src/l7_entanglement_demo.c
+    chatman_nano_stack/tests/bitactor_80_20_test.c
+    chatman_nano_stack/tests/bitactor_ls_test.c
+    chatman_nano_stack/chatman_nano_ring.c
+    chatman_nano_stack/chatman_signal_decoder.c
+    chatman_nano_stack/chatman_fastbus.c
+    chatman_nano_stack/chatman_event_loop.c
+    chatman_nano_stack/chatman_topology_lifter.c
 )
 
 # Create CNS library
@@ -165,7 +191,7 @@ add_dependencies(cns_static aot_compile weave)
 
 # Build gatekeeper executable
 add_executable(gatekeeper 
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/gatekeeper.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/chatman_nano_stack/src/gatekeeper.c
 )
 
 target_link_libraries(gatekeeper PRIVATE 
@@ -182,7 +208,7 @@ add_dependencies(gatekeeper aot_compile weave)
 
 # Build CNS CLI
 add_executable(cns 
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/chatman_nano_stack/main.c
 )
 
 target_link_libraries(cns PRIVATE 
@@ -199,7 +225,7 @@ add_dependencies(cns aot_compile weave)
 
 # Build benchmark executable
 add_executable(cns_bench 
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cmd_benchmark.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/chatman_nano_stack/src/cmd_benchmark.c
 )
 
 target_link_libraries(cns_bench PRIVATE 
@@ -219,7 +245,7 @@ enable_testing()
 
 # Add test executable
 add_executable(cns_test 
-    ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_cns.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/chatman_nano_stack/tests/test_cns.c
 )
 
 target_link_libraries(cns_test PRIVATE 
@@ -238,7 +264,7 @@ add_test(NAME CNSUnitTest COMMAND cns_test)
 # ============================================================================
 
 # Install headers
-install(DIRECTORY include/ DESTINATION include/cns)
+install(DIRECTORY chatman_nano_stack/include/ DESTINATION include/cns)
 
 # Install library
 install(TARGETS cns_static

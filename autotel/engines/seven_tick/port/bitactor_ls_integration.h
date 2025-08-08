@@ -25,8 +25,43 @@
 
 // Forward declarations matching BITACTOR-LS architecture
 typedef struct bitactor_ls_execution_context_t bitactor_ls_execution_context_t;
-typedef struct bitactor_pattern_t bitactor_pattern_t;
-typedef struct bitactor_learned_optimization_t bitactor_learned_optimization_t;
+
+/**
+ * Learning optimization structure for hot path execution
+ * Pre-compiled optimization ready for zero-overhead application
+ */
+typedef struct {
+    uint64_t optimization_id;
+    uint8_t register_deltas[8];          // Register state modifications
+    uint32_t cycle_reduction;            // Expected cycle reduction
+    uint64_t pattern_signature;          // Pattern this optimizes
+    bool active;                         // Currently active optimization
+} bitactor_learned_optimization_t;
+
+/**
+ * Learning pattern structure for 80/20 optimization
+ * Pre-compiled optimization results for hot path use
+ */
+typedef struct {
+    uint64_t pattern_hash;               // Unique pattern identifier
+    uint64_t execution_signature;        // Execution pattern signature
+    uint64_t performance_baseline;       // Baseline performance in cycles
+    uint64_t optimized_performance;      // Optimized performance in cycles
+    
+    // Pre-compiled optimization (hot path ready)
+    struct {
+        uint8_t register_optimizations[8]; // R0-R7 register optimizations
+        uint32_t opcode_optimizations;     // Bytecode optimizations
+        uint64_t memory_optimizations;     // Memory access optimizations
+        uint8_t entanglement_optimizations; // Signal propagation optimizations
+    } compiled_optimization;
+    
+    // Confidence and validation
+    float confidence_score;              // 0.0-1.0 confidence in optimization
+    uint64_t validation_count;           // Number of times validated
+    bool trinity_validated;              // Trinity constraint compliance
+    
+} bitactor_pattern_t;
 
 /**
  * Enhanced BitActor fiber with learning capabilities
@@ -59,31 +94,6 @@ typedef struct {
     } performance_history;
     
 } bitactor_ls_fiber_t;
-
-/**
- * Learning pattern structure for 80/20 optimization
- * Pre-compiled optimization results for hot path use
- */
-typedef struct {
-    uint64_t pattern_hash;               // Unique pattern identifier
-    uint64_t execution_signature;        // Execution pattern signature
-    uint64_t performance_baseline;       // Baseline performance in cycles
-    uint64_t optimized_performance;      // Optimized performance in cycles
-    
-    // Pre-compiled optimization (hot path ready)
-    struct {
-        uint8_t register_optimizations[8]; // R0-R7 register optimizations
-        uint32_t opcode_optimizations;     // Bytecode optimizations
-        uint64_t memory_optimizations;     // Memory access optimizations
-        uint8_t entanglement_optimizations; // Signal propagation optimizations
-    } compiled_optimization;
-    
-    // Confidence and validation
-    float confidence_score;              // 0.0-1.0 confidence in optimization
-    uint64_t validation_count;           // Number of times validated
-    bool trinity_validated;              // Trinity constraint compliance
-    
-} bitactor_pattern_t;
 
 /**
  * L9 Learning Layer integration

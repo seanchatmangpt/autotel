@@ -1,0 +1,15 @@
+File: chatman_nano_stack/topology_lifter.c
+
+Purpose:
+This file is a copy of `topology_lifter.c` located within the `chatman_nano_stack` directory. It implements the L8 Telemetry layer, responsible for recording tick and opcode spans, checking time budgets, and conceptually converting traces into TTL format. It has been refactored to remove `if` statements for deterministic, branchless execution and uses static memory for output.
+
+CNS Integration Recommendation:
+
+This file is a **duplicate** of `topology_lifter.c`. The recommendations for `topology_lifter.c` apply here as well.
+
+*   **Avoid Duplication:** This file should be removed to avoid code duplication and potential inconsistencies. The canonical version should be `topology_lifter.c`.
+*   **Core CNS Framework Component (L8):** This layer is a core CNS framework component, providing high-level telemetry and self-awareness. Its functions are designed to be deterministic and fixed-time.
+*   **Integration Points:** The conceptual integration with L7 (Entanglement Bus) demonstrates how this telemetry data could trigger other CNS components.
+
+**Conclusion:**
+This file is a duplicate and should be removed. Its relevant concepts and logic should be integrated into the CNS through the canonical `topology_lifter.c` and the CNS core framework.

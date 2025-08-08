@@ -139,8 +139,17 @@ class DSPyProcessor(BaseProcessor):
 
     def find_signatures_in_bpmn(self, bpmn_xml: str) -> List[DSPySignatureDefinition]:
         """Find DSPy signatures embedded in BPMN XML (for test compatibility)."""
+        # Sanitize DMN <dmn:text> inner content to avoid XML parse errors
+        import re as _re
+        def _sanitize_dmn_text(xml: str) -> str:
+            pattern = _re.compile(r"(<dmn:text[^>]*>)([\s\S]*?)(</dmn:text>)")
+            def repl(m):
+                head, content, tail = m.group(1), m.group(2), m.group(3)
+                content = content.replace('<', '&lt;').replace('>', '&gt;')
+                return head + content + tail
+            return pattern.sub(repl, xml)
         try:
-            root = ET.fromstring(bpmn_xml)
+            root = ET.fromstring(_sanitize_dmn_text(bpmn_xml))
         except Exception:
             return []
         return self._extract_signatures(root) 

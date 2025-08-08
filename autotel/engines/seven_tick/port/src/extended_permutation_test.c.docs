@@ -1,0 +1,20 @@
+File: src/extended_permutation_test.c
+
+Purpose:
+This file implements an "Extended Permutation Testing" suite for the L1-L2-L3 integration. It provides advanced stress testing, edge case validation, and performance regression detection through statistical analysis. It simulates the integrated L1-L2-L3 pipeline with simplified operations and measures their execution time, reporting detailed performance statistics and confidence intervals.
+
+CNS Integration Recommendation:
+
+This file is purely a **Test/Benchmark** and should **NOT** be part of the core CNS framework or AOT-generated code. It is a sophisticated test designed to rigorously validate the performance and stability of the integrated L1-L2-L3 layers under various conditions.
+
+1.  **Benchmark/Test Suite:**
+    *   `run_extended_permutation_test`, `print_extended_results`, `run_comprehensive_test_suite`, and `main()`: These functions are dedicated to orchestrating and reporting on the permutation tests. They should remain as standalone test/example code.
+    *   The `printf` statements for logging and reporting are typical of benchmark code and would not be in a production CNS component.
+    *   The simplified simulation functions (`simulate_l1_operation`, `simulate_l2_operation`, `simulate_l3_operation`, `simulate_integrated_pipeline`) are for the purpose of this test only. The actual L1-L3 implementations would come from the CNS core framework and AOT-generated code.
+
+2.  **CNS Core Framework (Reference/Concepts):**
+    *   The concepts of permutation testing, statistical analysis of performance, and validation against confidence intervals are crucial for the CNS's quality assurance and continuous integration pipeline. While this specific implementation is a test, the *methodology* is highly relevant.
+    *   `get_precise_nanoseconds()`: This utility for high-resolution timing is essential for performance measurement and should be part of a general CNS utility library.
+
+**Conclusion:**
+`src/extended_permutation_test.c` is a valuable and advanced test suite for the CNS's core layers. It is not part of the deployable CNS runtime but is critical for ensuring the quality, performance, and stability of the CNS core framework.

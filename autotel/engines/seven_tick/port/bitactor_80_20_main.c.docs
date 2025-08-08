@@ -1,0 +1,15 @@
+File: bitactor_80_20_main.c
+
+Purpose:
+This file serves as the main entry point for a demonstration and benchmark of the "BitActor 80/20 System." It primarily calls two benchmark functions: `benchmark_bitactor_80_20()` and `benchmark_l6_l7_permutations()`, both of which are defined in `src/bitactor_80_20.c`. Its purpose is to orchestrate the execution of these benchmarks and provide a high-level overview of the 80/20 system's performance.
+
+CNS Integration Recommendation:
+
+This file is purely a **Demonstration/Benchmark Orchestrator** and should **NOT** be part of the core CNS framework or AOT-generated code. It is a top-level executable designed to run and report on specific benchmarks.
+
+*   **Do NOT include in CNS build:** This file's `main` function and direct calls to benchmark functions are specific to a demonstration. In a production CNS, the system's entry point would be handled by the CNS framework itself, loading and executing AOT-generated BitActor code.
+*   **Use for testing and performance validation:** This file is useful for quickly running and verifying the performance characteristics of the `bitactor_80_20.c` components. It should be part of the project's test suite or a separate benchmarking application.
+*   **Highlights benchmark execution:** It shows how the various benchmarks are invoked, which can be a reference for setting up similar performance validation in a more formal CNS testing environment.
+
+**Conclusion:**
+`bitactor_80_20_main.c` is a useful test harness for the `bitactor_80_20.c` implementation but is not a component of the CNS core or AOT-generated application.

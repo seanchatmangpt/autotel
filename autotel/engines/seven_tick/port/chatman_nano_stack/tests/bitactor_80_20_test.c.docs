@@ -1,0 +1,15 @@
+File: chatman_nano_stack/tests/bitactor_80_20_test.c
+
+Purpose:
+This file is a copy of `tests/bitactor_80_20_test.c` located within the `chatman_nano_stack/tests` directory. It provides a test suite for the `bitactor_80_20.c` implementation, covering functionalities such as domain creation, actor addition, matrix ticking, nanoregex matching, cognitive cycle execution, manifest creation, registry functionality, and entanglement bus operations. It uses `assert` statements for validation.
+
+CNS Integration Recommendation:
+
+This file is a **duplicate** of `tests/bitactor_80_20_test.c`. The recommendations for `tests/bitactor_80_20_test.c` apply here as well.
+
+*   **Avoid Duplication:** This file should be removed to avoid code duplication and potential inconsistencies. The canonical version should be `tests/bitactor_80_20_test.c`.
+*   **Test/Benchmark:** This file is purely a test suite and should **NOT** be part of the core CNS framework or AOT-generated code. It is designed to validate the correctness of the `bitactor_80_20.c` component.
+*   **Use for continuous integration and quality assurance:** This test suite is crucial for ensuring that the `bitactor_80_20.c` (a component that provides simplified implementations of core BitActor concepts) consistently functions as expected. It should be run as part of the project's automated testing pipeline.
+
+**Conclusion:**
+This file is a duplicate and should be removed. Its relevant concepts and logic should be integrated into the CNS through the canonical `tests/bitactor_80_20_test.c` and the CNS testing framework.

@@ -302,6 +302,10 @@ def pytest_sessionstart(session):
     # Set test environment
     os.environ["AUTOTEL_ENV"] = "test"
     os.environ["PYTHONPATH"] = str(project_root)
+    # Silence OTEL exporters during tests to avoid background thread writes
+    os.environ.setdefault("OTEL_TRACES_EXPORTER", "none")
+    os.environ.setdefault("OTEL_METRICS_EXPORTER", "none")
+    os.environ.setdefault("OTEL_LOGS_EXPORTER", "none")
     
     # Create test directories if they don't exist
     test_dirs = [

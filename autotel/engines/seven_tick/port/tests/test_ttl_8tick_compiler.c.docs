@@ -1,0 +1,16 @@
+File: tests/test_ttl_8tick_compiler.c
+
+Purpose:
+This file contains a comprehensive test suite and benchmarks for the `bitactor_ttl_compiler.c` (the 8-tick TTL compiler). It verifies that the compiler correctly processes various TTL snippets (simple triples, ontology statements, SHACL constraints, complex TTL with prefixes) and generates bytecode within the strict 8-tick CPU cycle limit. It also tests triple compilation, stream processing, and integration with BitActor operations, including large-scale benchmarks.
+
+CNS Integration Recommendation:
+
+This file is purely a **Test/Benchmark** and should **NOT** be part of the core CNS framework or AOT-generated code. Its purpose is to validate the correctness and performance of the `bitactor_ttl_compiler.c` component.
+
+*   **Do NOT include in CNS build:** This file contains test cases, benchmarking loops, and `printf` statements that are not part of the production runtime.
+*   **Use for continuous integration and quality assurance:** This test suite is crucial for ensuring that the `bitactor_ttl_compiler.c` (a core CNS AOT component) consistently meets its 8-tick performance and correctness guarantees. It should be run as part of the project's automated testing pipeline.
+*   **Provides insights into AOT compiler requirements:** The tests demonstrate the expected inputs and outputs of the 8-tick TTL compiler, which is valuable for understanding and developing the `cjinja_aot_compiler.py` or any other AOT tool.
+*   **`rdtsc()` implementation:** The `rdtsc()` function defined here is a utility for benchmarking and should be part of a general CNS utility library for performance measurement, not specific to this test file.
+
+**Conclusion:**
+This file is essential for verifying the CNS AOT compiler's performance and correctness but is not part of the deployable CNS runtime.

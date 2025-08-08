@@ -19,6 +19,7 @@ import lxml.etree as etree
 from autotel.processors.base import BaseProcessor, ProcessorConfig, ProcessorResult
 from autotel.processors.meta import processor_metadata
 from autotel.helpers.telemetry.span import create_processor_span
+import re
 
 
 @processor_metadata(
@@ -181,9 +182,66 @@ class BPMNProcessor(BaseProcessor):
         Raises:
             ValueError: If XML is malformed or process_id doesn't exist
         """
+        def _sanitize_dmn_text(xml: str) -> str:
+            # Escape raw '<' and '>' inside <dmn:text>...</dmn:text>
+            pattern = re.compile(r"(<dmn:text[^>]*>)([\s\S]*?)(</dmn:text>)")
+            def repl(m):
+                head, content, tail = m.group(1), m.group(2), m.group(3)
+                content = content.replace('<', '&lt;').replace('>', '&gt;')
+                return head + content + tail
+            return pattern.sub(repl, xml)
+
         try:
+            xml_string = _sanitize_dmn_text(xml_string)
             # Parse XML string into etree
             bpmn_tree = etree.fromstring(xml_string.encode('utf-8'))
+
+            # Normalize DMN decisionRef to Camunda decisionRef for SpiffWorkflow compatibility
+            CAMUNDA_NS = 'http://camunda.org/schema/1.0/bpmn'
+            DMN_NS = 'http://www.omg.org/spec/DMN/20191111/MODEL/'
+
+            # Ensure camunda namespace declared on root if absent
+            if bpmn_tree.tag.endswith('definitions'):
+                nsmap = dict(bpmn_tree.nsmap) if bpmn_tree.nsmap else {}
+                if 'camunda' not in nsmap.values() and not any(k == 'camunda' for k in nsmap.keys()):
+                    # lxml requires creating a new element to change nsmap cleanly
+                    from lxml.etree import Element
+                    new_nsmap = nsmap.copy()
+                    new_nsmap['camunda'] = CAMUNDA_NS
+                    new_root = Element(bpmn_tree.tag, nsmap=new_nsmap)
+                    # move children
+                    for child in list(bpmn_tree):
+                        new_root.append(child)
+                    for k, v in bpmn_tree.attrib.items():
+                        new_root.set(k, v)
+                    bpmn_tree = new_root
+
+            # Convert dmn:decisionRef attributes to camunda:decisionRef
+            br_tasks = bpmn_tree.xpath('.//bpmn:businessRuleTask', namespaces={
+                'bpmn': 'http://www.omg.org/spec/BPMN/20100524/MODEL'
+            })
+            for node in br_tasks:
+                # iterate attributes to find DMN decisionRef
+                to_delete = []
+                for attr_name, attr_val in node.attrib.items():
+                    if attr_name.endswith('decisionRef') and (attr_name.startswith('{'+DMN_NS+'}') or 'dmn:' in attr_name):
+                        # set camunda:decisionRef namespaced attr
+                        node.set('{%s}%s' % (CAMUNDA_NS, 'decisionRef'), attr_val)
+                        to_delete.append(attr_name)
+                for attr in to_delete:
+                    try:
+                        del node.attrib[attr]
+                    except Exception:
+                        pass
+
+            # Extract inline DMN <dmn:definitions> from BPMN and register with parser
+            dmn_defs = bpmn_tree.findall('.//{http://www.omg.org/spec/DMN/20191111/MODEL/}definitions')
+            for d in dmn_defs:
+                try:
+                    self.parser.add_dmn_xml(d, filename=None)
+                except Exception:
+                    # Best-effort: continue if DMN not parsable here
+                    pass
             
             # Add BPMN XML to parser
             self.parser.add_bpmn_xml(bpmn_tree)

@@ -1,0 +1,15 @@
+File: chatman_nano_stack/bitactor_core.c
+
+Purpose:
+This file is a copy of `bitactor_core.c` located within the `chatman_nano_stack` directory. It implements the L1 Execution Core, defining the 8-register causal machine and the execution of `BA_OP_*` opcodes. It has been refactored to use a jump table for opcode dispatch and aims for deterministic, fixed-cycle execution (simulated with assigned tick costs).
+
+CNS Integration Recommendation:
+
+This file is a **duplicate** of `bitactor_core.c`. The recommendations for `bitactor_core.c` apply here as well.
+
+*   **Avoid Duplication:** This file should be removed to avoid code duplication and potential inconsistencies. The canonical version should be `bitactor_core.c`.
+*   **AOT-Generated Logic (from TTL):** The `bitactor_opcode_t` enum and the conceptual tick costs for each opcode should be defined in TTL. The AOT compiler would generate the corresponding C code for the opcode handlers and the `bitactor_core_execute_instruction` function.
+*   **CNS Core Framework (Integration Points):** The `bitactor_core_execute_instruction` function, with its jump table dispatch, represents the core execution logic that the AOT compiler would generate.
+
+**Conclusion:**
+This file is a duplicate and should be removed. Its relevant concepts and logic should be integrated into the CNS through TTL definitions and the CNS core framework.

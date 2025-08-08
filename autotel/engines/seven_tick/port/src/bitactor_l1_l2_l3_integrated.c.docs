@@ -1,0 +1,23 @@
+File: src/bitactor_l1_l2_l3_integrated.c
+
+Purpose:
+This file implements an integrated L1->L2->L3 BitActor system with comprehensive testing. It aims to demonstrate the end-to-end performance of the combined causal stack, including L1 (causal collapse), L2 (causal mailbox & fiber engine), and L3 (GenActor behavior patterns). It defines simplified, integrated data structures and functions for each layer, and includes extensive benchmarking (layer-by-layer and integrated pipeline) and permutation testing to validate performance targets and integration consistency.
+
+CNS Integration Recommendation:
+
+This file is primarily a **Benchmark/Demonstration** and should **NOT** be part of the core CNS framework or AOT-generated code. It is a highly specialized test designed to validate the integration and performance of the L1, L2, and L3 layers.
+
+1.  **Benchmark/Demonstration:**
+    *   `create_integrated_system`, `execute_integrated_pipeline`, `benchmark_l1_performance`, `benchmark_l2_performance`, `benchmark_l3_performance`, `benchmark_integrated_performance`, `execute_permutation_test`, `main()`: These functions are dedicated to orchestrating and reporting on the integrated benchmarks and permutation tests. They should remain as standalone test/example code.
+    *   The `printf` statements for logging and reporting are typical of benchmark code and would not be in a production CNS component.
+    *   The simplified implementations of L1-L3 logic (`l1_collapse_integrated`, `l2_route_message`, `l2_get_next_message`, `l3_behavior_transition`) are for the purpose of this benchmark only. The actual L1-L3 implementations would come from the CNS core framework and AOT-generated code.
+    *   The data structures (`IntegratedBitActor`, `IntegratedLookupTable`, `L2Message`, `L2CausalMailbox`, `L3BehaviorState`, `L3GenActor`, `IntegratedSystem`) are simplified and integrated for this specific benchmark. The production-grade CNS framework would define these more robustly and modularly.
+
+2.  **CNS Core Framework (Reference/Concepts):**
+    *   `get_precise_nanoseconds()`: This utility for high-resolution timing is essential for performance measurement and should be part of a general CNS utility library.
+    *   `fast_hash()`: This utility function is a general-purpose hash that could be part of a CNS utility library.
+    *   The *concept* of integrating L1, L2, and L3 into a seamless, high-performance pipeline is fundamental to the CNS architecture. This benchmark provides a concrete example of how these layers interact and how their performance can be measured.
+    *   The use of lookup tables (`IntegratedLookupTable`) for branchless operations is a key optimization technique that the AOT compiler would employ.
+
+**Conclusion:**
+`src/bitactor_l1_l2_l3_integrated.c` is a valuable benchmark that validates the integration and performance of the CNS's core layers. It showcases the *type* of highly optimized, integrated code that the CNS AOT compiler aims to produce. However, it is not a direct component of the CNS core framework or AOT-generated application logic.

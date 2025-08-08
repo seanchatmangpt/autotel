@@ -1,0 +1,15 @@
+File: src/bitactor_ls_main.c
+
+Purpose:
+This file serves as the main entry point for the BITACTOR-LS (Learning System) benchmark executable. Its primary function is to call `benchmark_bitactor_ls()`, which orchestrates a comprehensive performance evaluation of the learning-enhanced BitActor system.
+
+CNS Integration Recommendation:
+
+This file is purely a **Benchmark Orchestrator** and should **NOT** be part of the core CNS framework or AOT-generated code. It is a top-level executable designed to run and report on the BITACTOR-LS benchmark.
+
+*   **Do NOT include in CNS build:** This file's `main` function and direct call to a benchmark function are specific to a demonstration. In a production CNS, the system's entry point would be handled by the CNS framework itself, loading and executing AOT-generated BitActor code.
+*   **Use for testing and performance validation:** This file is useful for quickly running and verifying the performance characteristics of the BITACTOR-LS components. It should be part of the project's test suite or a separate benchmarking application.
+*   **Highlights benchmark execution:** It shows how the BITACTOR-LS benchmark is invoked, which can be a reference for setting up similar performance validation in a more formal CNS testing environment.
+
+**Conclusion:**
+`src/bitactor_ls_main.c` is a useful test harness for the BITACTOR-LS but is not a component of the CNS core or AOT-generated application.

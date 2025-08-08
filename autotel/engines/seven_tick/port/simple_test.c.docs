@@ -1,0 +1,15 @@
+File: simple_test.c
+
+Purpose:
+This file provides a "Simple Verification Test" for the BITACTOR-LS (Learning System). It performs basic tests to ensure that the learning matrix and CNS learning system can be created and that a fundamental performance test (matrix ticking) can be executed. It uses a mock `rdtsc()` for simplified cycle counting.
+
+CNS Integration Recommendation:
+
+This file is purely a **Test/Example** and should **NOT** be part of the core CNS framework or AOT-generated code. It is a basic sanity check for the BITACTOR-LS components.
+
+*   **Do NOT include in CNS build:** This file contains test-specific `main` function, mock `rdtsc()`, and `printf` statements that are not part of the production runtime.
+*   **Use for quick verification:** It's useful for a developer to quickly confirm that the basic BITACTOR-LS components can be initialized and run without immediate crashes. It can be part of a very lightweight test suite.
+*   **Highlights basic integration:** It shows the minimal calls needed to interact with the `bitactor_ls_matrix` and `cns_bitactor_ls` interfaces.
+
+**Conclusion:**
+`simple_test.c` is a useful, rudimentary test for the BITACTOR-LS but is not a component of the CNS core or AOT-generated application.

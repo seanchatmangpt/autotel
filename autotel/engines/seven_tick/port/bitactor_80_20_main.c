@@ -8,6 +8,9 @@ int main(int argc, char* argv[]) {
     // Run the benchmark
     benchmark_bitactor_80_20();
     
+    // Run L6-L7 permutation benchmark
+    benchmark_l6_l7_permutations();
+    
     printf("\n🎯 BitActor 80/20 Demo Complete\n");
     return 0;
 }

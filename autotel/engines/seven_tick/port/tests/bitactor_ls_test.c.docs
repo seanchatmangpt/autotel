@@ -1,0 +1,16 @@
+File: tests/bitactor_ls_test.c
+
+Purpose:
+This file provides a comprehensive test suite for the BITACTOR-LS (Learning System). It includes unit tests for various functionalities such as learning matrix creation, learning actor creation, pattern management (add, activate, remove), learning mode configuration, hot path performance, learning cognitive cycle execution, pattern discovery, pattern sharing, and CNS integration. It uses a custom test framework with `TEST_ASSERT` macros and a mock `rdtsc()` for testing purposes.
+
+CNS Integration Recommendation:
+
+This file is purely a **Test/Benchmark** and should **NOT** be part of the core CNS framework or AOT-generated code. Its purpose is to rigorously validate the correctness and performance of the `bitactor_ls.c` and `bitactor_ls_integration.c` components.
+
+*   **Do NOT include in CNS build:** This file contains test-specific `main` function, test macros, and `printf` statements that are not part of the production runtime.
+*   **Use for continuous integration and quality assurance:** This test suite is crucial for ensuring that the L9 Learning Layer (implemented in `bitactor_ls.c` and `bitactor_ls_integration.c`) consistently meets its functional and performance requirements. It should be run as part of the project's automated testing pipeline.
+*   **Provides insights into L9 requirements:** The tests demonstrate the expected behavior and performance characteristics of the learning system, which is valuable for understanding and further developing the CNS's adaptive capabilities.
+*   **`rdtsc()` implementation:** The `rdtsc()` function defined here is a utility for testing and should be part of a general CNS utility library for performance measurement, not specific to this test file.
+
+**Conclusion:**
+`tests/bitactor_ls_test.c` is an essential test suite for the CNS's L9 Learning Layer but is not part of the deployable CNS runtime.

@@ -1,0 +1,56 @@
+# Makefile for TTL→BitActor Compiler Demonstration
+# Shows how TTL defines the whole system through compile-time transformation
+
+CC = clang
+CFLAGS = -O3 -march=native -Wall -Wextra -std=c11
+LDFLAGS = -lm
+
+# Core BitActor files
+BITACTOR_SRCS = bitactor.c \
+                fiber_engine.c \
+                conductor_manifest.c \
+                meta_probe.c \
+                meta_probe_demo.c \
+                signal_broker.c \
+                contract_broker.c \
+                telemetry_dispatcher.c \
+                genesis_reset.c
+
+# TTL compiler files  
+TTL_COMPILER_SRCS = ttl_bitactor_compiler.c
+
+# Demo files
+DEMO_SRCS = ttl_bitactor_demo.c
+
+# All source files
+SRCS = $(BITACTOR_SRCS) $(TTL_COMPILER_SRCS) $(DEMO_SRCS)
+
+# Object files
+OBJS = $(SRCS:.c=.o)
+
+# Target executable
+TARGET = ttl_bitactor_demo
+
+# Default target
+all: $(TARGET)
+
+# Build the demo
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+# Compile C files
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Clean build artifacts
+clean:
+	rm -f $(OBJS) $(TARGET)
+
+# Run the demo
+run: $(TARGET)
+	./$(TARGET)
+
+# Build and run
+demo: all run
+
+.PHONY: all clean run demo

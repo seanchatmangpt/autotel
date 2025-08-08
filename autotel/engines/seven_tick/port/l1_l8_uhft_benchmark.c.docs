@@ -1,0 +1,21 @@
+File: l1_l8_uhft_benchmark.c
+
+Purpose:
+This file implements a comprehensive Ultra High Frequency Trading (UHFT) benchmark for the BitActor L1-L8 causal stack. It simulates an end-to-end trading scenario, including market data processing, strategy execution, order routing, telemetry, risk management, symbol lookup, signal propagation, and system-wide analytics. The benchmark aims to demonstrate and measure sub-100ns end-to-end latency and strict adherence to the 8T/8H/8B Trinity compliance. It includes simplified, integrated implementations of each L-layer's core logic and extensive performance measurement and reporting.
+
+CNS Integration Recommendation:
+
+This file is primarily a **Benchmark/Demonstration** and should **NOT** be part of the core CNS framework or AOT-generated code. It is a highly specialized test designed to validate the overall performance and Trinity compliance of the BitActor system in a specific, demanding use case (UHFT).
+
+1.  **Benchmark/Demonstration:**
+    *   `run_uhft_benchmark` and `main()`: These functions are dedicated to benchmarking and demonstrating the system's performance. They should remain as standalone test/example code.
+    *   The `printf` statements for logging and reporting are typical of benchmark code and would not be in a production CNS component.
+    *   The simplified implementations of L1-L8 logic within this file (`l1_process_market_tick`, `strategy_momentum`, `strategy_mean_reversion`, `l3_route_order`, `l4_update_telemetry`, `l5_validate_order`, `l6_lookup_symbol`, `l7_propagate_trading_signal`, `l8_analyze_performance`) are for the purpose of this benchmark only. The actual L1-L8 implementations would come from the CNS core framework and AOT-generated code.
+
+2.  **CNS Core Framework (Reference/Concepts):**
+    *   `rdtsc_uhft()`: This highly optimized cycle counting function is crucial for precise performance measurement. Its implementation is platform-specific and represents the kind of low-level utility that would be part of a CNS core utility library for performance monitoring.
+    *   The data structures (`compiled_bitactor_t`, `market_tick_t`, `order_t`, `trading_signal_t`, `execution_venue_t`, `symbol_info_t`, `risk_metrics_t`, `l1_metrics_t`, `l4_telemetry_t`, `l8_system_metrics_t`, `uhft_benchmark_results_t`): While simplified here, these structures represent the types of data that would flow through the CNS. Their production-grade definitions would be part of the CNS core framework or generated from TTL.
+    *   The *concepts* of each L-layer's function (e.g., L1 for market data ingestion, L2 for strategy execution, L3 for order routing, L4 for telemetry, L5 for risk validation, L6 for registry, L7 for entanglement, L8 for system analytics) are fundamental to the CNS architecture. This benchmark provides a concrete example of how these layers interact.
+
+**Conclusion:**
+`l1_l8_uhft_benchmark.c` is a valuable benchmark that validates the CNS's potential for extreme performance and Trinity compliance in a demanding application. It showcases the *type* of highly optimized, integrated code that the CNS AOT compiler aims to produce. However, it is not a direct component of the CNS core framework or AOT-generated application logic.

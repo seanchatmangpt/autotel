@@ -1,0 +1,15 @@
+File: chatman_nano_stack/main.c
+
+Purpose:
+This file is a copy of `main.c` located within the `chatman_nano_stack` directory. It serves as a top-level simulation driver for the BitActor Causal Stack. It orchestrates the initialization and interaction of various L-layers (L8 Telemetry, L6 Registry, L4 Meta-Probe, L3 Contract Resolver, L2 Fiber Engine, L5 Conductor Manifest) to demonstrate a basic fiber execution flow. It includes `printf` statements for simulation output and reports on L4 metrics.
+
+CNS Integration Recommendation:
+
+This file is a **duplicate** of `main.c`. The recommendations for `main.c` apply here as well.
+
+*   **Avoid Duplication:** This file should be removed to avoid code duplication and potential inconsistencies. The canonical version should be `main.c`.
+*   **Purely a Simulation Artifact:** This file is purely for demonstration and would not exist in the final CNS-built BitActor. Its role would be taken over by the CNS's own main entry point, which would load and execute the AOT-generated BitActor code.
+*   **Not Part of 7-Tick Path:** The `if` statements and `printf` calls are acceptable here because this is a simulation driver, not part of the performance-critical 7-tick execution path.
+
+**Conclusion:**
+This file is a duplicate and should be removed. Its relevant concepts and logic should be integrated into the CNS through the CNS's overall system orchestration and AOT-generated application.

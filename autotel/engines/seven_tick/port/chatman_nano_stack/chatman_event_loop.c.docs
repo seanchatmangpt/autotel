@@ -1,0 +1,16 @@
+File: chatman_nano_stack/chatman_event_loop.c
+
+Purpose:
+This file is a placeholder for `chatman_event_loop.c`. Based on its name and location within `chatman_nano_stack`, it is intended to implement the core event loop for the Chatman Nano Stack. This event loop would be responsible for orchestrating the execution of BitActor instances, handling incoming events (e.g., messages, external triggers), and driving the causal computation cycle. It would likely interact directly with the L1-L8 layers of the BitActor stack.
+
+CNS Integration Recommendation:
+
+This file is a **Core CNS Framework Component (Orchestration/Runtime)**. It represents the central scheduler and execution driver for the entire CNS.
+
+1.  **Core CNS Framework Component (Orchestration/Runtime):**
+    *   This file would contain the main event loop logic. This loop would be highly optimized for deterministic, fixed-cycle execution.
+    *   It would manage the scheduling and execution of BitActor instances, potentially using techniques like round-robin, priority-based scheduling, or other fixed-time mechanisms.
+    *   It would integrate with the L2 (Fiber Engine) for message dispatch, and potentially with L4 (Meta-Probe) and L8 (Topology Lifter) for real-time monitoring and control.
+
+**Conclusion:**
+`chatman_nano_stack/chatman_event_loop.c` is a critical file for the CNS. Its full implementation would provide the central event loop, which is the heart of the CNS's real-time, deterministic execution. This is a core component of the CNS framework.

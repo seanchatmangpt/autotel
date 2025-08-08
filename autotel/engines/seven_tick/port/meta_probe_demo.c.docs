@@ -1,0 +1,12 @@
+File: meta_probe_demo.c
+
+Purpose:
+This file provides simplified, demo-specific implementations of `meta_probe` functions. It's designed for quick testing and demonstration of the `meta_probe` (L4) layer without requiring the full BitActor or CNS context. It uses a static global collector and simplified span management.
+
+CNS Integration Recommendation:
+
+This file is purely an **Example/Test/Utility** and should **NOT** be part of the core CNS framework or AOT-generated code. Its functions are simplified and do not adhere to the strict 8T/8H/8B constraints or the full functionality of the production `meta_probe.c`.
+
+*   **Do NOT include in CNS build:** The `meta_probe.c` file (the production L4 implementation) is the correct component for the CNS core framework.
+*   **Use for testing/demonstration only:** This file can be used as a standalone example to illustrate how to interact with the `meta_probe.h` API in a simplified environment.
+*   **Remove from production builds:** Ensure this file is excluded from any production CNS or BitActor compilation.

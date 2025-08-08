@@ -1,7 +1,13 @@
-"""Pipeline orchestrator for AutoTel semantic execution pipeline."""
+"""Pipeline orchestrator for AutoTel semantic execution pipeline.
 
-from typing import Dict, Any, Optional
+Provides a high-level factory API expected by tests: `AutoTelFactory` and
+an immutable `ExecutableSpecification` data structure. The factory wraps the
+existing processors and linker to create and validate specifications from XML.
+"""
+
+from typing import Dict, Any, Optional, List
 from datetime import datetime
+from dataclasses import dataclass
 
 from autotel.processors.owl_processor import OWLProcessor
 from autotel.processors.shacl_processor import SHACLProcessor
@@ -14,6 +20,7 @@ from .dspy_compiler import DSPyCompiler
 from .linker import SemanticLinker
 from .executor import OntologyExecutor, ExecutionResult
 from autotel.core.telemetry import TelemetryManager, create_telemetry_manager
+from autotel.processors.bpmn_processor import BPMNProcessor
 
 
 class PipelineOrchestrator:
@@ -321,3 +328,140 @@ class PipelineOrchestrator:
     ) -> Dict[str, Any]:
         """Process OpenTelemetry data from file."""
         return self.otel_processor.parse_file(otel_file) 
+
+
+# Immutable ExecutableSpecification used by tests and factory API
+@dataclass(frozen=True)
+class ExecutableSpecification:
+    process_id: str
+    bpmn_spec: Any
+    dmn_decisions: List[Any]
+    dspy_signatures: List[Any]
+    shacl_graph: Any
+    owl_graph: Any
+    metadata: Dict[str, Any]
+
+
+class AutoTelFactory:
+    """High-level factory for building and validating executable specifications."""
+
+    def __init__(self) -> None:
+        # Processors
+        self.bpmn_processor = BPMNProcessor(ProcessorConfig(name="bpmn_processor"))
+        self.dmn_processor = None  # DMN handled via parser in workflows; keep attribute for tests
+        self.dspy_processor = DSPyProcessor(ProcessorConfig(name="dspy_processor"))
+        self.shacl_processor = SHACLProcessor(ProcessorConfig(name="shacl_processor"))
+        self.owl_processor = OWLProcessor(ProcessorConfig(name="owl_processor"))
+        # Linking
+        self.linker = SemanticLinker()
+
+    def _parse_all(self, xml: str, process_id: str) -> Dict[str, Any]:
+        # Parse BPMN (spec only)
+        bpmn_spec = self.bpmn_processor.parse_xml(xml, process_id)
+
+        # Parse inline DMN via enhanced parser if available
+        from autotel.workflows.dspy_bpmn_parser import DspyBpmnParser
+        parser = DspyBpmnParser()
+        parser.add_bpmn_xml_from_string(xml)
+        specs = parser.find_all_specs()
+        if process_id not in specs:
+            raise ValueError(f"Process ID '{process_id}' not found")
+
+        # Collect DMN decisions (names) that parser registered
+        dmn_ids = list(getattr(parser, 'dmn_parsers', {}).keys())
+
+        # Parse DSPy signatures embedded (via dedicated finder for BPMN XML)
+        dspy_signatures = self.dspy_processor.find_signatures_in_bpmn(xml)
+
+        # Parse SHACL (inline RDF/XML shapes supported by parser)
+        shacl_graph = parser.shacl_graph
+
+        # Parse OWL (best-effort; may be absent)
+        owl_result = self.owl_processor.process(xml)
+        owl_graph = owl_result.data if owl_result.success else None
+        if owl_graph is None:
+            # Attempt to extract inline OWL from BPMN XML
+            try:
+                from lxml import etree
+                root = etree.fromstring(xml.encode('utf-8'))
+                ns = {'owl': 'http://www.w3.org/2002/07/owl#', 'rdf': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'}
+                # Prefer a concrete rdf:RDF node if present
+                rdf_nodes = root.xpath('.//rdf:RDF', namespaces=ns)
+                if rdf_nodes:
+                    rdf_xml = etree.tostring(rdf_nodes[0], encoding='utf-8').decode('utf-8')
+                    # Ensure required namespace declarations exist on rdf:RDF
+                    if 'xmlns:owl' not in rdf_xml:
+                        rdf_xml = rdf_xml.replace('<rdf:RDF', "<rdf:RDF xmlns:owl='http://www.w3.org/2002/07/owl#'", 1)
+                    if 'xmlns:rdfs' not in rdf_xml:
+                        rdf_xml = rdf_xml.replace('<rdf:RDF', "<rdf:RDF xmlns:rdfs='http://www.w3.org/2000/01/rdf-schema#'", 1)
+                    alt = self.owl_processor.process(rdf_xml)
+                    if alt.success:
+                        owl_graph = alt.data
+                elif root.xpath('.//owl:Ontology', namespaces=ns):
+                    # Fallback: prefer rdf:RDF inside owl:Ontology if present
+                    onto = root.xpath('.//owl:Ontology', namespaces=ns)[0]
+                    inner_rdf = onto.xpath('.//rdf:RDF', namespaces=ns)
+                    if inner_rdf:
+                        rdf_xml = etree.tostring(inner_rdf[0], encoding='utf-8').decode('utf-8')
+                        if 'xmlns:owl' not in rdf_xml:
+                            rdf_xml = rdf_xml.replace('<rdf:RDF', "<rdf:RDF xmlns:owl='http://www.w3.org/2002/07/owl#'", 1)
+                        if 'xmlns:rdfs' not in rdf_xml:
+                            rdf_xml = rdf_xml.replace('<rdf:RDF', "<rdf:RDF xmlns:rdfs='http://www.w3.org/2000/01/rdf-schema#'", 1)
+                        alt = self.owl_processor.process(rdf_xml)
+                        if alt.success:
+                            owl_graph = alt.data
+                    else:
+                        onto_xml = etree.tostring(onto, encoding='utf-8').decode('utf-8')
+                        wrapped = "<rdf:RDF xmlns:rdf='http://www.w3.org/1999/02/22-rdf-syntax-ns#' xmlns:owl='http://www.w3.org/2002/07/owl#'>" + onto_xml + "</rdf:RDF>"
+                        alt = self.owl_processor.process(wrapped)
+                        if alt.success:
+                            owl_graph = alt.data
+            except Exception:
+                pass
+
+        return {
+            "bpmn_spec": bpmn_spec,
+            "dmn_decisions": dmn_ids,
+            "dspy_signatures": dspy_signatures,
+            "shacl_graph": shacl_graph,
+            "owl_graph": owl_graph,
+        }
+
+    def create_specification_from_xml(self, xml: str, process_id: str) -> ExecutableSpecification:
+        if not xml or not process_id:
+            raise ValueError("XML and process_id are required")
+        parsed = self._parse_all(xml, process_id)
+        return ExecutableSpecification(
+            process_id=process_id,
+            bpmn_spec=parsed["bpmn_spec"],
+            dmn_decisions=parsed["dmn_decisions"],
+            dspy_signatures=parsed["dspy_signatures"],
+            shacl_graph=parsed["shacl_graph"],
+            owl_graph=parsed["owl_graph"],
+            metadata={
+                "created_at": datetime.now().isoformat(),
+                "parser": "DspyBpmnParser",
+            },
+        )
+
+    def create_specification_from_file(self, path: str, process_id: str) -> ExecutableSpecification:
+        import os
+        if not os.path.exists(path):
+            raise FileNotFoundError(path)
+        with open(path, "r", encoding="utf-8") as f:
+            xml = f.read()
+        return self.create_specification_from_xml(xml, process_id)
+
+    def validate_specification(self, xml: str, process_id: str) -> Dict[str, Any]:
+        try:
+            spec = self.create_specification_from_xml(xml, process_id)
+            return {
+                "valid": True,
+                "overall_valid": True,
+                "process_id": process_id,
+                "bpmn_spec_valid": spec.bpmn_spec is not None,
+                "dmn_decisions_count": len(spec.dmn_decisions),
+                "dspy_signatures_count": len(spec.dspy_signatures),
+            }
+        except Exception as e:
+            return {"valid": False, "overall_valid": False, "error": str(e)}

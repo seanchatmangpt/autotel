@@ -1,0 +1,25 @@
+File: src/l7_dark_triple_real.c
+
+Purpose:
+This file implements a "real" Dark Triple Activation System, replacing previous mock implementations. It focuses on the deterministic activation of dormant logic based on entanglement signals and causal propagation patterns, adhering to the 8T/8H/8B architecture. It defines data structures for dark triples and the dark triple system, and includes functions for initialization, registering dark triples, processing activation signals, deactivating expired triples, and getting system status. It also contains a comprehensive demonstration and benchmark of its performance and functionality.
+
+CNS Integration Recommendation:
+
+This file is a **core component of the CNS Core Framework**, specifically for the L7 Entanglement Bus's advanced "Dark 80/20 Activation" feature. Its real-world implementation of dormant logic activation is crucial for the CNS's self-optimizing and adaptive capabilities.
+
+1.  **Core CNS Framework Component (L7 Entanglement Bus - Dark Triple Activation):**
+    *   `dark_triple_t`, `dark_triple_system_t`: These data structures define the state and configuration of the Dark Triple system.
+    *   `dark_triple_system_init`, `dark_triple_register`: These functions are for initializing and configuring the Dark Triple system. They would be called during CNS system setup, potentially with data generated from TTL.
+    *   `dark_triple_process_signal`: This is the critical hot path function for processing incoming signals and activating dormant triples. Its logic, including pattern matching and threshold checking, must be highly optimized and adhere to the 8T constraint. This function would be integrated into the L7 Entanglement Bus (`src/entanglement_oracle.c`).
+    *   `dark_triple_deactivate_expired`: This function handles the deactivation of dark triples, which is part of the system's self-management.
+    *   `dark_triple_get_status`: This provides observability into the Dark Triple system's state.
+
+2.  **CNS Core Framework (Utility/Integration):**
+    *   `rdtsc_real()`: This highly optimized cycle counting function is crucial for precise performance measurement and should be part of a general CNS utility library.
+
+3.  **Example/Test/Utility:**
+    *   `dark_triple_demo_real()` and `main()`: These functions are **demonstration and benchmarking code**. They should be kept separate as tests/examples and not included in the core CNS framework. They are valuable for validating the correctness and performance of the Dark Triple system.
+    *   The `bitactor_domain_t` and `compiled_bitactor_t` structures used within the demo are simplified for testing. The actual CNS framework would use the production-grade definitions.
+
+**Conclusion:**
+`src/l7_dark_triple_real.c` is a highly valuable file for the CNS. It provides a concrete, optimized implementation of the Dark Triple Activation system, which is a key feature of the L7 Entanglement Bus. Its logic and data structures should be integrated into the CNS core framework to enable the "Dark 80/20 Activation" capability.

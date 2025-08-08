@@ -1,0 +1,151 @@
+# Makefile for BitActor L1-L8 Ultra High Frequency Trading Benchmark
+# Tests complete stack performance for UHFT scenarios
+
+CC = gcc
+CFLAGS = -std=c11 -O3 -Wall -Wextra -march=native -I./include -DCNS_DEBUG=0
+LDFLAGS = -lm
+
+# Maximum performance optimizations for UHFT
+CFLAGS += -funroll-loops -ffast-math -finline-functions
+CFLAGS += -fomit-frame-pointer -fstrict-aliasing
+CFLAGS += -ftree-vectorize -msse4.2 -mavx2
+
+# Source files
+UHFT_SOURCES = l1_l8_uhft_benchmark.c \
+               src/entanglement_oracle.c \
+               src/bitactor_80_20.c
+
+# Object files
+UHFT_OBJECTS = $(UHFT_SOURCES:.c=.o)
+
+# Target executable
+UHFT_BENCHMARK = uhft_benchmark
+
+# Default target
+all: $(UHFT_BENCHMARK)
+
+# Build the UHFT benchmark
+$(UHFT_BENCHMARK): $(UHFT_OBJECTS)
+	$(CC) $(UHFT_OBJECTS) -o $@ $(LDFLAGS)
+
+# Compile rules
+l1_l8_uhft_benchmark.o: l1_l8_uhft_benchmark.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/entanglement_oracle.o: src/entanglement_oracle.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/bitactor_80_20.o: src/bitactor_80_20.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Run standard benchmark (100k iterations)
+run: $(UHFT_BENCHMARK)
+	@echo "🚀 Running L1-L8 UHFT Benchmark (100k iterations)..."
+	@./$(UHFT_BENCHMARK) 100000
+
+# Quick test (10k iterations)
+quick: $(UHFT_BENCHMARK)
+	@echo "⚡ Running quick UHFT test (10k iterations)..."
+	@./$(UHFT_BENCHMARK) 10000
+
+# Production test (1M iterations)
+production: $(UHFT_BENCHMARK)
+	@echo "🏭 Running production UHFT benchmark (1M iterations)..."
+	@./$(UHFT_BENCHMARK) 1000000
+
+# Extreme test (10M iterations)
+extreme: $(UHFT_BENCHMARK)
+	@echo "🔥 Running extreme UHFT benchmark (10M iterations)..."
+	@./$(UHFT_BENCHMARK) 10000000
+
+# Latency distribution analysis
+latency: $(UHFT_BENCHMARK)
+	@echo "📊 Analyzing latency distribution..."
+	@./$(UHFT_BENCHMARK) 100000 | grep -E "(percentile|Average:|Sub-100ns rate)"
+
+# Layer performance analysis
+layers: $(UHFT_BENCHMARK)
+	@echo "🔍 Analyzing per-layer performance..."
+	@./$(UHFT_BENCHMARK) 100000 | grep -E "L[1-8]:"
+
+# Trinity compliance validation
+trinity: $(UHFT_BENCHMARK)
+	@echo "🛡️ Validating Trinity compliance..."
+	@./$(UHFT_BENCHMARK) 100000 | grep -E "(Trinity|Sub-8-tick|Sub-100ns)"
+
+# Performance profiling
+profile: CFLAGS += -pg -g
+profile: $(UHFT_BENCHMARK)
+	@echo "📈 Profiling UHFT performance..."
+	./$(UHFT_BENCHMARK) 100000
+	gprof $(UHFT_BENCHMARK) gmon.out > uhft_profile.txt
+	@echo "Profile saved to uhft_profile.txt"
+
+# CPU affinity test (Linux only)
+affinity: $(UHFT_BENCHMARK)
+	@echo "🎯 Running with CPU affinity..."
+	@if [ -x /usr/bin/taskset ]; then \
+		taskset -c 0 ./$(UHFT_BENCHMARK) 100000; \
+	else \
+		echo "taskset not available, running normally"; \
+		./$(UHFT_BENCHMARK) 100000; \
+	fi
+
+# Memory analysis
+memcheck: $(UHFT_BENCHMARK)
+	@echo "💾 Checking memory usage..."
+	valgrind --tool=memcheck --leak-check=full ./$(UHFT_BENCHMARK) 1000
+
+# Cache analysis (Linux only)
+cache: $(UHFT_BENCHMARK)
+	@echo "🔄 Analyzing cache performance..."
+	@if [ -x /usr/bin/perf ]; then \
+		perf stat -e cache-references,cache-misses,L1-dcache-loads,L1-dcache-load-misses ./$(UHFT_BENCHMARK) 10000; \
+	else \
+		echo "perf not available"; \
+		./$(UHFT_BENCHMARK) 10000; \
+	fi
+
+# Generate assembly for inspection
+assembly: l1_l8_uhft_benchmark.c
+	$(CC) $(CFLAGS) -S -fverbose-asm $< -o uhft_assembly.s
+	@echo "Assembly code saved to uhft_assembly.s"
+
+# Compare with baseline BitActor
+compare: $(UHFT_BENCHMARK)
+	@echo "📊 Comparing UHFT vs Standard BitActor..."
+	@echo "=== UHFT Benchmark ==="
+	@./$(UHFT_BENCHMARK) 10000 | grep -E "(Average:|Sub-100ns)"
+	@echo ""
+	@echo "=== Standard BitActor ==="
+	@if [ -f bitactor_80_20_test ]; then \
+		./bitactor_80_20_test | grep -E "(Average:|Sub-100ns)"; \
+	else \
+		echo "Standard benchmark not found. Run 'make -f Makefile.bitactor_80_20' first"; \
+	fi
+
+# Clean build artifacts
+clean:
+	rm -f $(UHFT_OBJECTS) $(UHFT_BENCHMARK) gmon.out uhft_profile.txt uhft_assembly.s
+
+# Help
+help:
+	@echo "BitActor L1-L8 UHFT Benchmark - Make targets:"
+	@echo "  all        - Build the UHFT benchmark"
+	@echo "  run        - Run standard benchmark (100k iterations)"
+	@echo "  quick      - Quick test (10k iterations)"
+	@echo "  production - Production test (1M iterations)"
+	@echo "  extreme    - Extreme test (10M iterations)"
+	@echo "  latency    - Analyze latency distribution"
+	@echo "  layers     - Analyze per-layer performance"
+	@echo "  trinity    - Validate Trinity compliance"
+	@echo "  profile    - Generate performance profile"
+	@echo "  affinity   - Run with CPU affinity (Linux)"
+	@echo "  memcheck   - Check memory usage"
+	@echo "  cache      - Analyze cache performance (Linux)"
+	@echo "  assembly   - Generate assembly code"
+	@echo "  compare    - Compare with standard BitActor"
+	@echo "  clean      - Clean build artifacts"
+	@echo "  help       - Show this help"
+
+.PHONY: all run quick production extreme latency layers trinity profile affinity memcheck cache assembly compare clean help

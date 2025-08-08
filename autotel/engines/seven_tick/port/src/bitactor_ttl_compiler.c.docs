@@ -1,0 +1,27 @@
+File: src/bitactor_ttl_compiler.c
+
+Purpose:
+This file implements a core component of the CNS: an 8-tick compliant TTL compiler. It's designed to take Turtle (TTL) specifications and compile them into BitActor bytecode within strict CPU cycle limits. It showcases several "Nano Stack Patterns" for achieving this performance, including fixed-size FSMs, pre-computed hash tables, and micro-op tapes. It also includes functions for benchmarking and integration with a continuous Turtle pipeline.
+
+CNS Integration Recommendation:
+
+This file is a **core component of the CNS AOT Compiler**. Its functions are critical for translating high-level TTL specifications into low-level, deterministic C code (or bytecode) that adheres to the 8T/8H/8B architecture.
+
+1.  **Core CNS AOT Compiler Component:**
+    *   `compile_ttl_8tick`: This is the central function for the 8-tick compliant TTL compilation. Its logic (FSM, pattern recognition, bytecode generation) is fundamental to the AOT process. This function, or its underlying principles, would be directly implemented within the AOT compiler (`cjinja_aot_compiler.py` would orchestrate calls to such a compiled component, or the Python script itself would implement these algorithms).
+    *   `TTL_PARSE_FSM`, `TTL_COMMON_PREDICATES`, `BYTECODE_TEMPLATES`: These static data structures and patterns are examples of compile-time knowledge that the AOT compiler would leverage or generate.
+    *   `hash_ttl_content`, `hash_bytecode`: These hashing functions are essential for ensuring "spec = exec" and would be part of the AOT compiler's utility set.
+    *   `compile_semantic_operations`: This function serves as an integration point for the AOT compiler to generate BitActor operations from TTL.
+    *   `compile_triple_8tick`: This demonstrates 8-tick compliant compilation of individual triples, a key primitive for the AOT compiler.
+
+2.  **CNS Core Framework (Utility/Integration):**
+    *   `rdtsc()`: The cycle counter implementation is a utility that would be part of the CNS core framework (e.g., in a `cns_utils.h` or similar).
+    *   `allocate_from_arena`: This allocator would be part of the CNS memory management framework.
+    *   `simple_rand()`: If a deterministic RNG is required by the CNS, it would be part of the CNS core framework.
+
+3.  **Example/Test/Utility:**
+    *   `benchmark_ttl_compiler`: This is a benchmark function and should remain as a separate test/example.
+    *   `process_turtle_stream_8tick`: This function demonstrates integration with a continuous Turtle pipeline. While the *concept* of processing Turtle streams is central, this specific implementation is likely a demo. The AOT compiler would use similar underlying mechanisms but in a more integrated fashion.
+
+**Conclusion:**
+`src/bitactor_ttl_compiler.c` is a highly relevant file. Its core logic directly informs how the CNS AOT compiler would function to achieve the 8T/8H/8B guarantees. The algorithms and data structures within it are prime examples of what the AOT compiler needs to implement or generate.

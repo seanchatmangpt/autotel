@@ -1,0 +1,16 @@
+File: chatman_nano_stack/src/bitactor_ttl_compiler.c
+
+Purpose:
+This file is a copy of `src/bitactor_ttl_compiler.c` located within the `chatman_nano_stack/src` directory. It implements an 8-tick compliant TTL compiler, designed to take Turtle (TTL) specifications and compile them into BitActor bytecode within strict CPU cycle limits. It showcases several "Nano Stack Patterns" for achieving this performance, including fixed-size FSMs, pre-computed hash tables, and micro-op tapes. It also includes functions for benchmarking and integration with a continuous Turtle pipeline.
+
+CNS Integration Recommendation:
+
+This file is a **duplicate** of `src/bitactor_ttl_compiler.c`. The recommendations for `src/bitactor_ttl_compiler.c` apply here as well.
+
+*   **Avoid Duplication:** This file should be removed to avoid code duplication and potential inconsistencies. The canonical version should be `src/bitactor_ttl_compiler.c`.
+*   **Core CNS AOT Compiler Component:** Its functions are critical for translating high-level TTL specifications into low-level, deterministic C code (or bytecode) that adheres to the 8T/8H/8B architecture. This logic belongs in the CNS AOT compiler.
+*   **CNS Core Framework (Utility/Integration):** Utilities like `rdtsc()` and `allocate_from_arena` should be part of the CNS core framework.
+*   **Example/Test/Utility:** Benchmarking functions should remain as separate test/example code.
+
+**Conclusion:**
+This file is a duplicate and should be removed. Its relevant concepts and logic should be integrated into the CNS through the canonical `src/bitactor_ttl_compiler.c` and the CNS core framework.

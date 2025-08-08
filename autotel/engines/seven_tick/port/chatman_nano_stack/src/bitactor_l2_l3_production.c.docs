@@ -1,0 +1,16 @@
+File: chatman_nano_stack/src/bitactor_l2_l3_production.c
+
+Purpose:
+This file is a copy of `src/bitactor_l2_l3_production.c` located within the `chatman_nano_stack/src` directory. It implements a "Production-Grade" L2 (Causal Mailbox) and L3 (GenActor Supervision) bidirectional communication system. It features robust fault tolerance with OTP-equivalent supervision trees, production message routing with priorities, dead letters, and backpressure, and lock-free data structures. It aims for high performance and reliability, with detailed performance targets and comprehensive testing.
+
+CNS Integration Recommendation:
+
+This file is a **duplicate** of `src/bitactor_l2_l3_production.c`. The recommendations for `src/bitactor_l2_l3_production.c` apply here as well.
+
+*   **Avoid Duplication:** This file should be removed to avoid code duplication and potential inconsistencies. The canonical version should be `src/bitactor_l2_l3_production.c`.
+*   **Core CNS Framework Components:** This file contains highly optimized and production-ready implementations of L2 and L3 functionalities. Its robust design, fault tolerance, and performance characteristics make it an excellent candidate for direct integration into the CNS core framework.
+*   **AOT-Generated Logic (Integration Points):** The `GenActor` behavior callbacks are primary integration points for AOT-generated actor behaviors.
+*   **Example/Test/Utility:** The `main()` function and benchmarking functions are for testing and demonstration and should be kept separate.
+
+**Conclusion:**
+This file is a duplicate and should be removed. Its relevant concepts and logic should be integrated into the CNS through the canonical `src/bitactor_l2_l3_production.c` and the CNS core framework.
