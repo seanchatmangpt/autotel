@@ -28,7 +28,7 @@ CHAIN_KEYS = ("obligation_id", "idempotency_key", "rail_correlation_id")
 @dataclass
 class Finding:
     code: str       # BLIND_RETRY | SETTLED_WITHOUT_FINALITY | CHAIN_NOT_JOINABLE | UNKNOWN_PHASE
-    falsifier: str  # F3 | F5 | F4
+    falsifier: str  # F3 | F5 | F4 | "-" (UNKNOWN_PHASE maps to no falsifier)
     effect_id: str
     detail: str
 
@@ -54,6 +54,7 @@ def analyze(spans: Iterable[dict]) -> tuple[dict[str, EffectView], list[Finding]
     views: dict[str, EffectView] = {}
     findings: list[Finding] = []
     seen_chain: dict[str, dict[str, set]] = {}
+    missing_chain: list[tuple[str, str, str]] = []  # (effect_id, key, span_id)
     submits: dict[str, int] = {}
     for sp in _ordered(spans):
         eid = _attr(sp, "effect_id")
@@ -65,17 +66,22 @@ def analyze(spans: Iterable[dict]) -> tuple[dict[str, EffectView], list[Finding]
             val = _attr(sp, k)
             if val is not None:
                 seen_chain.setdefault(eid, {}).setdefault(k, set()).add(val)
+            else:
+                missing_chain.append((eid, k, sp.get("span_id", "")))
         ph = _attr(sp, "phase")
         if ph not in PHASES:
-            findings.append(Finding("UNKNOWN_PHASE", "F4", eid, f"phase={ph!r}"))
+            findings.append(Finding("UNKNOWN_PHASE", "-", eid, f"phase={ph!r}"))
             continue
         if ph == "prepare":
             v.state = "PREPARED"
         elif ph == "submit":
             submits[eid] = submits.get(eid, 0) + 1
-            if v.state in ("UNKNOWN",) and not v.retry_eligible:
+            if v.state == "UNKNOWN" and not v.retry_eligible:
                 findings.append(Finding("BLIND_RETRY", "F3", eid,
                                         "submit after UNKNOWN without reconciliation proving non-acceptance"))
+            # Eligibility is consumed by this submission; a later UNKNOWN needs
+            # a fresh reconcile(not_accepted) to re-arm it.
+            v.retry_eligible = False
             if submits[eid] > 1 and v.state in ("SUBMITTED", "ACCEPTED", "SETTLED"):
                 findings.append(Finding("BLIND_RETRY", "F3", eid, f"duplicate submit in state {v.state}"))
             v.state = "SUBMITTED"
@@ -91,6 +97,7 @@ def analyze(spans: Iterable[dict]) -> tuple[dict[str, EffectView], list[Finding]
             if v.state in ("SUBMITTED", "ACCEPTED"):
                 v.state = "UNKNOWN"
                 v.action = "RECONCILE"
+                v.retry_eligible = False
         elif ph == "reconcile":
             res = _attr(sp, "reconciliation_result")
             if res == "accepted":
@@ -105,11 +112,11 @@ def analyze(spans: Iterable[dict]) -> tuple[dict[str, EffectView], list[Finding]
                                         "settled span lacks payments.finality_observed=true"))
             else:
                 v.state = ph.upper()
+    for eid, k, span_id in missing_chain:
+        findings.append(Finding("CHAIN_NOT_JOINABLE", "F4", eid, f"missing {k} on span {span_id}"))
     for eid, chain in seen_chain.items():
         for k in CHAIN_KEYS:
-            if k not in chain:
-                findings.append(Finding("CHAIN_NOT_JOINABLE", "F4", eid, f"missing {k}"))
-            elif len(chain[k]) > 1:
+            if len(chain.get(k, ())) > 1:
                 findings.append(Finding("CHAIN_NOT_JOINABLE", "F4", eid, f"{k} differs across spans"))
     return views, findings
 
