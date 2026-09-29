@@ -9,9 +9,9 @@ no ISO 20022 conformance is claimed.
 
 | Falsifier | Coverage |
 |---|---|
-| F3 timeout permits blind retry | `BLIND_RETRY` finding for a submit while UNKNOWN without a reconciliation proving non-acceptance, and for a duplicate submit in SUBMITTED/ACCEPTED/SETTLED. Retry eligibility (set only by `reconcile` = `not_accepted`) is consumed by the retry submit and cleared on a new timeout, so each later UNKNOWN needs a fresh reconcile. Regression tests cover the multi-cycle sequence. Telemetry-only classification; it does not prevent a retry, it reports one. |
+| F3 timeout permits blind retry | `BLIND_RETRY` finding for a submit while UNKNOWN unless a prior `reconcile` returned `not_accepted`, and for a duplicate submit in SUBMITTED/ACCEPTED/SETTLED. Only `reconciliation_result` = `not_accepted` sets `retry_eligible` (accepted, rejected, missing or unrecognised results never do; the latter two leave the effect UNKNOWN). `not_accepted` moves the effect to REJECTED, and the flag is consumed (cleared) by the next submit, so each later UNKNOWN needs a fresh reconcile. Tests cover the flag, the multi-cycle sequence and the negative results. Telemetry-only classification; it does not prevent a retry, it reports one. |
 | F4 ids not joinable | `CHAIN_NOT_JOINABLE` when any span of an effect lacks obligation/idempotency/rail-correlation keys, or a key takes more than one value across an effect's spans. Only the span-level presence and consistency of these three keys is checked; ledger, settlement observation and receipt ids are not part of the chain here. |
-| F5 SETTLED without finality | settled span without `finality_observed=true` is a finding, state not advanced |
+| F5 SETTLED without finality | a settled span whose `finality_observed` is not exactly boolean `true` (absent, `false`, or any non-bool such as `"true"` or `1`) is a finding and state is not advanced; `returned`/`reversed` spans need no finality attribute |
 | F1, F2, F6-F10 | not covered here |
 
 `UNKNOWN_PHASE` findings map to no falsifier.
